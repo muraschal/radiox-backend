@@ -80,6 +80,12 @@ class Settings(BaseSettings):
         "profanity_filter_enabled": True
     }
     
+    # Performance Configuration
+    max_parallel_rss_feeds: int = Field(8, env="MAX_PARALLEL_RSS_FEEDS")
+    max_parallel_audio_segments: int = Field(5, env="MAX_PARALLEL_AUDIO_SEGMENTS")
+    gpt_timeout_seconds: int = Field(180, env="GPT_TIMEOUT_SECONDS")
+    rss_timeout_seconds: int = Field(15, env="RSS_TIMEOUT_SECONDS")
+    
     class Config:
         env_file = str(ENV_FILE_PATH)  # Verwende Root .env Datei
         env_file_encoding = "utf-8"

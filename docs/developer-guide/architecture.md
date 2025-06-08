@@ -230,7 +230,7 @@ class Settings:
     
     # System Configuration
     default_news_count: int = 4
-    max_news_age_hours: int = 1
+    max_news_age_hours: int = 24  # GPT entscheidet über Relevanz
     supported_languages: List[str] = ["en", "de"]
 ```
 

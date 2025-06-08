@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RadioX Show Dashboard - 20250608_111223</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #1a1a1a;
+            color: #ffffff;
+            width: 100vw;
+            height: 100vh;
+            overflow-x: hidden;
+        }
+        
+        .dashboard-header {
+            background: #2a2a2a;
+            padding: 15px 20px;
+            border-bottom: 2px solid #4CAF50;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            height: 10vh;
+        }
+        
+        .dashboard-title {
+            font-size: 24px;
+            font-weight: bold;
+            color: #4CAF50;
+        }
+        
+        .dashboard-timestamp {
+            font-size: 14px;
+            color: #888;
+        }
+        
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 15px;
+            padding: 15px 20px;
+            height: 10vh;
+        }
+        
+        .metric-card {
+            background: #2a2a2a;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            border: 1px solid #333;
+        }
+        
+        .metric-value {
+            font-size: 20px;
+            font-weight: bold;
+            color: #4CAF50;
+        }
+        
+        .metric-label {
+            font-size: 12px;
+            color: #888;
+            margin-top: 5px;
+        }
+        
+        .content-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 20px;
+            padding: 20px;
+            height: 80vh;
+        }
+        
+        .content-panel {
+            background: #2a2a2a;
+            border-radius: 8px;
+            border: 1px solid #333;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .panel-header {
+            background: #333;
+            padding: 15px;
+            font-weight: bold;
+            color: #4CAF50;
+            border-bottom: 1px solid #444;
+        }
+        
+        .panel-content {
+            flex: 1;
+            padding: 15px;
+            overflow-y: auto;
+            font-size: 13px;
+            line-height: 1.4;
+        }
+        
+        .news-item {
+            background: #333;
+            margin-bottom: 10px;
+            padding: 10px;
+            border-radius: 6px;
+            border-left: 3px solid #4CAF50;
+        }
+        
+        .news-title {
+            font-weight: bold;
+            color: #fff;
+            margin-bottom: 5px;
+        }
+        
+        .news-meta {
+            color: #888;
+            font-size: 11px;
+            margin-bottom: 5px;
+        }
+        
+        .news-summary {
+            color: #ccc;
+            font-size: 12px;
+        }
+        
+        .voice-config {
+            background: #333;
+            padding: 10px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+        }
+        
+        .voice-speaker {
+            margin-bottom: 8px;
+        }
+        
+        .voice-name {
+            font-weight: bold;
+            color: #4CAF50;
+        }
+        
+        .voice-details {
+            color: #888;
+            font-size: 11px;
+        }
+        
+        .weather-crypto {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        
+        .weather-card, .crypto-card {
+            background: #333;
+            padding: 10px;
+            border-radius: 6px;
+        }
+        
+        .card-title {
+            font-weight: bold;
+            color: #4CAF50;
+            margin-bottom: 5px;
+        }
+        
+        .card-value {
+            color: #fff;
+            font-size: 14px;
+        }
+        
+        .positive { color: #4CAF50; }
+        .negative { color: #f44336; }
+        
+        pre {
+            background: #1a1a1a;
+            padding: 10px;
+            border-radius: 6px;
+            font-size: 11px;
+            line-height: 1.3;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            color: #ccc;
+        }
+        
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        
+        ::-webkit-scrollbar-track {
+            background: #1a1a1a;
+        }
+        
+        ::-webkit-scrollbar-thumb {
+            background: #4CAF50;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard-header">
+        <div class="dashboard-title">📻 RadioX Show Dashboard</div>
+        <div class="dashboard-timestamp">Generated: 20250608_111223</div>
+    </div>
+    
+    <div class="metrics-grid">
+        <div class="metric-card">
+            <div class="metric-value">1226</div>
+            <div class="metric-label">Total News</div>
+        </div>
+        <div class="metric-card">
+            <div class="metric-value">363</div>
+            <div class="metric-label">Filtered (48h)</div>
+        </div>
+        <div class="metric-card">
+            <div class="metric-value">0</div>
+            <div class="metric-label">Selected News</div>
+        </div>
+        <div class="metric-card">
+            <div class="metric-value">17.9°C</div>
+            <div class="metric-label">Temperature</div>
+        </div>
+        <div class="metric-card">
+            <div class="metric-value">$105,375</div>
+            <div class="metric-label">Bitcoin Price</div>
+        </div>
+        <div class="metric-card">
+            <div class="metric-value positive">+0.4%</div>
+            <div class="metric-label">BTC Change 24h</div>
+        </div>
+    </div>
+    
+    <div class="content-grid">
+        <div class="content-panel">
+            <div class="panel-header">📰 Complete Data Feed</div>
+            <div class="panel-content">
+                <div class="voice-config"><div style="font-weight: bold; color: #4CAF50; margin-bottom: 10px;">🎤 Voice Configuration</div>
+            <div class="voice-speaker">
+                <div class="voice-name">Primary: Marcel</div>
+                <div class="voice-details">
+                    ID: owi9KfbgBi6A987h5eJH | 
+                    Lang: en | 
+                    Style: N/A | 
+                    Stability: N/A | 
+                    Model: N/A
+                </div>
+            </div>
+            </div>
+                
+                <div class="weather-crypto">
+                    <div class="weather-card">
+                        <div class="card-title">🌤️ Weather</div>
+                        <div class="card-value">17.9°C</div>
+                        <div style="color: #888; font-size: 11px;">broken clouds</div>
+                    </div>
+                    <div class="crypto-card">
+                        <div class="card-title">₿ Bitcoin</div>
+                        <div class="card-value">$105,375</div>
+                        <div style="color: #4CAF50; font-size: 11px;">+0.4% (24h)</div>
+                    </div>
+                </div>
+                
+                <div style="margin-bottom: 10px; font-weight: bold; color: #4CAF50;">📊 All News (1226 total)</div>
+                
+            <div class="news-item">
+                <div class="news-title">Xbox console games are suddenly showing up inside the Xbox PC app</div>
+                <div class="news-meta">Theverge • 2h ago • tech</div>
+                <div class="news-summary">Something strange is going on with Microsoft’s Xbox app on Windows. Over the past few days, the Xbox PC app has started showing Xbox console games inside the library. While you can’t install games lik...</div>
+            </div>
+            
+            <div class="news-item">
+                <div class="news-title">Colombia presidential hopeful shot in head at rally</div>
+                <div class="news-meta">Bbc • 2h ago • international</div>
+                <div class="news-summary">The opposition senator was hit three times during rally in Bogota and is in a critical condition in hospital....</div>
+            </div>
+            
+            <div class="news-item">
+                <div class="news-title">Berner Schule mit 40-jähriger Verbindung nach Blatten</div>
+                <div class="news-meta">Srf • 2h ago • news</div>
+                <div class="news-summary"><img align="left" hspace="5" src="https://srf-cms.rokka.io/640ws/b7b4f4.jpg" />Jahrzehntelang halfen Schulklassen aus Köniz BE, das Bergdorf instand zu halten. Die Spuren ihrer Arbeit sind nun weg....</div>
+            </div>
+            
+            <div class="news-item">
+                <div class="news-title">Die Paris-Siegerin mit Blick über den Tellerrand</div>
+                <div class="news-meta">Srf • 3h ago • news</div>
+                <div class="news-summary"><img align="left" hspace="5" src="https://srf-cms.rokka.io/640ws/147e10.jpg" />Coco Gauff bedeutet der Sieg bei den French Open angesichts der turbulenten Zeiten in ihrer amerikanischen Heimat viel....</div>
+            </div>
+            
+            <div class="news-item">
+                <div class="news-title">Dubai real estate sales hit $18B in May amid tokenization push</div>
+                <div class="news-meta">Cointelegraph • 3h ago • crypto</div>
+                <div class="news-summary"><p style="float: right; margin: 0 0 10px 15px; width: 240px;"><img alt="Dubai real estate sales hit $18B in May amid tokenization push" src="https://images.cointelegraph.com/images/528_aHR0cHM6Ly9zMy5...</div>
+            </div>
+            
+            <div class="news-item">
+                <div class="news-title">Randy Schneider: «Es war der optimale Zeitpunkt»</div>
+                <div class="news-meta">Srf • 3h ago • news</div>
+                <div class="news-summary"><img align="left" hspace="5" src="https://srf-cms.rokka.io/640ws/87083b.jpg" />Der Profi des FC Winterthur erklärt, warum er seit März für die Philippinen spielt....</div>
+            </div>
+            
+            <div class="news-item">
+                <div class="news-title">Schertenleib weiter auf Titeljagd: Doublesiegerin mit Barcelona</div>
+                <div class="news-meta">Srf • 3h ago • news</div>
+                <div class="news-summary"><img align="left" hspace="5" src="https://srf-cms.rokka.io/640ws/15e214b.jpg" />Hier finden Sie die wichtigsten Neuigkeiten aus dem Frauenfussball....</div>
+            </div>
+            
+            <div class="news-item">
+                <div class="news-title">Eine Mutter chattet dank KI mit ihrer verstorbenen Tochter</div>
+                <div class="news-meta">Srf • 3h ago • news</div>
+                <div class="news-summary"><img align="left" hspace="5" src="https://srf-cms.rokka.io/640ws/3d7090.jpg" />Sonia war 18 als sie starb. Ihre Mutter Elisabeth chattet heute regelmässig mit einem digitalen Avatar von Sonia....</div>
+            </div>
+            
+            <div class="news-item">
+                <div class="news-title">Microsoft: Abhilfe für Sicherheitslücke durch gelöschte "inetpub"-Ordner</div>
+                <div class="news-meta">Heise • 3h ago • tech</div>
+                <div class="news-summary">Windows-Update hat einen "inetpub"-Ordner angelegt. Wird er gelöscht, blockiert das womöglich weitere Updates. Ein Script hilft....</div>
+            </div>
+            
+            <div class="news-item">
+                <div class="news-title">Microsoft: Abhilfe für Sicherheitslücke durch gelöschte "inetpub"-Ordner</div>
+                <div class="news-meta">Heise • 3h ago • news</div>
+                <div class="news-summary">Windows-Update hat einen "inetpub"-Ordner angelegt. Wird er gelöscht, blockiert das womöglich weitere Updates. Ein Script hilft....</div>
+            </div>
+            
+            <div class="news-item">
+                <div class="news-title">Gelungene Bergung: Nordkoreanische Werftarbeiter richten gekenterten Zerstörer wieder auf</div>
+                <div class="news-meta">Nzz • 3h ago • international</div>
+                <div class="news-summary">Der Führer Kim Jong Un hatte den gescheiterten Stapellauf eines Kriegsschiffs als «kriminelle Handlung» bezeichnet. Nun gelingt es der Werft, das Schiff zu retten....</div>
+            </div>
+            
+            <div class="news-item">
+                <div class="news-title">UBS-Wegzug laut Wirtschaftsrechtlerin «nicht realistisch»</div>
+                <div class="news-meta">Cash • 3h ago • wirtschaft</div>
+                <div class="news-summary">Banken - Eine Expertin nennt Gründe, weshalb die UBS die Schweiz trotz verschärfter Bankenregulierung  nicht verlassen wird....</div>
+            </div>
+            
+            <div class="news-item">
+                <div class="news-title">Anleger blicken in der neuen Woche auf US-Konjunkturdaten</div>
+                <div class="news-meta">Cash • 3h ago • wirtschaft</div>
+                <div class="news-summary">Börsenvorschau - In der neue Woche treffen US-Konjunkturdaten ein, die Hinweise auf kommende Zinsentscheide geben....</div>
+            </div>
+            
+            <div class="news-item">
+                <div class="news-title">Spending Review to include £86bn science and tech package</div>
+                <div class="news-meta">Bbc • 3h ago • wirtschaft</div>
+                <div class="news-summary">The government says every corner of the country will benefit, but research backers call for a long-term plan for science....</div>
+            </div>
+            
+            <div class="news-item">
+                <div class="news-title">Kobels Warten auf erstes Zu-null-Spiel im Nati-Dress geht weiter</div>
+                <div class="news-meta">Srf • 3h ago • news</div>
+                <div class="news-summary"><img align="left" hspace="5" src="https://srf-cms.rokka.io/640ws/3974b0.jpg" />Gregor Kobel musste auch im 12. Länderspiel hinter sich greifen. Liegt das Problem bei der wenig eingespielten Abwehr?...</div>
+            </div>
+            
+            <div class="news-item">
+                <div class="news-title">heise-Angebot: c't-Webinar: Digitale Sicherheit für Anfänger</div>
+                <div class="news-meta">Heise • 3h ago • tech</div>
+                <div class="news-summary">IT-Sicherheit kann auch unkompliziert sein: Lernen Sie im c’t-Webinar praxisnah, wie Sie Geräte und Daten mit wenig Aufwand effektiv schützen....</div>
+            </div>
+            
+            <div class="news-item">
+                <div class="news-title">2,9 Millionen Franken für goldene Fallschirme</div>
+                <div class="news-meta">Cash • 3h ago • wirtschaft</div>
+                <div class="news-summary">Abgangsentschädigungen - Die Zahl der Abgangsentschädigungen in Bundesbern ist letztes Jahr gestiegen. Wer das Negativranking anführt....</div>
+            </div>
+            
+            <div class="news-item">
+                <div class="news-title">Diese Karambolage verursachte 100'000 Franken Schaden</div>
+                <div class="news-meta">20Min • 3h ago • zurich</div>
+                <div class="news-summary">Am Samstagabend kam es bei der Autobahneinfahrt Lenzburg zu einer Auffahrkollision mit fünf Fahrzeugen. Vier Personen wurden leicht verletzt. Es entstand hoher Sachschaden....</div>
+            </div>
+            
+            <div class="news-item">
+                <div class="news-title">Pfingsten hast du frei – aber weisst du auch, warum?</div>
+                <div class="news-meta">20Min • 4h ago • science</div>
+                <div class="news-summary">Pfingsten gilt als «Geburtstag der Kirche»: 50 Tage nach Ostern soll laut Bibel der Heilige Geist auf die Jünger herabgekommen sein....</div>
+            </div>
+            
+            <div class="news-item">
+                <div class="news-title">Watch: Defiance and anger on the streets of LA</div>
+                <div class="news-meta">Bbc • 4h ago • international</div>
+                <div class="news-summary">The Californian city saw a second day of unrest on Saturday, with tear gas fired in the Paramount district....</div>
+            </div>
+            
+            <div class="news-item">
+                <div class="news-title">Trump orders National Guard to LA after clashes</div>
+                <div class="news-meta">Bbc • 4h ago • international</div>
+                <div class="news-summary">The city sees a second day of clashes over raids by federal agents on undocumented migrants....</div>
+            </div>
+            
+            <div class="news-item">
+                <div class="news-title">Ehemaliger US-Bundesrichter: «Klima für Richter ist gefährlich»</div>
+                <div class="news-meta">Srf • 4h ago • news</div>
+                <div class="news-summary"><img align="left" hspace="5" src="https://srf-cms.rokka.io/640ws/c40748.jpg" />Von «linksradikalen Verrückten» in der Justiz ist in Trump-Kreisen die Rede. John Jones ist zutiefst besorgt....</div>
+            </div>
+            
+            <div class="news-item">
+                <div class="news-title">Starke Berner fordern einheimische Innerschweizer auf dem Stoos</div>
+                <div class="news-meta">Srf • 4h ago • news</div>
+                <div class="news-summary"><img align="left" hspace="5" src="https://srf-cms.rokka.io/640ws/81c2d7.jpg" />Auf dem Stoos findet das erste Bergkranzfest der Saison statt, Berner haben gute Aussichten auf den Tagessieg....</div>
+            </div>
+            
+            <div class="news-item">
+                <div class="news-title">Klassentreffen der Stammgäste im Nations-League-Final</div>
+                <div class="news-meta">Srf • 4h ago • news</div>
+                <div class="news-summary"><img align="left" hspace="5" src="https://srf-cms.rokka.io/640ws/79142d.jpg" />Seit sechs Jahren gibt es die Nations League. Im Final der 4. Ausgabe treffen die erfolgreichsten Teams aufeinander....</div>
+            </div>
+            
+            <div class="news-item">
+                <div class="news-title">Faisal Islam: After a year of cautious tiptoeing, now the government has to escape its own shadow</div>
+                <div class="news-meta">Bbc • 4h ago • wirtschaft</div>
+                <div class="news-summary">This week's Spending Review is a one-off opportunity for the UK government to show investors its vision...</div>
+            </div>
+            
+            <div class="news-item">
+                <div class="news-title">«Kleide mich so, dass Männer wie du mir fernbleiben»</div>
+                <div class="news-meta">20Min • 4h ago • schweiz</div>
+                <div class="news-summary">Tiktokerin Joana wird wegen ihres Looks beschimpft. Man sehe ihr an, dass sie links sei. Doch gilt ein alternativer Style wirklich als Politik? Eine Expertin klärt politische Style-Typologien....</div>
+            </div>
+            
+            <div class="news-item">
+                <div class="news-title">Meta offenbar in Gesprächen über Milliarden-Investition in KI-Startup</div>
+                <div class="news-meta">Cash • 4h ago • wirtschaft</div>
+                <div class="news-summary">Technologie - Laut einem Medienbericht ist Facebook-Mutter Meta dabei, schwer in das KI-Startup Scale AI zu investieren....</div>
+            </div>
+            
+            <div class="news-item">
+                <div class="news-title">Beat Jans' «24-Stunden-Verfahren» dauert 22 Tage</div>
+                <div class="news-meta">20Min • 4h ago • schweiz</div>
+                <div class="news-summary">Das von Bundesrat Jans angekündigte «24-Stunden-Verfahren» für Maghreb-Asylsuchende dauern im Schnitt 22 Tage....</div>
+            </div>
+            
+            <div class="news-item">
+                <div class="news-title">Hindernisse auf Geleisen: SBB-Bahnstrecke Hauptbahnhof – Oerlikon unterbrochen</div>
+                <div class="news-meta">Tagesanzeiger • 5h ago • zurich</div>
+                <div class="news-summary">Der Bahnverkehr auf der Strecke Zürich HB-Oerlikon ist zwischen Wipkingen und Oerlikon voraussichtlich bis Sonntagnachmittag eingestellt....</div>
+            </div>
+            
+            <div class="news-item">
+                <div class="news-title">Verzicht auf temporäre Pflegekräfte: «Der Entscheid der Spitäler ist kartell­rechtlich hochriskant»</div>
+                <div class="news-meta">Tagesanzeiger • 5h ago • zurich</div>
+                <div class="news-summary">Nach der Anzeige gegen Zürcher Spitäler wegen «Boykott» und «Marktmacht­missbrauch» leitet die Wettbewerbs­kommission nun erste Schritte ein. Wo Experten gute Chancen sehen – und wo nicht....</div>
+            </div>
+            
+            </div>
+        </div>
+        
+        <div class="content-panel">
+            <div class="panel-header">🤖 GPT Prompt</div>
+            <div class="panel-content">
+                <pre>Du bist der AI-Produzent für "Zürich Lokal" - eine Radioshow mit Fokus auf Zürich.
+
+AUFGABE: Erstelle ein komplettes Radio-Skript mit genau 4 News-Segmenten.
+
+VERFÜGBARE DATEN:
+NEWS (15 verfügbar):
+1. [Theverge] Xbox console games are suddenly showing up inside the Xbox PC app
+   Zusammenfassung: Something strange is going on with Microsoft’s Xbox app on Windows. Over the past few days, the Xbox PC app has started showing Xbox console games inside the library. While you can’t install games lik...
+   Kategorie: tech | Alter: 2h
+
+2. [Bbc] Colombia presidential hopeful shot in head at rally
+   Zusammenfassung: The opposition senator was hit three times during rally in Bogota and is in a critical condition in hospital....
+   Kategorie: international | Alter: 2h
+
+3. [Srf] Berner Schule mit 40-jähriger Verbindung nach Blatten
+   Zusammenfassung: <img align="left" hspace="5" src="https://srf-cms.rokka.io/640ws/b7b4f4.jpg" />Jahrzehntelang halfen Schulklassen aus Köniz BE, das Bergdorf instand zu halten. Die Spuren ihrer Arbeit sind nun weg....
+   Kategorie: news | Alter: 2h
+
+4. [Srf] Die Paris-Siegerin mit Blick über den Tellerrand
+   Zusammenfassung: <img align="left" hspace="5" src="https://srf-cms.rokka.io/640ws/147e10.jpg" />Coco Gauff bedeutet der Sieg bei den French Open angesichts der turbulenten Zeiten in ihrer amerikanischen Heimat viel....
+   Kategorie: news | Alter: 3h
+
+5. [Cointelegraph] Dubai real estate sales hit $18B in May amid tokenization push
+   Zusammenfassung: <p style="float: right; margin: 0 0 10px 15px; width: 240px;"><img alt="Dubai real estate sales hit $18B in May amid tokenization push" src="https://images.cointelegraph.com/images/528_aHR0cHM6Ly9zMy5...
+   Kategorie: crypto | Alter: 3h
+
+6. [Srf] Randy Schneider: «Es war der optimale Zeitpunkt»
+   Zusammenfassung: <img align="left" hspace="5" src="https://srf-cms.rokka.io/640ws/87083b.jpg" />Der Profi des FC Winterthur erklärt, warum er seit März für die Philippinen spielt....
+   Kategorie: news | Alter: 3h
+
+7. [Srf] Schertenleib weiter auf Titeljagd: Doublesiegerin mit Barcelona
+   Zusammenfassung: <img align="left" hspace="5" src="https://srf-cms.rokka.io/640ws/15e214b.jpg" />Hier finden Sie die wichtigsten Neuigkeiten aus dem Frauenfussball....
+   Kategorie: news | Alter: 3h
+
+8. [Srf] Eine Mutter chattet dank KI mit ihrer verstorbenen Tochter
+   Zusammenfassung: <img align="left" hspace="5" src="https://srf-cms.rokka.io/640ws/3d7090.jpg" />Sonia war 18 als sie starb. Ihre Mutter Elisabeth chattet heute regelmässig mit einem digitalen Avatar von Sonia....
+   Kategorie: news | Alter: 3h
+
+9. [Heise] Microsoft: Abhilfe für Sicherheitslücke durch gelöschte "inetpub"-Ordner
+   Zusammenfassung: Windows-Update hat einen "inetpub"-Ordner angelegt. Wird er gelöscht, blockiert das womöglich weitere Updates. Ein Script hilft....
+   Kategorie: tech | Alter: 3h
+
+10. [Heise] Microsoft: Abhilfe für Sicherheitslücke durch gelöschte "inetpub"-Ordner
+   Zusammenfassung: Windows-Update hat einen "inetpub"-Ordner angelegt. Wird er gelöscht, blockiert das womöglich weitere Updates. Ein Script hilft....
+   Kategorie: news | Alter: 3h
+
+11. [Nzz] Gelungene Bergung: Nordkoreanische Werftarbeiter richten gekenterten Zerstörer wieder auf
+   Zusammenfassung: Der Führer Kim Jong Un hatte den gescheiterten Stapellauf eines Kriegsschiffs als «kriminelle Handlung» bezeichnet. Nun gelingt es der Werft, das Schiff zu retten....
+   Kategorie: international | Alter: 3h
+
+12. [Cash] UBS-Wegzug laut Wirtschaftsrechtlerin «nicht realistisch»
+   Zusammenfassung: Banken - Eine Expertin nennt Gründe, weshalb die UBS die Schweiz trotz verschärfter Bankenregulierung  nicht verlassen wird....
+   Kategorie: wirtschaft | Alter: 3h
+
+13. [Cash] Anleger blicken in der neuen Woche auf US-Konjunkturdaten
+   Zusammenfassung: Börsenvorschau - In der neue Woche treffen US-Konjunkturdaten ein, die Hinweise auf kommende Zinsentscheide geben....
+   Kategorie: wirtschaft | Alter: 3h
+
+14. [Bbc] Spending Review to include £86bn science and tech package
+   Zusammenfassung: The government says every corner of the country will benefit, but research backers call for a long-term plan for science....
+   Kategorie: wirtschaft | Alter: 3h
+
+15. [Srf] Kobels Warten auf erstes Zu-null-Spiel im Nati-Dress geht weiter
+   Zusammenfassung: <img align="left" hspace="5" src="https://srf-cms.rokka.io/640ws/3974b0.jpg" />Gregor Kobel musste auch im 12. Länderspiel hinter sich greifen. Liegt das Problem bei der wenig eingespielten Abwehr?...
+   Kategorie: news | Alter: 3h
+
+
+
+WETTER (Zürich):
+- Temperatur: 17.9°C
+- Bedingungen: broken clouds
+- Gefühlte Temperatur: 17.4°C
+- Luftfeuchtigkeit: 64%
+
+BITCOIN:
+- Aktueller Preis: $105,375
+- 24h Änderung: +0.39%
+- 7d Änderung: +1.12%
+- Marktkapitalisierung: $2,094,428,842,092
+
+SHOW-KONFIGURATION:
+- Sprecher: Marcel
+- Stadt-Fokus: Zürich
+- Kategorien: zurich, schweiz, weather, news
+
+ANFORDERUNGEN:
+1. Wähle die 4 relevantesten News für Zürich
+2. Erstelle ein natürliches Radio-Skript (2-3 Minuten)
+3. Integriere Wetter und Bitcoin-Preis
+4. Verwende einen lockeren, informativen Ton
+
+ANTWORT-FORMAT (JSON):
+{
+    "selected_news": [
+        {"title": "...", "summary": "...", "source": "...", "relevance_reason": "..."}
+    ],
+    "radio_script": "Vollständiges Radio-Skript hier...",
+    "segments": [
+        {"type": "intro", "content": "..."},
+        {"type": "news", "content": "...", "news_title": "..."},
+        {"type": "weather", "content": "..."},
+        {"type": "crypto", "content": "..."},
+        {"type": "outro", "content": "..."}
+    ],
+    "content_focus": {"focus": "Zürich", "reasoning": "..."},
+    "quality_score": 0.9
+}</pre>
+            </div>
+        </div>
+        
+        <div class="content-panel">
+            <div class="panel-header">📻 Radio Script</div>
+            <div class="panel-content">
+                <pre>{
+    "selected_news": [
+        {"title": "Berner Schule mit 40-jähriger Verbindung nach Blatten", "summary": "Jahrzehntelang halfen Schulklassen aus Köniz BE, das Bergdorf instand zu halten. Die Spuren ihrer Arbeit sind nun weg.", "source": "Srf", "relevance_reason": "Diese Nachricht ist relevant, da sie eine lokale Bildungsinstitution in Zürich betrifft."},
+        {"title": "Randy Schneider: «Es war der optimale Zeitpunkt»", "summary": "Der Profi des FC Winterthur erklärt, warum er seit März für die Philippinen spielt.", "source": "Srf", "relevance_reason": "Diese Nachricht ist relevant, da sie einen lokalen Fußballspieler aus Zürich betrifft."},
+        {"title": "UBS-Wegzug laut Wirtschaftsrechtlerin «nicht realistisch»", "summary": "Eine Expertin nennt Gründe, weshalb die UBS die Schweiz trotz verschärfter Bankenregulierung nicht verlassen wird.", "source": "Cash", "relevance_reason": "UBS ist ein wichtiger Arbeitgeber in Zürich, und diese Nachricht könnte Bedeutungen für die lokale Wirtschaft haben."},
+        {"title": "Eine Mutter chattet dank KI mit ihrer verstorbenen Tochter", "summary": "Sonia war 18 als sie starb. Ihre Mutter Elisabeth chattet heute regelmässig mit einem digitalen Avatar von Sonia.", "source": "Srf", "relevance_reason": "Diese Nachricht ist relevant, da sie die Auswirkungen von Technologie auf das tägliche Leben in Zürich zeigt."}
+    ],
+    "radio_script": "Guten Morgen Zürich, hier ist Marcel mit den neuesten lokalen Nachrichten. Starten wir mit einer Geschichte aus der Bildungswelt. Die Berner Schule, die seit vier Jahrzehnten eine Verbindung zum Bergdorf Blatten hat, verliert nun die Spuren ihrer Arbeit. Schulklassen aus Köniz haben jahrzehntelang geholfen, das Bergdorf instand zu halten. Nun sind die Spuren ihrer Arbeit leider weg.
+
+Wechseln wir zum Sport. Randy Schneider, der Profi des FC Winterthur, erklärt, warum er seit März für die Philippinen spielt. Scheint, als hätte er den perfekten Zeitpunkt gefunden, um seine Fußballkarriere auf die nächste Stufe zu heben.
+
+In der Wirtschaftsbranche gibt es gute Nachrichten für Zürich. Die UBS hat keine Pläne, die Schweiz zu verlassen, trotz der verschärften Bankenregulierung, sagt eine Expertin. Das ist sicherlich eine Erleichterung für viele, die bei der UBS arbeiten.
+
+Und jetzt zu einer etwas anderen Geschichte. Eine Mutter in Zürich chattet dank KI mit einem digitalen Avatar ihrer verstorbenen Tochter. Sonia war 18, als sie starb. Heute ist sie durch KI immer noch ein Teil des Lebens ihrer Mutter.
+
+Jetzt zu den Wetterinformationen. Es ist derzeit 17.9°C mit einigen Wolken am Himmel. Die gefühlte Temperatur liegt bei 17.4°C und die Luftfeuchtigkeit bei 64%.
+
+Und zum Schluss noch ein kurzer Blick auf die Kryptowelt. Der Bitcoin steht aktuell bei 105,375 Dollar, eine kleine Steigerung von 0.39% in den letzten 24 Stunden.
+
+Das war's für heute, Zürich. Bleiben Sie sicher und bleiben Sie dran bei Zürich Lokal. Bis morgen!",
+    "segments": [
+        {"type": "intro", "content": "Guten Morgen Zürich, hier ist Marcel mit den neuesten lokalen Nachrichten."},
+        {"type": "news", "content": "Starten wir mit einer Geschichte aus der Bildungswelt...", "news_title": "Berner Schule mit 40-jähriger Verbindung nach Blatten"},
+        {"type": "news", "content": "Wechseln wir zum Sport...", "news_title": "Randy Schneider: «Es war der optimale Zeitpunkt»"},
+        {"type": "news", "content": "In der Wirtschaftsbranche gibt es gute Nachrichten für Zürich...", "news_title": "UBS-Wegzug laut Wirtschaftsrechtlerin «nicht realistisch»"},
+        {"type": "news", "content": "Und jetzt zu einer etwas anderen Geschichte...", "news_title": "Eine Mutter chattet dank KI mit ihrer verstorbenen Tochter"},
+        {"type": "weather", "content": "Jetzt zu den Wetterinformationen..."},
+        {"type": "crypto", "content": "Und zum Schluss noch ein kurzer Blick auf die Kryptowelt..."},
+        {"type": "outro", "content": "Das war's für heute, Zürich. Bleiben Sie sicher und bleiben Sie dran bei Zürich Lokal. Bis morgen!"}
+    ],
+    "content_focus": {"focus": "Zürich", "reasoning": "Die ausgewählten Nachrichten konzentrieren sich auf Ereignisse und Personen in Zürich und deren Auswirkungen auf die Stadt."},
+    "quality_score": 0.9
+}</pre>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

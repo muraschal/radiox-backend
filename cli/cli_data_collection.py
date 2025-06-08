@@ -42,7 +42,7 @@ class DataCollectionCLI:
     def __init__(self):
         self.service = DataCollectionService()
         
-    async def run_full_collection(self, preset: str = None, max_age_hours: int = 1):
+    async def run_full_collection(self, preset: str = None, max_age_hours: int = 24):
         """Führt vollständige Datensammlung durch"""
         
         print("📊 DATA COLLECTION SERVICE")
@@ -72,7 +72,7 @@ class DataCollectionCLI:
             logger.error(f"❌ Fehler bei Datensammlung: {e}")
             return False
     
-    async def run_news_only(self, limit: int = 25, max_age_hours: int = 1):
+    async def run_news_only(self, limit: int = 25, max_age_hours: int = 24):
         """Sammelt nur RSS News"""
         
         print("📰 RSS NEWS COLLECTION")
@@ -124,7 +124,7 @@ class DataCollectionCLI:
         
         try:
             # Sammle minimale Daten für Statistiken
-            data = await self.service.collect_all_data(max_age_hours=1)
+            data = await self.service.collect_all_data(max_age_hours=24)
             
             if "sources" in data:
                 stats = data.get("statistics", {})

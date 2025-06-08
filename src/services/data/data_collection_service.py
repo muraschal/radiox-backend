@@ -38,7 +38,7 @@ class DataCollectionService:
         self.weather_service = WeatherService()
         self.crypto_service = BitcoinService()
     
-    async def collect_all_data(self, max_age_hours: int = 12) -> Dict[str, Any]:
+    async def collect_all_data(self) -> Dict[str, Any]:
         """
         Sammelt ALLE verfügbaren Daten von allen Services
         Generiert automatisch HTML-Dashboards
@@ -48,7 +48,7 @@ class DataCollectionService:
         
         # SEQUENZIELLE Sammlung um Race Conditions zu vermeiden
         logger.info("📰 Sammle News...")
-        news = await self._collect_all_news_safe(max_age_hours)
+        news = await self._collect_all_news_safe()
         
         # Parallele Sammlung für Weather + Crypto (diese haben keine Konflikte)
         logger.info("🌍 Sammle Kontext-Daten parallel...")
@@ -63,7 +63,6 @@ class DataCollectionService:
         # Ergebnisse zusammenfassen
         result = {
             "collection_timestamp": datetime.now().isoformat(),
-            "max_age_hours": max_age_hours,
             "news": news if not isinstance(news, Exception) else [],
             "weather": weather if not isinstance(weather, Exception) else None,
             "crypto": crypto if not isinstance(crypto, Exception) else None,
@@ -93,19 +92,18 @@ class DataCollectionService:
         
         return result
     
-    async def collect_news_only(self, max_age_hours: int = 12) -> Dict[str, Any]:
+    async def collect_news_only(self) -> Dict[str, Any]:
         """
         Sammelt nur RSS News - ALLE verfügbaren
         """
         
         logger.info("📰 Sammle ALLE RSS News...")
         
-        news = await self._collect_all_news_safe(max_age_hours)
+        news = await self._collect_all_news_safe()
         
         return {
             "news": news,
             "collection_timestamp": datetime.now().isoformat(),
-            "max_age_hours": max_age_hours,
             "news_count": len(news) if news else 0
         }
     
@@ -386,6 +384,7 @@ class DataCollectionService:
         .age-badge {{ padding: 4px 8px; border-radius: 8px; background: #bdc3c7; color: #2c3e50; font-size: 0.8em; }}
         .news-title {{ font-size: 1.2em; font-weight: bold; color: #2c3e50; margin-bottom: 8px; line-height: 1.4; }}
         .news-summary {{ color: #7f8c8d; line-height: 1.5; margin-bottom: 10px; }}
+        .news-summary img {{ max-width: 120px; max-height: 80px; object-fit: cover; border-radius: 8px; margin-right: 10px; margin-bottom: 5px; }}
         .news-link {{ display: inline-flex; align-items: center; gap: 8px; color: #3498db; text-decoration: none; font-weight: bold; transition: color 0.3s ease; }}
         .news-link:hover {{ color: #2980b9; }}
         .sidebar {{ display: flex; flex-direction: column; gap: 20px; }}
@@ -706,45 +705,31 @@ class DataCollectionService:
     
     # ==================== PRIVATE HELPER METHODS ====================
     
-    async def _collect_all_news_safe(self, max_age_hours: int) -> List[Dict[str, Any]]:
+    async def _collect_all_news_safe(self) -> List[Dict[str, Any]]:
         """
-        Sammelt ALLE RSS News - konvertiert zu vollständigen JSON-Objekten
+        Sammelt ALLE RSS News - PARALLELISIERT für bessere Performance
         Gibt ALLE verfügbaren Informationen zurück für GPT-Priorisierung
         """
         
-        logger.info("📰 Sammle ALLE RSS News...")
+        logger.info("📰 Sammle RSS News...")
         
         try:
-            # DEBUG: Teste RSS Service direkt
-            logger.info(f"🔧 DEBUG: Teste RSS Service mit max_age_hours={max_age_hours}")
+            # Hole aktive Feeds
+            feeds = await self.rss_service.get_all_active_feeds()
             
-            # Einfach die rohen RSS News Items holen
-            news_items = await self.rss_service.get_all_recent_news(max_age_hours)
+            if not feeds:
+                logger.warning("⚠️ Keine aktiven RSS Feeds")
+                return []
             
-            logger.info(f"🔧 DEBUG: RSS Service returned {len(news_items) if news_items else 0} items")
+            logger.info(f"🚀 Sammle von {len(feeds)} Feeds parallel...")
+            
+            # Verwende die optimierte RSS Service Methode
+            news_items = await self.rss_service.get_all_recent_news()
+            
+            logger.info(f"📊 {len(news_items)} News gesammelt")
             
             if not news_items:
                 logger.warning("⚠️ Keine News gefunden")
-                
-                # ZUSÄTZLICHES DEBUGGING: Teste Feeds direkt
-                logger.info("🔧 DEBUG: Teste aktive Feeds...")
-                try:
-                    feeds = await self.rss_service.get_all_active_feeds()
-                    logger.info(f"🔧 DEBUG: {len(feeds)} aktive Feeds gefunden")
-                    
-                    if len(feeds) > 0:
-                        logger.info(f"🔧 DEBUG: Erster Feed: {feeds[0].get('source_name', 'Unknown')}")
-                        
-                        # Teste ersten Feed direkt
-                        try:
-                            test_items = await self.rss_service.fetch_feed_items(feeds[0]['feed_url'])
-                            logger.info(f"🔧 DEBUG: Erster Feed hat {len(test_items)} Items")
-                        except Exception as feed_e:
-                            logger.error(f"🔧 DEBUG: Feed-Test Fehler: {feed_e}")
-                    
-                except Exception as feeds_e:
-                    logger.error(f"🔧 DEBUG: Feeds-Test Fehler: {feeds_e}")
-                
                 return []
             
             # Konvertiere RSSNewsItem Objekte zu vollständigen JSON-Dictionaries
@@ -768,13 +753,11 @@ class DataCollectionService:
                 }
                 news_json.append(news_dict)
             
-            logger.info(f"✅ {len(news_json)} News als JSON gesammelt (mit URLs für GPT)")
+            logger.info(f"✅ {len(news_json)} News als JSON bereit")
             return news_json
             
         except Exception as e:
-            logger.error(f"❌ Fehler beim Sammeln der News: {e}")
-            import traceback
-            logger.error(f"🔧 DEBUG: Traceback: {traceback.format_exc()}")
+            logger.error(f"❌ RSS-Sammlung Fehler: {e}")
             return []
     
     async def _collect_weather_safe(self) -> Dict[str, Any]:

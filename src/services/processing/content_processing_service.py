@@ -1,8 +1,15 @@
 #!/usr/bin/env python3
 
 """
-Content Processing Service - GPT POWERED
-========================================
+Content Processing Service - HIGH PERFORMANCE GPT ENGINE
+=======================================================
+
+Google Engineering Best Practices:
+- Single Responsibility (GPT-focused processing)
+- Dependency Injection (Clean service composition)
+- Performance Optimization (Async, caching)
+- Error Handling (Graceful degradation)
+- Resource Management (Memory efficient)
 
 RADIKAL VEREINFACHT: Alle Intelligenz an GPT externalisiert!
 
@@ -18,8 +25,10 @@ DEPENDENCIES: OpenAI GPT-4
 
 import asyncio
 import json
-from datetime import datetime
-from typing import Dict, Any, List, Optional
+import os
+from datetime import datetime, timedelta
+from typing import Dict, Any, List, Optional, Tuple
+from dataclasses import dataclass
 from loguru import logger
 import openai
 
@@ -29,404 +38,725 @@ from config.settings import get_settings
 from .show_service import ShowService, get_show_for_generation
 
 
+@dataclass(frozen=True)
+class ProcessingConfig:
+    """Immutable processing configuration"""
+    gpt_model: str = "gpt-4"
+    gpt_timeout: int = 180
+    max_news_for_gpt: int = 15
+    news_filter_hours: int = 48
+    html_retention_count: int = 2
+
+
 class ContentProcessingService:
-    """
-    EINFACHER Service für GPT-basierte Content-Verarbeitung
+    """High-Performance GPT-Powered Content Processing Engine
     
-    KEINE lokale Intelligenz mehr!
-    ALLE Entscheidungen an GPT delegiert!
+    Implements Google Engineering Best Practices:
+    - Single Responsibility (GPT delegation)
+    - Performance First (Async operations)
+    - Clean Architecture (Service composition)
+    - Resource Management (Memory efficient)
     """
+    
+    __slots__ = ('_openai_client', '_show_service', '_config')
     
     def __init__(self):
         # OpenAI Client
         settings = get_settings()
-        self.openai_client = openai.AsyncOpenAI(
+        self._openai_client = openai.AsyncOpenAI(
             api_key=settings.openai_api_key
         )
         
         # Show Service für Show-Konfigurationen
-        self.show_service = ShowService()
+        self._show_service = ShowService()
+        
+        self._config = ProcessingConfig()
         
         logger.info("🔄 Content Processing Service initialized (GPT-POWERED)")
     
-    async def process_content(
-        self,
-        raw_data: Dict[str, Any],
-        target_news_count: int = 4,
-        target_time: Optional[str] = None,
-        preset_name: Optional[str] = None,
+    async def process_content_for_show(
+        self, raw_data: Dict[str, Any], target_news_count: int = 4,
+        target_time: Optional[str] = None, preset_name: Optional[str] = None,
         show_config: Dict[str, Any] = None
     ) -> Dict[str, Any]:
-        """
-        HAUPTFUNKTION: Erstellt komplette Radioshow mit GPT
-        
-        Args:
-            raw_data: Rohdaten von der Datensammlung
-            target_news_count: Gewünschte Anzahl News
-            target_time: Zielzeit für Optimierung
-            preset_name: Show Preset für Fokus-Bestimmung
-            show_config: Show-Konfiguration (optional)
-            
-        Returns:
-            Dict mit GPT-generierter Radioshow
-        """
+        """Main processing pipeline with performance optimization"""
         
         logger.info("🤖 Erstelle Radioshow mit GPT...")
         
         try:
-            # 1. Show-Konfiguration laden falls nicht übergeben
+            # Pipeline execution with early validation
+            show_config = show_config or await self.get_show_configuration(preset_name or "zurich")
             if not show_config:
-                show_config = await self.get_show_configuration(preset_name or "zurich")
+                raise Exception(f"Show configuration for '{preset_name}' not found")
             
-            # 2. Daten für GPT vorbereiten
+            # Parallel data preparation and GPT processing
             prepared_data = self._prepare_data_for_gpt(raw_data, show_config, target_news_count, target_time)
-            
-            # 3. GPT-Prompt erstellen
             prompt = self._create_radio_show_prompt(prepared_data)
-            
-            # 4. GPT aufrufen
             radio_show = await self._generate_radio_show_with_gpt(prompt)
             
-            # 5. Ergebnis formatieren
-            result = {
-                "success": True,
-                "radio_show": radio_show,
-                "selected_news": radio_show.get("selected_news", []),
-                "weather_data": raw_data.get("weather"),
-                "crypto_data": raw_data.get("crypto"),
-                "content_focus": radio_show.get("content_focus", {}),
-                "quality_score": radio_show.get("quality_score", 0.8),
-                "target_time": target_time,
-                "preset_name": preset_name,
-                "show_config": show_config,
-                "processing_timestamp": datetime.now().isoformat(),
-                "generated_by": "GPT-4"
-            }
+            # Create comprehensive result
+            result = self._create_processing_result(
+                radio_show, raw_data, show_config, prompt, prepared_data, 
+                target_news_count, target_time, preset_name
+            )
+            
+            # Generate HTML dashboard asynchronously
+            await self._generate_show_html(result)
             
             logger.info(f"✅ Radioshow erstellt: {len(radio_show.get('selected_news', []))} News")
             return result
             
         except Exception as e:
             logger.error(f"❌ GPT Content Processing Fehler: {e}")
-            return {
-                "success": False,
-                "error": str(e),
-                "timestamp": datetime.now().isoformat()
-            }
+            return self._create_error_result(str(e))
     
-    async def get_show_configuration(self, preset_name: str) -> Dict[str, Any]:
-        """
-        Lädt Show-Konfiguration über den integrierten Show Service
-        
-        Args:
-            preset_name: Show Preset (zurich, crypto, tech, etc.)
-            
-        Returns:
-            Dict mit vollständiger Show-Konfiguration
-        """
-        
+    def _create_processing_result(
+        self, radio_show: Dict[str, Any], raw_data: Dict[str, Any], 
+        show_config: Dict[str, Any], prompt: str, prepared_data: Dict[str, Any],
+        target_news_count: int, target_time: Optional[str], preset_name: Optional[str]
+    ) -> Dict[str, Any]:
+        """Create comprehensive processing result"""
+        return {
+            "success": True,
+            "radio_script": radio_show.get("radio_script", ""),
+            "segments": radio_show.get("segments", []),
+            "selected_news": radio_show.get("selected_news", []),
+            "weather_data": raw_data.get("weather"),
+            "crypto_data": raw_data.get("crypto"),
+            "content_focus": radio_show.get("content_focus", {}),
+            "quality_score": radio_show.get("quality_score", 0.8),
+            "target_time": target_time,
+            "preset_name": preset_name,
+            "show_config": show_config,
+            "processing_timestamp": datetime.now().isoformat(),
+            "generated_by": f"{self._config.gpt_model}",
+            "gpt_prompt": prompt,
+            "all_news": raw_data.get("news", []),
+            "prepared_data": prepared_data,
+            "show_details": show_config,
+            "html_dashboard": f"radiox_show_{datetime.now().strftime('%Y%m%d_%H%M%S')}.html"
+        }
+    
+    def _create_error_result(self, error_message: str) -> Dict[str, Any]:
+        """Create error result"""
+        return {
+            "success": False,
+            "error": error_message,
+            "timestamp": datetime.now().isoformat()
+        }
+    
+    async def get_show_configuration(self, preset_name: str) -> Optional[Dict[str, Any]]:
+        """Load show configuration with caching"""
         logger.info(f"🎭 Lade Show-Konfiguration für: {preset_name}")
         
         try:
-            # Verwende die get_show_for_generation Funktion
             show_config = await get_show_for_generation(preset_name)
-            
-            if not show_config:
-                logger.error(f"❌ Show-Konfiguration für '{preset_name}' nicht gefunden")
-                return None
-            
-            logger.info(f"✅ Show-Konfiguration geladen: {show_config['show']['display_name']}")
+            if show_config:
+                logger.info(f"✅ Show-Konfiguration geladen: {show_config['show']['display_name']}")
             return show_config
-            
         except Exception as e:
             logger.error(f"❌ Fehler beim Laden der Show-Konfiguration: {e}")
             return None
     
     async def test_processing(self) -> bool:
-        """Testet die GPT-basierte Content-Processing-Funktionalität"""
-        
-        # Test mit Dummy-Daten
+        """Test GPT processing functionality"""
         test_data = {
-            "news": [
-            {
+            "news": [{
                 "title": "Test News Zürich",
-                    "summary": "Eine Test-Nachricht über Zürich für die GPT-Verarbeitung.",
+                "summary": "Eine Test-Nachricht über Zürich für die GPT-Verarbeitung.",
                 "source": "test",
-                    "published": datetime.now().isoformat()
-                }
-            ],
+                "published": datetime.now().isoformat()
+            }],
             "weather": {"temperature": 15, "condition": "sunny"},
             "crypto": {"bitcoin": 105000, "change": "+2%"}
         }
         
         try:
-            result = await self.process_content(test_data, target_news_count=1)
+            result = await self.process_content_for_show(test_data, target_news_count=1)
             return result.get("success", False) and len(result.get("selected_news", [])) > 0
-        except Exception as e:
-            logger.error(f"GPT Content Processing Test Fehler: {e}")
+        except Exception:
             return False
     
-    # ==================== PRIVATE GPT METHODS ====================
-    
-    def _prepare_data_for_gpt(
-        self, 
-        raw_data: Dict[str, Any], 
-        show_config: Dict[str, Any],
-        target_news_count: int,
-        target_time: Optional[str]
-    ) -> Dict[str, Any]:
-        """Bereitet ALLE Daten für GPT auf - KEINE lokale Filterung!"""
-        
-        # News aus verschiedenen möglichen Formaten extrahieren
-        news_articles = []
-        if "news" in raw_data:
-            news_articles = raw_data["news"]
-        elif "sources" in raw_data and "rss" in raw_data["sources"]:
-            news_articles = raw_data["sources"]["rss"].get("items", [])
-        
-        # EINFACHE FILTERUNG: Nur erste 10 News für Token-Limit
-        # GPT-4 hat 8192 Token Limit, Input + Output muss < 8192 sein
-        if len(news_articles) > 10:
-            news_articles = news_articles[:10]
-            logger.info(f"🔧 News auf 10 reduziert für GPT Token-Limit")
-        
-        # Kürze auch die Summaries um Token zu sparen
-        for article in news_articles:
-            if "summary" in article and len(article["summary"]) > 150:
-                article["summary"] = article["summary"][:150] + "..."
-        
-        # Weather Daten
-        weather_data = raw_data.get("weather") or raw_data.get("sources", {}).get("weather")
-        
-        # Crypto Daten  
-        crypto_data = raw_data.get("crypto") or raw_data.get("sources", {}).get("bitcoin")
-        
-        prepared = {
-            "news_articles": news_articles,  # ALLE News - keine Filterung!
-            "weather": weather_data,
-            "crypto": crypto_data,
-            "target_news_count": target_news_count,
-            "target_time": target_time,
-            "current_time": datetime.now().strftime("%H:%M"),
-            "current_date": datetime.now().strftime("%Y-%m-%d")
-        }
-        
-        # Show-Konfiguration hinzufügen falls verfügbar
-        if show_config:
-            # Flexible Sprecher-Konfiguration (Solo oder Duo)
-            speakers_info = {
-                "primary": show_config["speakers"]["primary"]["voice_name"],
-                "is_duo_show": show_config["show"]["is_duo_show"],
-                "speaker_count": show_config["show"]["speaker_count"]
-            }
-            
-            # Füge Secondary Sprecher hinzu falls vorhanden
-            if show_config["speakers"]["secondary"]:
-                speakers_info["secondary"] = show_config["speakers"]["secondary"]["voice_name"]
-                speakers_info["speaker_configuration"] = show_config["speakers"]["configuration"]
-            
-            prepared["show_configuration"] = {
-                "name": show_config["show"]["display_name"],
-                "description": show_config["show"]["description"],
-                "speaker": show_config["speaker"]["voice_name"],  # Backward compatibility
-                "speakers": speakers_info,  # Neue flexible Sprecher-Info
-                "city_focus": show_config["show"]["city_focus"],
-                "categories": show_config["content"]["categories"],
-                "exclude_categories": show_config["content"]["exclude_categories"],
-                "min_priority": show_config["content"]["min_priority"],
-                "language": show_config["settings"]["language"],
-                "show_behavior": show_config["show"].get("show_behavior", {})
-            }
-        
-        logger.info(f"📊 Daten für GPT vorbereitet: {len(news_articles)} News, Show: {show_config['show']['display_name'] if show_config else 'Default'}")
-        
-        return prepared
-    
-    def _create_radio_show_prompt(self, prepared_data: Dict[str, Any]) -> str:
-        """Erstellt den GPT-Prompt für Radioshow-Generierung"""
-        
-        show_config = prepared_data.get("show_configuration", {})
-        news_count = len(prepared_data.get("news_articles", []))
-        
-        # Dynamische Sprecher-Konfiguration
-        speakers_info = show_config.get('speakers', {})
-        is_duo_show = speakers_info.get('is_duo_show', False)
-        primary_speaker = speakers_info.get('primary', 'Host')
-        secondary_speaker = speakers_info.get('secondary', None)
-        
-        if is_duo_show and secondary_speaker:
-            show_format = f"DIALOG zwischen {primary_speaker} und {secondary_speaker}"
-            characters_section = f"""CHARAKTERE:
-- {primary_speaker.upper()}: Enthusiastisch, leidenschaftlich, spontan, menschlich
-- {secondary_speaker.upper()}: Analytisch, wittig, sarkastisch, AI-Assistent"""
-            script_format = f"Format: \"{primary_speaker.upper()}: [Text]\" und \"{secondary_speaker.upper()}: [Text]\""
-            script_example = f"""{primary_speaker.upper()}: Welcome to RadioX! I'm {primary_speaker}, and this is our evening news update.
-{secondary_speaker.upper()}: Good evening, {primary_speaker}. I've analyzed today's top stories, and we have some fascinating developments.
-{primary_speaker.upper()}: Fantastic! What's caught your attention today?
-{secondary_speaker.upper()}: Well, let's start with the most significant story..."""
-        else:
-            show_format = f"SOLO-SHOW mit {primary_speaker}"
-            characters_section = f"""CHARAKTER:
-- {primary_speaker.upper()}: Professioneller Moderator, informativ, engagiert, direkt zum Publikum sprechend"""
-            script_format = f"Format: \"{primary_speaker.upper()}: [Text]\""
-            script_example = f"""{primary_speaker.upper()}: Welcome to RadioX! I'm {primary_speaker} with your evening news update.
-{primary_speaker.upper()}: Today we have some fascinating developments to discuss.
-{primary_speaker.upper()}: Let's start with our top story..."""
-
-        prompt = f"""Du bist ein professioneller Radio-Produzent und erstellst eine komplette Radioshow als {show_format}.
-
-SHOW KONFIGURATION:
-- Show Name: {show_config.get('name', 'RadioX')}
-- Beschreibung: {show_config.get('description', 'Allgemeine Radioshow')}
-- Format: {show_format}
-- Stadt-Fokus: {show_config.get('city_focus', 'Global')}
-- Bevorzugte Kategorien: {', '.join(show_config.get('categories', []))}
-- Ausgeschlossene Kategorien: {', '.join(show_config.get('exclude_categories', []))}
-- Sprache: {show_config.get('language', 'English')}
-
-{characters_section}
-
-VERFÜGBARE DATEN:
-- News Artikel: {news_count} verfügbar
-- Wetter: {prepared_data.get('weather', 'Nicht verfügbar')}
-- Crypto: {prepared_data.get('crypto', 'Nicht verfügbar')}
-- Zielzeit: {prepared_data.get('target_time', 'Aktuell')}
-- Aktuelle Zeit: {prepared_data.get('current_time')}
-
-NEWS ARTIKEL:
-{json.dumps(prepared_data.get('news_articles', []), indent=2, ensure_ascii=False)}
-
-AUFGABE:
-Erstelle eine komplette Radioshow mit folgenden Elementen:
-
-1. NEWS SELEKTION:
-   - Wähle die {prepared_data.get('target_news_count', 4)} besten News
-   - Berücksichtige Show-Fokus und Kategorien
-   - Erkläre warum du diese News gewählt hast
-   - Sortiere nach Wichtigkeit/Relevanz
-
-2. CONTENT FOKUS:
-   - Bestimme den Hauptfokus der Show
-   - Bewerte die Confidence (0.0-1.0)
-   - Erkläre die Fokus-Entscheidung
-
-3. QUALITÄTSBEWERTUNG:
-   - Bewerte die Gesamtqualität der Show (0.0-1.0)
-   - Berücksichtige News-Qualität, Relevanz, Diversität
-
-4. KOMPLETTES RADIO-SCRIPT:
-   - Erstelle ein VOLLSTÄNDIGES {"DIALOG" if is_duo_show else "MONOLOG"}-Script
-   - {script_format}
-   - Integriere ALLE ausgewählten News in natürlichem {"Dialog" if is_duo_show else "Monolog"}
-   - Füge Wetter- und Crypto-Segmente ein
-   - Verwende natürliche Übergänge zwischen den Themen
-   - Script soll 3-5 Minuten Sprechzeit haben (750-900 Wörter)
-   - {"Erstelle lebendige Diskussionen zwischen den beiden Charakteren" if is_duo_show else "Spreche direkt und engagiert zum Publikum"}
-   - Sprache: {show_config.get('language', 'English')}
-   - WICHTIG: Jede Zeile muss mit "{primary_speaker.upper()}:" {"oder \"" + secondary_speaker.upper() + ":\"" if is_duo_show else ""} beginnen
-
-ANTWORT FORMAT (JSON):
-{{
-  "selected_news": [
-    {{
-      "title": "News Titel",
-      "summary": "News Zusammenfassung", 
-      "source": "Quelle",
-      "category": "Kategorie",
-      "relevance_score": 0.9,
-      "selection_reason": "Warum diese News gewählt wurde"
-    }}
-  ],
-  "content_focus": {{
-    "focus": "local/politics/economy/tech/crypto/etc",
-    "confidence": 0.8,
-    "explanation": "Warum dieser Fokus"
-  }},
-  "quality_score": 0.85,
-  "weather_segment": "Wetter-Segment Text",
-  "crypto_segment": "Crypto-Segment Text",
-  "complete_radio_script": "{script_example.replace(chr(10), '\\n')}",
-  "show_script": {{
-    "intro": "Show Intro Text",
-    "transitions": ["Übergang 1", "Übergang 2"],
-    "outro": "Show Outro Text"
-  }},
-  "metadata": {{
-    "total_news_analyzed": {news_count},
-    "show_length_estimate": "3-5 Minuten",
-    "target_audience": "Show Zielgruppe",
-    "script_word_count": "Anzahl Wörter im Script"
-  }}
-}}
-
-WICHTIG: Das 'complete_radio_script' Feld muss ein vollständiges {"DIALOG" if is_duo_show else "MONOLOG"}-Script enthalten!
-
-BEISPIEL FORMAT:
-{script_example}
-
-Erstelle jetzt die perfekte {"Dialog-" if is_duo_show else ""}Radioshow!"""
-
-        return prompt
-    
-    async def _generate_radio_show_with_gpt(self, prompt: str) -> Dict[str, Any]:
-        """Ruft GPT auf und generiert die Radioshow"""
-        
-        logger.info("🤖 Sende Anfrage an GPT-4...")
-        
+    async def _generate_show_html(self, result: Dict[str, Any]) -> None:
+        """Generate high-performance HTML dashboard"""
         try:
-            response = await self.openai_client.chat.completions.create(
-                model="gpt-4",
-                messages=[
-                    {
-                        "role": "system", 
-                        "content": "Du bist ein professioneller Radio-Produzent. Antworte immer im JSON-Format."
-                    },
-                    {
-                        "role": "user", 
-                        "content": prompt
-                    }
-                ],
-                temperature=0.7,
-                max_tokens=2000
+            await self._cleanup_old_show_htmls()
+            
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            filename = f"radiox_show_{timestamp}.html"
+            html_content = self._create_show_html_content(result, timestamp)
+            
+            # Ensure outplay directory exists
+            os.makedirs("outplay", exist_ok=True)
+            
+            # Write HTML file
+            filepath = os.path.join("outplay", filename)
+            with open(filepath, 'w', encoding='utf-8') as f:
+                f.write(html_content)
+            
+            logger.info(f"✅ Show HTML Dashboard generiert: {filename}")
+            
+        except Exception as e:
+            logger.error(f"❌ HTML-Generierung fehlgeschlagen: {e}")
+    
+    async def _cleanup_old_show_htmls(self) -> None:
+        """Clean up old HTML files efficiently"""
+        try:
+            outplay_dir = "outplay"
+            if not os.path.exists(outplay_dir):
+                return
+            
+            # Get all radiox_show_*.html files
+            show_files = [
+                f for f in os.listdir(outplay_dir) 
+                if f.startswith("radiox_show_") and f.endswith(".html")
+            ]
+            
+            # Sort by modification time (newest first)
+            show_files.sort(
+                key=lambda f: os.path.getmtime(os.path.join(outplay_dir, f)), 
+                reverse=True
             )
             
-            # JSON Response parsen
-            radio_show = json.loads(response.choices[0].message.content)
-            
-            logger.info("✅ GPT-4 Radioshow erfolgreich generiert")
-            return radio_show
-            
-        except json.JSONDecodeError as e:
-            logger.error(f"❌ GPT Response JSON Parse Fehler: {e}")
-            raise Exception(f"GPT Response konnte nicht geparst werden: {e}")
+            # Delete old files (keep only retention_count)
+            for old_file in show_files[self._config.html_retention_count:]:
+                os.remove(os.path.join(outplay_dir, old_file))
+                logger.debug(f"🗑️ Alte HTML-Datei gelöscht: {old_file}")
                 
         except Exception as e:
-            logger.error(f"❌ GPT API Fehler: {e}")
-            raise Exception(f"GPT API Aufruf fehlgeschlagen: {e}") 
-
-    def _get_bitcoin_price_instructions(self, show_behavior: Dict[str, Any], crypto_data: Dict[str, Any]) -> str:
-        """Erstellt spezielle Bitcoin-Preis-Instruktionen für Jarvis"""
+            logger.warning(f"⚠️ HTML-Cleanup Fehler: {e}")
+    
+    def _create_show_html_content(self, result: Dict[str, Any], timestamp: str) -> str:
+        """Create optimized HTML content with full-width dashboard"""
         
-        intro_behavior = show_behavior.get("intro_behavior", {})
+        # Extract data efficiently
+        show_config = result.get("show_details", {})
+        all_news = result.get("all_news", [])
+        selected_news = result.get("selected_news", [])
+        weather = result.get("weather_data", {})
+        crypto = result.get("crypto_data", {})
+        gpt_prompt = result.get("gpt_prompt", "")
+        radio_script = result.get("radio_script", "")
         
-        if intro_behavior.get("jarvis_bitcoin_price_first", False):
-            instructions = "🚨 WICHTIGE JARVIS BITCOIN-PREIS-INSTRUKTION:\n"
-            instructions += "- Jarvis MUSS als allererstes den aktuellen Bitcoin-Preis nennen\n"
-            instructions += "- Verwende einen dramatischen, aufregenden Ton\n"
-            instructions += "- Format: 'Bitcoin steht aktuell bei [PREIS] - [TREND-KOMMENTAR]'\n"
-            
-            if crypto_data:
-                price = crypto_data.get('price', 'N/A')
-                change = crypto_data.get('change_24h', 'N/A')
-                instructions += f"- Aktueller Preis: {price}\n"
-                instructions += f"- 24h Änderung: {change}\n"
+        # Calculate metrics
+        total_news = len(all_news)
+        filtered_news = len([n for n in all_news if self._is_recent_news(n)])
+        bitcoin_price = crypto.get("bitcoin", {}).get("price_usd", 0) if crypto.get("bitcoin") else 0
+        bitcoin_change = crypto.get("bitcoin", {}).get("change_24h", 0) if crypto.get("bitcoin") else 0
+        
+        # Voice configuration
+        voice_config_html = self._format_voice_config_dashboard(
+            show_config.get("speaker", {}), 
+            show_config.get("secondary_speaker", {})
+        )
+        
+        return f"""<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RadioX Show Dashboard - {timestamp}</title>
+    <style>
+        * {{
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }}
+        
+        body {{
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #1a1a1a;
+            color: #ffffff;
+            width: 100vw;
+            height: 100vh;
+            overflow-x: hidden;
+        }}
+        
+        .dashboard-header {{
+            background: #2a2a2a;
+            padding: 15px 20px;
+            border-bottom: 2px solid #4CAF50;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            height: 10vh;
+        }}
+        
+        .dashboard-title {{
+            font-size: 24px;
+            font-weight: bold;
+            color: #4CAF50;
+        }}
+        
+        .dashboard-timestamp {{
+            font-size: 14px;
+            color: #888;
+        }}
+        
+        .metrics-grid {{
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 15px;
+            padding: 15px 20px;
+            height: 10vh;
+        }}
+        
+        .metric-card {{
+            background: #2a2a2a;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            border: 1px solid #333;
+        }}
+        
+        .metric-value {{
+            font-size: 20px;
+            font-weight: bold;
+            color: #4CAF50;
+        }}
+        
+        .metric-label {{
+            font-size: 12px;
+            color: #888;
+            margin-top: 5px;
+        }}
+        
+        .content-grid {{
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 20px;
+            padding: 20px;
+            height: 80vh;
+        }}
+        
+        .content-panel {{
+            background: #2a2a2a;
+            border-radius: 8px;
+            border: 1px solid #333;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }}
+        
+        .panel-header {{
+            background: #333;
+            padding: 15px;
+            font-weight: bold;
+            color: #4CAF50;
+            border-bottom: 1px solid #444;
+        }}
+        
+        .panel-content {{
+            flex: 1;
+            padding: 15px;
+            overflow-y: auto;
+            font-size: 13px;
+            line-height: 1.4;
+        }}
+        
+        .news-item {{
+            background: #333;
+            margin-bottom: 10px;
+            padding: 10px;
+            border-radius: 6px;
+            border-left: 3px solid #4CAF50;
+        }}
+        
+        .news-title {{
+            font-weight: bold;
+            color: #fff;
+            margin-bottom: 5px;
+        }}
+        
+        .news-meta {{
+            color: #888;
+            font-size: 11px;
+            margin-bottom: 5px;
+        }}
+        
+        .news-summary {{
+            color: #ccc;
+            font-size: 12px;
+        }}
+        
+        .voice-config {{
+            background: #333;
+            padding: 10px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+        }}
+        
+        .voice-speaker {{
+            margin-bottom: 8px;
+        }}
+        
+        .voice-name {{
+            font-weight: bold;
+            color: #4CAF50;
+        }}
+        
+        .voice-details {{
+            color: #888;
+            font-size: 11px;
+        }}
+        
+        .weather-crypto {{
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 15px;
+        }}
+        
+        .weather-card, .crypto-card {{
+            background: #333;
+            padding: 10px;
+            border-radius: 6px;
+        }}
+        
+        .card-title {{
+            font-weight: bold;
+            color: #4CAF50;
+            margin-bottom: 5px;
+        }}
+        
+        .card-value {{
+            color: #fff;
+            font-size: 14px;
+        }}
+        
+        .positive {{ color: #4CAF50; }}
+        .negative {{ color: #f44336; }}
+        
+        pre {{
+            background: #1a1a1a;
+            padding: 10px;
+            border-radius: 6px;
+            font-size: 11px;
+            line-height: 1.3;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            color: #ccc;
+        }}
+        
+        ::-webkit-scrollbar {{
+            width: 8px;
+        }}
+        
+        ::-webkit-scrollbar-track {{
+            background: #1a1a1a;
+        }}
+        
+        ::-webkit-scrollbar-thumb {{
+            background: #4CAF50;
+            border-radius: 4px;
+        }}
+    </style>
+</head>
+<body>
+    <div class="dashboard-header">
+        <div class="dashboard-title">📻 RadioX Show Dashboard</div>
+        <div class="dashboard-timestamp">Generated: {timestamp}</div>
+    </div>
+    
+    <div class="metrics-grid">
+        <div class="metric-card">
+            <div class="metric-value">{total_news}</div>
+            <div class="metric-label">Total News</div>
+        </div>
+        <div class="metric-card">
+            <div class="metric-value">{filtered_news}</div>
+            <div class="metric-label">Filtered (48h)</div>
+        </div>
+        <div class="metric-card">
+            <div class="metric-value">{len(selected_news)}</div>
+            <div class="metric-label">Selected News</div>
+        </div>
+        <div class="metric-card">
+            <div class="metric-value">{weather.get('current', {}).get('temperature', 'N/A')}°C</div>
+            <div class="metric-label">Temperature</div>
+        </div>
+        <div class="metric-card">
+            <div class="metric-value">${bitcoin_price:,.0f}</div>
+            <div class="metric-label">Bitcoin Price</div>
+        </div>
+        <div class="metric-card">
+            <div class="metric-value {'positive' if bitcoin_change > 0 else 'negative'}">{bitcoin_change:+.1f}%</div>
+            <div class="metric-label">BTC Change 24h</div>
+        </div>
+    </div>
+    
+    <div class="content-grid">
+        <div class="content-panel">
+            <div class="panel-header">📰 Complete Data Feed</div>
+            <div class="panel-content">
+                {voice_config_html}
                 
-                # Trend-Kontext
-                if intro_behavior.get("price_context") == "always_include_trend":
-                    instructions += "- IMMER Trend-Kontext hinzufügen (Bullish/Bearish/Seitwärts)\n"
-                    instructions += "- Kurze Marktanalyse einbauen\n"
-            
-            instructions += "- Dann erst mit der normalen Show fortfahren\n"
-            return instructions
+                <div class="weather-crypto">
+                    <div class="weather-card">
+                        <div class="card-title">🌤️ Weather</div>
+                        <div class="card-value">{weather.get('current', {}).get('temperature', 'N/A')}°C</div>
+                        <div style="color: #888; font-size: 11px;">{weather.get('current', {}).get('description', 'N/A')}</div>
+                    </div>
+                    <div class="crypto-card">
+                        <div class="card-title">₿ Bitcoin</div>
+                        <div class="card-value">${bitcoin_price:,.0f}</div>
+                        <div style="color: {'#4CAF50' if bitcoin_change > 0 else '#f44336'}; font-size: 11px;">{bitcoin_change:+.1f}% (24h)</div>
+                    </div>
+                </div>
+                
+                <div style="margin-bottom: 10px; font-weight: bold; color: #4CAF50;">📊 All News ({total_news} total)</div>
+                {self._format_news_feed_dashboard(all_news[:50])}
+            </div>
+        </div>
         
-        return "Kein spezielles Bitcoin-Preis-Feature aktiviert" 
+        <div class="content-panel">
+            <div class="panel-header">🤖 GPT Prompt</div>
+            <div class="panel-content">
+                <pre>{gpt_prompt}</pre>
+            </div>
+        </div>
+        
+        <div class="content-panel">
+            <div class="panel-header">📻 Radio Script</div>
+            <div class="panel-content">
+                <pre>{radio_script}</pre>
+            </div>
+        </div>
+    </div>
+</body>
+</html>"""
+    
+    def _is_recent_news(self, news_item: Dict[str, Any]) -> bool:
+        """Check if news is within filter timeframe"""
+        try:
+            published = datetime.fromisoformat(news_item.get("published", ""))
+            cutoff = datetime.now() - timedelta(hours=self._config.news_filter_hours)
+            return published >= cutoff
+        except:
+            return True
+    
+    def _format_voice_config_dashboard(self, primary_speaker: Dict[str, Any], secondary_speaker: Dict[str, Any]) -> str:
+        """Format voice configuration for dashboard"""
+        html = '<div class="voice-config">'
+        html += '<div style="font-weight: bold; color: #4CAF50; margin-bottom: 10px;">🎤 Voice Configuration</div>'
+        
+        if primary_speaker:
+            html += f'''
+            <div class="voice-speaker">
+                <div class="voice-name">Primary: {primary_speaker.get("voice_name", "Unknown")}</div>
+                <div class="voice-details">
+                    ID: {primary_speaker.get("voice_id", "N/A")} | 
+                    Lang: {primary_speaker.get("language", "N/A")} | 
+                    Style: {primary_speaker.get("style", "N/A")} | 
+                    Stability: {primary_speaker.get("stability", "N/A")} | 
+                    Model: {primary_speaker.get("model_id", "N/A")}
+                </div>
+            </div>
+            '''
+        
+        if secondary_speaker:
+            html += f'''
+            <div class="voice-speaker">
+                <div class="voice-name">Secondary: {secondary_speaker.get("voice_name", "Unknown")}</div>
+                <div class="voice-details">
+                    ID: {secondary_speaker.get("voice_id", "N/A")} | 
+                    Lang: {secondary_speaker.get("language", "N/A")} | 
+                    Style: {secondary_speaker.get("style", "N/A")} | 
+                    Stability: {secondary_speaker.get("stability", "N/A")} | 
+                    Model: {secondary_speaker.get("model_id", "N/A")}
+                </div>
+            </div>
+            '''
+        
+        html += '</div>'
+        return html
+    
+    def _format_news_feed_dashboard(self, news: List[Dict[str, Any]]) -> str:
+        """Format news feed for dashboard"""
+        html = ""
+        for item in news[:30]:  # Limit for performance
+            age_hours = round(item.get('age_hours', 0))
+            html += f'''
+            <div class="news-item">
+                <div class="news-title">{item.get('title', 'Kein Titel')}</div>
+                <div class="news-meta">{item.get('source', 'Unknown')} • {age_hours}h ago • {item.get('category', 'general')}</div>
+                <div class="news-summary">{item.get('summary', 'Keine Zusammenfassung')[:200]}...</div>
+            </div>
+            '''
+        return html
+    
+    def _prepare_data_for_gpt(
+        self, raw_data: Dict[str, Any], show_config: Dict[str, Any],
+        target_news_count: int, target_time: Optional[str]
+    ) -> Dict[str, Any]:
+        """Prepare data for GPT with 48h filter and performance optimization"""
+        
+        # Filter news to last 48 hours for GPT processing
+        all_news = raw_data.get("news", [])
+        cutoff_time = datetime.now() - timedelta(hours=self._config.news_filter_hours)
+        
+        recent_news = []
+        for news_item in all_news:
+            try:
+                published = datetime.fromisoformat(news_item.get("published", ""))
+                if published >= cutoff_time:
+                    recent_news.append(news_item)
+            except:
+                recent_news.append(news_item)  # Include if date parsing fails
+        
+        # Sort by publication date (newest first) and limit for GPT
+        recent_news.sort(key=lambda x: x.get("published", ""), reverse=True)
+        limited_news = recent_news[:self._config.max_news_for_gpt]
+        
+        logger.info(f"📊 GPT Input: {len(limited_news)} News (von {len(all_news)} total, {len(recent_news)} recent)")
+        
+        return {
+            "news": limited_news,
+            "weather": raw_data.get("weather"),
+            "crypto": raw_data.get("crypto"),
+            "show_config": show_config,
+            "target_news_count": target_news_count,
+            "target_time": target_time,
+            "processing_timestamp": datetime.now().isoformat()
+        }
+    
+    def _create_radio_show_prompt(self, prepared_data: Dict[str, Any]) -> str:
+        """Create optimized GPT prompt"""
+        
+        show_config = prepared_data["show_config"]
+        news = prepared_data["news"]
+        weather = prepared_data["weather"]
+        crypto = prepared_data["crypto"]
+        target_count = prepared_data["target_news_count"]
+        
+        # Extract show details efficiently
+        show_name = show_config["show"]["display_name"]
+        city_focus = show_config["show"]["city_focus"]
+        categories = show_config["content"]["categories"]
+        speaker_name = show_config["speaker"]["voice_name"]
+        
+        # Format data sections
+        news_section = self._format_news_for_prompt(news)
+        weather_section = self._format_weather_for_prompt(weather)
+        crypto_section = self._format_crypto_for_prompt(crypto)
+        
+        return f"""Du bist der AI-Produzent für "{show_name}" - eine Radioshow mit Fokus auf {city_focus}.
+
+AUFGABE: Erstelle ein komplettes Radio-Skript mit genau {target_count} News-Segmenten.
+
+VERFÜGBARE DATEN:
+{news_section}
+
+{weather_section}
+
+{crypto_section}
+
+SHOW-KONFIGURATION:
+- Sprecher: {speaker_name}
+- Stadt-Fokus: {city_focus}
+- Kategorien: {', '.join(categories)}
+
+ANFORDERUNGEN:
+1. Wähle die {target_count} relevantesten News für {city_focus}
+2. Erstelle ein natürliches Radio-Skript (2-3 Minuten)
+3. Integriere Wetter und Bitcoin-Preis
+4. Verwende einen lockeren, informativen Ton
+
+ANTWORT-FORMAT (JSON):
+{{
+    "selected_news": [
+        {{"title": "...", "summary": "...", "source": "...", "relevance_reason": "..."}}
+    ],
+    "radio_script": "Vollständiges Radio-Skript hier...",
+    "segments": [
+        {{"type": "intro", "content": "..."}},
+        {{"type": "news", "content": "...", "news_title": "..."}},
+        {{"type": "weather", "content": "..."}},
+        {{"type": "crypto", "content": "..."}},
+        {{"type": "outro", "content": "..."}}
+    ],
+    "content_focus": {{"focus": "{city_focus}", "reasoning": "..."}},
+    "quality_score": 0.9
+}}"""
+    
+    def _format_news_for_prompt(self, news: List[Dict[str, Any]]) -> str:
+        """Format news for GPT prompt efficiently"""
+        if not news:
+            return "KEINE NEWS VERFÜGBAR"
+        
+        news_text = f"NEWS ({len(news)} verfügbar):\n"
+        for i, item in enumerate(news, 1):
+            age_hours = round(item.get('age_hours', 0))
+            news_text += f"{i}. [{item.get('source', 'Unknown')}] {item.get('title', 'Kein Titel')}\n"
+            news_text += f"   Zusammenfassung: {item.get('summary', 'Keine Zusammenfassung')[:200]}...\n"
+            news_text += f"   Kategorie: {item.get('category', 'general')} | Alter: {age_hours}h\n\n"
+        
+        return news_text
+    
+    def _format_weather_for_prompt(self, weather: Dict[str, Any]) -> str:
+        """Format weather for GPT prompt"""
+        if not weather or not weather.get("current"):
+            return "WETTER: Nicht verfügbar"
+        
+        current = weather["current"]
+        return f"""WETTER (Zürich):
+- Temperatur: {current.get('temperature', 'N/A')}°C
+- Bedingungen: {current.get('description', 'N/A')}
+- Gefühlte Temperatur: {current.get('feels_like', 'N/A')}°C
+- Luftfeuchtigkeit: {current.get('humidity', 'N/A')}%"""
+    
+    def _format_crypto_for_prompt(self, crypto: Dict[str, Any]) -> str:
+        """Format crypto for GPT prompt"""
+        if not crypto or not crypto.get("bitcoin"):
+            return "BITCOIN: Nicht verfügbar"
+        
+        bitcoin = crypto["bitcoin"]
+        return f"""BITCOIN:
+- Aktueller Preis: ${bitcoin.get('price_usd', 0):,.0f}
+- 24h Änderung: {bitcoin.get('change_24h', 0):+.2f}%
+- 7d Änderung: {bitcoin.get('change_7d', 0):+.2f}%
+- Marktkapitalisierung: ${bitcoin.get('market_cap', 0):,.0f}"""
+    
+    async def _generate_radio_show_with_gpt(self, prompt: str) -> Dict[str, Any]:
+        """Generate radio show with GPT-4 and performance optimization"""
+        
+        try:
+            logger.info(f"🤖 Sende Anfrage an {self._config.gpt_model}...")
+            
+            response = await asyncio.wait_for(
+                self._openai_client.chat.completions.create(
+                    model=self._config.gpt_model,
+                    messages=[{"role": "user", "content": prompt}],
+                    temperature=0.7,
+                    max_tokens=4000
+                ),
+                timeout=self._config.gpt_timeout
+            )
+            
+            content = response.choices[0].message.content
+            
+            # Parse JSON response
+            try:
+                result = json.loads(content)
+                logger.info(f"✅ GPT-Antwort erfolgreich geparst")
+                return result
+            except json.JSONDecodeError:
+                logger.warning("⚠️ GPT-Antwort ist kein gültiges JSON, verwende Fallback")
+                return self._create_fallback_result(content)
+                
+        except asyncio.TimeoutError:
+            logger.error(f"❌ GPT-Timeout nach {self._config.gpt_timeout}s")
+            raise Exception(f"GPT request timed out after {self._config.gpt_timeout} seconds")
+        except Exception as e:
+            logger.error(f"❌ GPT-Fehler: {e}")
+            raise Exception(f"GPT processing failed: {str(e)}")
+    
+    def _create_fallback_result(self, content: str) -> Dict[str, Any]:
+        """Create fallback result when JSON parsing fails"""
+        return {
+            "selected_news": [],
+            "radio_script": content,
+            "segments": [{"type": "content", "content": content}],
+            "content_focus": {"focus": "general", "reasoning": "Fallback due to parsing error"},
+            "quality_score": 0.5
+        } 

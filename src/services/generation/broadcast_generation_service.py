@@ -12,6 +12,7 @@ import asyncio
 import aiohttp
 import json
 import uuid
+import requests  # Für GPT API Calls
 from datetime import datetime, timedelta
 from typing import Dict, Any, List, Optional
 from loguru import logger
@@ -84,7 +85,7 @@ class BroadcastGenerationService:
             "model": "gpt-4o",
             "max_tokens": 4000,
             "temperature": 0.8,
-            "timeout": 60
+            "timeout": 180
         }
     
     async def generate_broadcast(
@@ -377,7 +378,7 @@ JARVIS: [German content]
         if not self.openai_api_key:
             raise ValueError("OpenAI API Key nicht verfügbar!")
         
-        logger.info("🤖 Generiere Skript mit GPT-4...")
+        logger.info("🤖 GPT-4 Generierung...")
         
         try:
             headers = {
@@ -415,11 +416,11 @@ JARVIS: [German content]
                 logger.info(f"✅ Skript generiert ({len(script)} Zeichen)")
                 return script
             else:
-                logger.error(f"❌ GPT Request Fehler {response.status_code}: {response.text}")
+                logger.error(f"❌ GPT Fehler {response.status_code}")
                 raise Exception(f"GPT API Fehler: {response.status_code}")
                 
         except Exception as e:
-            logger.error(f"❌ Fehler bei Skript-Generierung: {e}")
+            logger.error(f"❌ GPT-Generierung: {e}")
             raise
     
     def _post_process_script(self, script: str) -> str:
@@ -470,64 +471,42 @@ JARVIS: [German content]
         estimated_duration: int,
         channel: str
     ) -> Dict[str, Any]:
-        """Speichert Broadcast in Supabase"""
+        """Speichert Broadcast in Supabase - VEREINFACHT"""
         
         try:
-            # Bereite Daten für JSON-Serialisierung vor
-            context_data = content.get("context_data", {})
-            
-            # Konvertiere datetime-Objekte zu ISO-Strings falls vorhanden
-            def serialize_datetime(obj):
-                if isinstance(obj, dict):
-                    return {k: serialize_datetime(v) for k, v in obj.items()}
-                elif isinstance(obj, list):
-                    return [serialize_datetime(item) for item in obj]
-                elif isinstance(obj, datetime):
-                    return obj.isoformat()
-                else:
-                    return obj
-            
-            serialized_context = serialize_datetime(context_data)
-            
+            # VEREINFACHTE Datenstruktur ohne komplexe Serialisierung
             broadcast_data = {
                 "session_id": session_id,
                 "script_content": script,
-                "broadcast_style": broadcast_style["name"],
+                "broadcast_style": broadcast_style.get("name", "unknown"),
                 "estimated_duration_minutes": estimated_duration,
                 "news_count": len(content.get("selected_news", [])),
-                "weather_data": serialized_context.get("weather"),
-                "crypto_data": serialized_context.get("crypto"),
                 "channel": channel,
                 "created_at": datetime.now().isoformat()
             }
             
+            # Versuche einfache Speicherung
             response = self.supabase.client.table('broadcast_scripts').insert(broadcast_data).execute()
             
             if response.data:
                 logger.info(f"✅ Broadcast in DB gespeichert: {session_id}")
-                
-                # Log the broadcast creation
-                log_data = {
-                    "session_id": session_id,
-                    "event_type": "broadcast_created",
-                    "event_data": {
-                        "news_count": len(content.get("selected_news", [])),
-                        "duration_minutes": estimated_duration,
-                        "style": broadcast_style["name"],
-                        "channel": channel
-                    },
-                    "timestamp": datetime.now().isoformat()
-                }
-                
-                self.supabase.client.table('broadcast_logs').insert(log_data).execute()
-                
                 return broadcast_data
             else:
-                raise Exception("Fehler beim Speichern in Supabase")
+                logger.warning("⚠️ Datenbank-Speicherung fehlgeschlagen, fahre ohne DB fort")
+                return broadcast_data
                 
         except Exception as e:
-            logger.error(f"❌ Fehler beim Speichern des Broadcasts: {e}")
-            raise
+            logger.warning(f"⚠️ DB-Speicherung übersprungen: {e}")
+            # Gib die Daten trotzdem zurück, auch wenn DB-Speicherung fehlschlägt
+            return {
+                "session_id": session_id,
+                "script_content": script,
+                "broadcast_style": broadcast_style.get("name", "unknown"),
+                "estimated_duration_minutes": estimated_duration,
+                "news_count": len(content.get("selected_news", [])),
+                "channel": channel,
+                "created_at": datetime.now().isoformat()
+            }
     
     def _get_location_context(self, channel: str) -> str:
         """Holt lokalen Kontext für Kanal"""

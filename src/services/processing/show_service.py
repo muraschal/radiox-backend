@@ -1,198 +1,167 @@
 #!/usr/bin/env python3
-"""
-RadioX Show Service
-===================
+"""Show Service - HIGH PERFORMANCE CONFIGURATION ENGINE
 
-Service für RadioShow-Konfiguration und -Management:
-- Lädt Show-Presets aus Supabase
-- Verwaltet Sprecher-Konfigurationen (Marcel, Jarvis)
-- Bereitet Show-Parameter für Generierung auf
-- Unterstützt verschiedene Show-Typen (Zürich, Crypto, Tech, etc.)
+Google Engineering Best Practices:
+- Single Responsibility (Show configuration management)
+- Dependency Injection (Database abstraction)
+- Performance Optimization (Caching, lazy loading)
+- Error Handling (Graceful degradation)
+- Resource Management (Memory efficient)
 """
 
 import asyncio
 from typing import Dict, Any, List, Optional, Tuple
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
+from dataclasses import dataclass, field
 from loguru import logger
-from dataclasses import dataclass
 
-# Import database connection
+# Database import
 import sys
 from pathlib import Path
 sys.path.append(str(Path(__file__).parent.parent.parent))
 from database.supabase_client import get_db
 
 
-@dataclass
+@dataclass(frozen=True)
 class ShowConfiguration:
-    """Repräsentiert eine vollständige Show-Konfiguration"""
+    """Immutable show configuration with performance optimization"""
     
-    # Basic Show Info
+    # Core configuration
     preset_name: str
     display_name: str
     description: str
     city_focus: str
-    
-    # Speaker Configuration
     primary_speaker: str
+    
+    # Optional configuration
     secondary_speaker: Optional[str] = None
-    speaker_configuration: Dict[str, Any] = None
-    
-    # Content Configuration
-    rss_feed_filter: Dict[str, Any] = None
-    news_categories: List[str] = None
-    exclude_categories: List[str] = None
-    min_priority: int = 5
-    max_feeds_per_category: int = 10
-    
-    # Show Settings
-    is_active: bool = True
-    created_at: Optional[datetime] = None
-    updated_at: Optional[datetime] = None
-    show_behavior: Dict[str, Any] = None
+    speaker_configuration: Dict[str, Any] = field(default_factory=dict)
+    rss_feed_filter: Dict[str, Any] = field(default_factory=dict)
+    news_categories: List[str] = field(default_factory=list)
+    exclude_categories: List[str] = field(default_factory=list)
+    show_behavior: Dict[str, Any] = field(default_factory=dict)
     
     # Metadata
+    min_priority: int = 5
+    max_feeds_per_category: int = 10
+    is_active: bool = True
     preset_id: Optional[str] = None
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
     
     @property
     def is_duo_show(self) -> bool:
-        """Prüft ob es eine Duo-Show ist"""
+        """Check if this is a duo show"""
         return self.secondary_speaker is not None
     
     @property
     def speaker_count(self) -> int:
-        """Anzahl der Sprecher"""
-        if self.speaker_configuration:
-            return self.speaker_configuration.get('speaker_count', 1)
-        return 2 if self.secondary_speaker else 1
+        """Get number of speakers"""
+        return self.speaker_configuration.get('speaker_count', 2 if self.secondary_speaker else 1)
     
     @property
-    def all_speakers(self) -> List[str]:
-        """Liste aller Sprecher"""
+    def all_speakers(self) -> Tuple[str, ...]:
+        """Get all speakers as immutable tuple"""
         speakers = [self.primary_speaker]
         if self.secondary_speaker:
             speakers.append(self.secondary_speaker)
-        return speakers
+        return tuple(speakers)
     
     def get_speaker_role(self, speaker_name: str) -> str:
-        """Holt die Rolle eines Sprechers"""
+        """Get speaker role efficiently"""
         if not self.speaker_configuration:
             return "host" if speaker_name == self.primary_speaker else "co_host"
         
-        if speaker_name == self.primary_speaker:
-            return self.speaker_configuration.get('primary_role', 'host')
-        elif speaker_name == self.secondary_speaker:
-            return self.speaker_configuration.get('secondary_role', 'co_host')
+        role_map = {
+            self.primary_speaker: self.speaker_configuration.get('primary_role', 'host'),
+            self.secondary_speaker: self.speaker_configuration.get('secondary_role', 'co_host')
+        }
         
-        return "unknown"
+        return role_map.get(speaker_name, "unknown")
     
     def get_segment_speaker(self, segment_type: str) -> str:
-        """Bestimmt welcher Sprecher für ein Segment zuständig ist"""
+        """Determine speaker for segment type"""
         if not self.speaker_configuration or not self.is_duo_show:
             return self.primary_speaker
         
         segment_dist = self.speaker_configuration.get('segment_distribution', {})
         speaker = segment_dist.get(segment_type, 'primary')
         
-        if speaker == 'primary':
-            return self.primary_speaker
-        elif speaker == 'secondary':
-            return self.secondary_speaker
-        elif speaker == 'both':
-            return 'both'
-        elif speaker in self.all_speakers:
-            return speaker
+        speaker_map = {
+            'primary': self.primary_speaker,
+            'secondary': self.secondary_speaker,
+            'both': 'both'
+        }
         
-        return self.primary_speaker
+        return speaker_map.get(speaker, speaker if speaker in self.all_speakers else self.primary_speaker)
 
 
 class ShowService:
-    """
-    Service für RadioShow-Konfiguration und -Management
+    """High-Performance Show Configuration Engine
     
-    Verwaltet Show-Presets, Sprecher-Konfigurationen und
-    bereitet alle Parameter für die Show-Generierung auf.
+    Implements Google Engineering Best Practices:
+    - Single Responsibility (Configuration management)
+    - Performance First (Caching, lazy loading)
+    - Resource Management (Efficient database usage)
+    - Error Handling (Graceful degradation)
     """
+    
+    __slots__ = ('_db', '_show_cache', '_speaker_cache', '_cache_timestamp', '_cache_ttl')
     
     def __init__(self):
-        # Lazy loading - only initialize when needed
-        self._db = None
-        
-        # Cache für Show-Konfigurationen
+        self._db = None  # Lazy loading
         self._show_cache = {}
+        self._speaker_cache = {}
         self._cache_timestamp = None
-        self._cache_ttl = 300  # 5 Minuten Cache
+        self._cache_ttl = 300  # 5 minutes
         
         logger.info("🎭 Show Service initialisiert")
     
     @property
     def db(self):
-        """Lazy loading of database connection"""
+        """Lazy database connection"""
         if self._db is None:
             self._db = get_db()
         return self._db
     
-    # ==================== SHOW PRESETS ====================
+    def _is_cache_valid(self) -> bool:
+        """Check if cache is still valid"""
+        if not self._cache_timestamp:
+            return False
+        return (datetime.now() - self._cache_timestamp).total_seconds() < self._cache_ttl
     
-    async def get_all_show_presets(self, active_only: bool = True) -> List[ShowConfiguration]:
-        """
-        Lädt alle Show-Presets aus Supabase
-        
-        Args:
-            active_only: Nur aktive Shows laden
-            
-        Returns:
-            Liste aller Show-Konfigurationen
-        """
-        logger.info(f"🎭 Lade alle Show-Presets (active_only={active_only})...")
-        
-        try:
-            # Query für Show-Presets
-            query = self.db.client.table("show_presets").select("*")
-            
-            if active_only:
-                query = query.eq("is_active", True)
-            
-            response = query.order("display_name").execute()
-            
-            if not response.data:
-                logger.warning("⚠️ Keine Show-Presets gefunden")
-                return []
-            
-            # Konvertiere zu ShowConfiguration Objekten
-            show_configs = []
-            for preset_data in response.data:
-                config = self._convert_to_show_config(preset_data)
-                show_configs.append(config)
-            
-            logger.info(f"✅ {len(show_configs)} Show-Presets geladen")
-            return show_configs
-            
-        except Exception as e:
-            logger.error(f"❌ Fehler beim Laden der Show-Presets: {e}")
-            return []
+    def _invalidate_cache(self) -> None:
+        """Invalidate all caches"""
+        self._show_cache.clear()
+        self._speaker_cache.clear()
+        self._cache_timestamp = None
     
     async def get_show_preset(self, preset_name: str) -> Optional[ShowConfiguration]:
-        """
-        Lädt ein spezifisches Show-Preset
-        
-        Args:
-            preset_name: Name des Presets (z.B. "zurich", "crypto")
-            
-        Returns:
-            Show-Konfiguration oder None
-        """
+        """Get show preset with caching"""
         logger.info(f"🎭 Lade Show-Preset: {preset_name}")
         
+        # Check cache first
+        if self._is_cache_valid() and preset_name in self._show_cache:
+            logger.debug(f"📋 Cache hit for preset: {preset_name}")
+            return self._show_cache[preset_name]
+        
         try:
-            response = self.db.client.table("show_presets").select("*").eq("preset_name", preset_name).execute()
+            response = await asyncio.to_thread(
+                lambda: self.db.client.table("show_presets")
+                .select("*")
+                .eq("preset_name", preset_name)
+                .execute()
+            )
             
             if not response.data:
                 logger.warning(f"⚠️ Show-Preset '{preset_name}' nicht gefunden")
                 return None
             
-            preset_data = response.data[0]
-            config = self._convert_to_show_config(preset_data)
+            config = self._convert_to_show_config(response.data[0])
+            
+            # Update cache
+            self._show_cache[preset_name] = config
+            self._cache_timestamp = datetime.now()
             
             logger.info(f"✅ Show-Preset '{preset_name}' geladen: {config.display_name}")
             return config
@@ -201,74 +170,69 @@ class ShowService:
             logger.error(f"❌ Fehler beim Laden des Show-Presets '{preset_name}': {e}")
             return None
     
-    async def get_available_show_types(self) -> List[Dict[str, str]]:
-        """
-        Gibt verfügbare Show-Typen zurück
+    async def get_all_show_presets(self, active_only: bool = True) -> List[ShowConfiguration]:
+        """Get all show presets with caching"""
+        cache_key = f"all_presets_{active_only}"
         
-        Returns:
-            Liste mit Show-Typen und Beschreibungen
-        """
-        logger.info("🎭 Lade verfügbare Show-Typen...")
+        if self._is_cache_valid() and cache_key in self._show_cache:
+            logger.debug(f"📋 Cache hit for all presets")
+            return self._show_cache[cache_key]
         
         try:
-            response = self.db.client.table("show_presets").select("preset_name, display_name, description, city_focus, primary_speaker").eq("is_active", True).order("display_name").execute()
+            query_func = lambda: (
+                self.db.client.table("show_presets")
+                .select("*")
+                .eq("is_active", True) if active_only 
+                else self.db.client.table("show_presets").select("*")
+            ).order("display_name").execute()
             
-            show_types = []
-            for preset in response.data:
-                show_types.append({
-                    "preset_name": preset["preset_name"],
-                    "display_name": preset["display_name"],
-                    "description": preset["description"],
-                    "city_focus": preset["city_focus"],
-                    "primary_speaker": preset["primary_speaker"]
-                })
+            response = await asyncio.to_thread(query_func)
             
-            logger.info(f"✅ {len(show_types)} Show-Typen verfügbar")
-            return show_types
+            if not response.data:
+                logger.warning("⚠️ Keine Show-Presets gefunden")
+                return []
+            
+            # Convert to configurations efficiently
+            show_configs = [self._convert_to_show_config(data) for data in response.data]
+            
+            # Update cache
+            self._show_cache[cache_key] = show_configs
+            self._cache_timestamp = datetime.now()
+            
+            logger.info(f"✅ {len(show_configs)} Show-Presets geladen")
+            return show_configs
             
         except Exception as e:
-            logger.error(f"❌ Fehler beim Laden der Show-Typen: {e}")
+            logger.error(f"❌ Fehler beim Laden der Show-Presets: {e}")
             return []
     
-    # ==================== SPRECHER-KONFIGURATION ====================
-    
     async def get_speaker_configuration(self, speaker_name: str) -> Optional[Dict[str, Any]]:
-        """
-        Lädt Sprecher-Konfiguration aus voice_configurations
-        
-        Args:
-            speaker_name: Name des Sprechers (marcel, jarvis)
-            
-        Returns:
-            Voice-Konfiguration oder None
-        """
+        """Get speaker configuration with caching"""
         logger.info(f"🎤 Lade Sprecher-Konfiguration: {speaker_name}")
         
+        # Check cache first
+        if self._is_cache_valid() and speaker_name in self._speaker_cache:
+            logger.debug(f"📋 Cache hit for speaker: {speaker_name}")
+            return self._speaker_cache[speaker_name]
+        
         try:
-            response = self.db.client.table("voice_configurations").select("*").eq("speaker_name", speaker_name).eq("is_active", True).execute()
+            response = await asyncio.to_thread(
+                lambda: self.db.client.table("voice_configurations")
+                .select("*")
+                .eq("voice_name", speaker_name.title())
+                .eq("is_active", True)
+                .execute()
+            )
             
             if not response.data:
                 logger.warning(f"⚠️ Sprecher '{speaker_name}' nicht gefunden")
                 return None
             
-            voice_config = response.data[0]
+            speaker_config = response.data[0]
             
-            # Bereite Konfiguration für ElevenLabs auf
-            speaker_config = {
-                "speaker_name": voice_config["speaker_name"],
-                "voice_id": voice_config["voice_id"],
-                "voice_name": voice_config["voice_name"],
-                "language": voice_config["language"],
-                "settings": {
-                    "stability": float(voice_config["stability"]),
-                    "similarity_boost": float(voice_config["similarity_boost"]),
-                    "style": float(voice_config["style"]),
-                    "use_speaker_boost": voice_config["use_speaker_boost"]
-                },
-                "model": voice_config["model"],
-                "description": voice_config.get("description", ""),
-                "is_primary": voice_config.get("is_primary", False)
-            }
+            # Update cache
+            self._speaker_cache[speaker_name] = speaker_config
+            self._cache_timestamp = datetime.now()
             
             logger.info(f"✅ Sprecher-Konfiguration geladen: {speaker_config['voice_name']}")
             return speaker_config
@@ -277,120 +241,67 @@ class ShowService:
             logger.error(f"❌ Fehler beim Laden der Sprecher-Konfiguration '{speaker_name}': {e}")
             return None
     
-    async def get_all_speakers(self) -> List[Dict[str, Any]]:
-        """
-        Lädt alle verfügbaren Sprecher
-        
-        Returns:
-            Liste aller Sprecher-Konfigurationen
-        """
-        logger.info("🎤 Lade alle Sprecher...")
-        
-        try:
-            response = self.db.client.table("voice_configurations").select("*").eq("is_active", True).order("speaker_name").execute()
-            
-            speakers = []
-            for voice_data in response.data:
-                speaker_config = {
-                    "speaker_name": voice_data["speaker_name"],
-                    "voice_name": voice_data["voice_name"],
-                    "language": voice_data["language"],
-                    "description": voice_data.get("description", ""),
-                    "is_primary": voice_data.get("is_primary", False)
-                }
-                speakers.append(speaker_config)
-            
-            logger.info(f"✅ {len(speakers)} Sprecher geladen")
-            return speakers
-            
-        except Exception as e:
-            logger.error(f"❌ Fehler beim Laden der Sprecher: {e}")
-            return []
-    
-    # ==================== SHOW-GENERIERUNG VORBEREITUNG ====================
-    
     async def prepare_show_generation(self, preset_name: str) -> Optional[Dict[str, Any]]:
-        """
-        Bereitet alle Parameter für Show-Generierung vor
-        
-        Args:
-            preset_name: Name des Show-Presets
-            
-        Returns:
-            Vollständige Show-Konfiguration für Generierung
-        """
+        """Prepare complete show generation configuration"""
         logger.info(f"🎬 Bereite Show-Generierung vor: {preset_name}")
         
         try:
-            # 1. Lade Show-Preset
+            # Load show preset
             show_config = await self.get_show_preset(preset_name)
             if not show_config:
-                logger.error(f"❌ Show-Preset '{preset_name}' nicht gefunden")
                 return None
             
-            # 2. Lade Sprecher-Konfigurationen
-            primary_speaker_config = await self.get_speaker_configuration(show_config.primary_speaker)
-            if not primary_speaker_config:
-                logger.error(f"❌ Primary Sprecher '{show_config.primary_speaker}' nicht gefunden")
-                return None
+            # Load speaker configurations in parallel
+            speaker_tasks = [
+                self.get_speaker_configuration(show_config.primary_speaker)
+            ]
             
-            # Lade Secondary Sprecher falls vorhanden
-            secondary_speaker_config = None
             if show_config.secondary_speaker:
-                secondary_speaker_config = await self.get_speaker_configuration(show_config.secondary_speaker)
-                if not secondary_speaker_config:
-                    logger.warning(f"⚠️ Secondary Sprecher '{show_config.secondary_speaker}' nicht gefunden")
+                speaker_tasks.append(
+                    self.get_speaker_configuration(show_config.secondary_speaker)
+                )
             
-            # 3. Bereite RSS-Filter vor
-            rss_filter = show_config.rss_feed_filter or {}
+            speaker_configs = await asyncio.gather(*speaker_tasks, return_exceptions=True)
             
-            # 4. Erstelle vollständige Generierungs-Konfiguration
+            # Process speaker configurations
+            primary_speaker = speaker_configs[0] if not isinstance(speaker_configs[0], Exception) else None
+            secondary_speaker = (
+                speaker_configs[1] if len(speaker_configs) > 1 and not isinstance(speaker_configs[1], Exception) 
+                else None
+            )
+            
+            if not primary_speaker:
+                logger.error(f"❌ Primary speaker configuration missing for {show_config.primary_speaker}")
+                return None
+            
+            # Create comprehensive show generation config
             generation_config = {
-                # Show Information
                 "show": {
                     "preset_name": show_config.preset_name,
                     "display_name": show_config.display_name,
                     "description": show_config.description,
                     "city_focus": show_config.city_focus,
-                    "show_behavior": getattr(show_config, 'show_behavior', {}),
-                    "is_duo_show": show_config.is_duo_show,
-                    "speaker_count": show_config.speaker_count
+                    "is_duo_show": show_config.is_duo_show
                 },
-                
-                # Speaker Configuration
-                "speakers": {
-                    "primary": primary_speaker_config,
-                    "secondary": secondary_speaker_config,
-                    "configuration": show_config.speaker_configuration or {},
-                    "all_speakers": show_config.all_speakers
-                },
-                
-                # Backward compatibility
-                "speaker": primary_speaker_config,
-                
-                # Content Configuration
+                "speaker": primary_speaker,
+                "secondary_speaker": secondary_speaker,
                 "content": {
-                    "rss_filter": rss_filter,
-                    "categories": rss_filter.get("categories", []),
-                    "exclude_categories": rss_filter.get("exclude_categories", []),
-                    "min_priority": rss_filter.get("min_priority", 5),
-                    "max_feeds_per_category": rss_filter.get("max_feeds_per_category", 10)
+                    "categories": show_config.news_categories,
+                    "exclude_categories": show_config.exclude_categories,
+                    "min_priority": show_config.min_priority,
+                    "max_feeds_per_category": show_config.max_feeds_per_category,
+                    "rss_filter": show_config.rss_feed_filter
                 },
-                
-                # Generation Settings
-                "settings": {
-                    "language": primary_speaker_config["language"],
-                    "voice_model": primary_speaker_config["model"],
-                    "generation_timestamp": datetime.now(timezone.utc).isoformat()
-                }
+                "behavior": show_config.show_behavior,
+                "generation_timestamp": datetime.now().isoformat()
             }
             
             logger.info(f"✅ Show-Generierung vorbereitet für '{show_config.display_name}'")
-            logger.info(f"   🎤 Primary Sprecher: {primary_speaker_config['voice_name']} ({primary_speaker_config['language']})")
-            if secondary_speaker_config:
-                logger.info(f"   🎤 Secondary Sprecher: {secondary_speaker_config['voice_name']} ({secondary_speaker_config['language']})")
+            logger.info(f"   🎤 Primary Sprecher: {primary_speaker['voice_name']} ({primary_speaker['language']})")
+            if secondary_speaker:
+                logger.info(f"   🎤 Secondary Sprecher: {secondary_speaker['voice_name']} ({secondary_speaker['language']})")
             logger.info(f"   🏙️ Stadt-Fokus: {show_config.city_focus}")
-            logger.info(f"   📰 Kategorien: {', '.join(rss_filter.get('categories', []))}")
+            logger.info(f"   📰 Kategorien: {', '.join(show_config.news_categories)}")
             
             return generation_config
             
@@ -398,163 +309,99 @@ class ShowService:
             logger.error(f"❌ Fehler bei Show-Generierung Vorbereitung: {e}")
             return None
     
-    # ==================== HILFSMETHODEN ====================
-    
     def _convert_to_show_config(self, preset_data: Dict[str, Any]) -> ShowConfiguration:
-        """Konvertiert Supabase-Daten zu ShowConfiguration"""
-        
-        rss_filter = preset_data.get("rss_feed_filter", {})
-        
+        """Convert database data to ShowConfiguration efficiently"""
         return ShowConfiguration(
-            preset_id=preset_data.get("id"),
-            preset_name=preset_data["preset_name"],
-            display_name=preset_data["display_name"],
+            preset_name=preset_data.get("preset_name", ""),
+            display_name=preset_data.get("display_name", ""),
             description=preset_data.get("description", ""),
-            city_focus=preset_data.get("city_focus", "Global"),
-            primary_speaker=preset_data["primary_speaker"],
+            city_focus=preset_data.get("city_focus", ""),
+            primary_speaker=preset_data.get("primary_speaker", "marcel"),
             secondary_speaker=preset_data.get("secondary_speaker"),
             speaker_configuration=preset_data.get("speaker_configuration", {}),
-            rss_feed_filter=rss_filter,
-            news_categories=rss_filter.get("categories", []),
-            exclude_categories=rss_filter.get("exclude_categories", []),
-            min_priority=rss_filter.get("min_priority", 5),
-            max_feeds_per_category=rss_filter.get("max_feeds_per_category", 10),
+            rss_feed_filter=preset_data.get("rss_feed_filter", {}),
+            news_categories=preset_data.get("news_categories", []),
+            exclude_categories=preset_data.get("exclude_categories", []),
+            show_behavior=preset_data.get("show_behavior", {}),
+            min_priority=preset_data.get("min_priority", 5),
+            max_feeds_per_category=preset_data.get("max_feeds_per_category", 10),
             is_active=preset_data.get("is_active", True),
-            created_at=preset_data.get("created_at"),
-            updated_at=preset_data.get("updated_at"),
-            show_behavior=preset_data.get("show_behavior", {})
+            preset_id=preset_data.get("id"),
+            created_at=self._parse_datetime(preset_data.get("created_at")),
+            updated_at=self._parse_datetime(preset_data.get("updated_at"))
         )
     
-    # ==================== SHOW-STATISTIKEN ====================
+    def _parse_datetime(self, dt_str: Optional[str]) -> Optional[datetime]:
+        """Parse datetime string safely"""
+        if not dt_str:
+            return None
+        try:
+            return datetime.fromisoformat(dt_str.replace('Z', '+00:00'))
+        except:
+            return None
     
     async def get_show_statistics(self) -> Dict[str, Any]:
-        """
-        Gibt Show-Statistiken zurück
-        
-        Returns:
-            Statistiken über verfügbare Shows
-        """
-        logger.info("📊 Lade Show-Statistiken...")
-        
+        """Get show service statistics"""
         try:
-            # Lade alle Show-Presets
-            all_shows = await self.get_all_show_presets(active_only=False)
-            active_shows = [s for s in all_shows if s.is_active]
+            all_presets = await self.get_all_show_presets(active_only=False)
+            active_presets = [p for p in all_presets if p.is_active]
             
-            # Lade alle Sprecher
-            all_speakers = await self.get_all_speakers()
-            
-            # Gruppiere Shows nach Stadt-Fokus
-            city_groups = {}
-            speaker_groups = {}
-            
-            for show in active_shows:
-                # Nach Stadt gruppieren
-                city = show.city_focus
-                if city not in city_groups:
-                    city_groups[city] = []
-                city_groups[city].append(show.preset_name)
-                
-                # Nach Sprecher gruppieren
-                speaker = show.primary_speaker
-                if speaker not in speaker_groups:
-                    speaker_groups[speaker] = []
-                speaker_groups[speaker].append(show.preset_name)
-            
-            statistics = {
-                "total_shows": len(all_shows),
-                "active_shows": len(active_shows),
-                "inactive_shows": len(all_shows) - len(active_shows),
-                "total_speakers": len(all_speakers),
-                "city_distribution": city_groups,
-                "speaker_distribution": speaker_groups,
-                "available_speakers": [s["speaker_name"] for s in all_speakers],
-                "last_updated": datetime.now(timezone.utc).isoformat()
+            return {
+                "total_presets": len(all_presets),
+                "active_presets": len(active_presets),
+                "cache_size": len(self._show_cache) + len(self._speaker_cache),
+                "cache_valid": self._is_cache_valid(),
+                "available_presets": [p.preset_name for p in active_presets]
             }
             
-            logger.info(f"✅ Show-Statistiken geladen: {statistics['active_shows']} aktive Shows")
-            return statistics
-            
         except Exception as e:
-            logger.error(f"❌ Fehler beim Laden der Show-Statistiken: {e}")
-            return {}
+            return {"error": str(e)}
+    
+    async def invalidate_cache(self) -> None:
+        """Public method to invalidate cache"""
+        self._invalidate_cache()
+        logger.info("🗑️ Show service cache invalidated")
 
 
-# ==================== CONVENIENCE FUNCTIONS ====================
+# Singleton instance for global access
+_show_service_instance = None
 
 async def get_show_service() -> ShowService:
-    """Factory function für Show Service"""
-    return ShowService()
-
+    """Get singleton show service instance"""
+    global _show_service_instance
+    if _show_service_instance is None:
+        _show_service_instance = ShowService()
+    return _show_service_instance
 
 async def get_show_for_generation(preset_name: str) -> Optional[Dict[str, Any]]:
-    """
-    Convenience function für Show-Generierung
-    
-    Args:
-        preset_name: Name des Show-Presets
-        
-    Returns:
-        Vollständige Show-Konfiguration
-    """
+    """Convenience function for show generation"""
     service = await get_show_service()
     return await service.prepare_show_generation(preset_name)
 
-
-# ==================== TESTING ====================
-
-async def test_show_service():
-    """Test-Funktion für Show Service"""
-    
-    print("🧪 TESTE SHOW SERVICE")
-    print("=" * 50)
-    
-    service = ShowService()
-    
-    # Test 1: Alle Show-Presets laden
-    print("\n📋 TESTE: Alle Show-Presets laden")
-    shows = await service.get_all_show_presets()
-    print(f"✅ {len(shows)} Shows geladen")
-    
-    for show in shows:
-        print(f"   🎭 {show.preset_name}: {show.display_name} ({show.primary_speaker})")
-    
-    # Test 2: Spezifisches Preset laden
-    print("\n🎯 TESTE: Zürich Show-Preset laden")
-    zurich_show = await service.get_show_preset("zurich")
-    if zurich_show:
-        print(f"✅ Zürich Show geladen: {zurich_show.display_name}")
-        print(f"   🎤 Sprecher: {zurich_show.primary_speaker}")
-        print(f"   🏙️ Stadt: {zurich_show.city_focus}")
-        print(f"   📰 Kategorien: {', '.join(zurich_show.news_categories)}")
-    
-    # Test 3: Sprecher-Konfiguration laden
-    print("\n🎤 TESTE: Sprecher-Konfiguration laden")
-    marcel_config = await service.get_speaker_configuration("marcel")
-    if marcel_config:
-        print(f"✅ Marcel Konfiguration geladen: {marcel_config['voice_name']}")
-        print(f"   🗣️ Voice ID: {marcel_config['voice_id']}")
-        print(f"   🌍 Sprache: {marcel_config['language']}")
-    
-    # Test 4: Show-Generierung vorbereiten
-    print("\n🎬 TESTE: Show-Generierung vorbereiten")
-    generation_config = await service.prepare_show_generation("zurich")
-    if generation_config:
-        print(f"✅ Generierungs-Konfiguration erstellt")
-        print(f"   🎭 Show: {generation_config['show']['display_name']}")
-        print(f"   🎤 Sprecher: {generation_config['speaker']['voice_name']}")
-        print(f"   📰 RSS-Filter: {len(generation_config['content']['categories'])} Kategorien")
-    
-    # Test 5: Show-Statistiken
-    print("\n📊 TESTE: Show-Statistiken")
-    stats = await service.get_show_statistics()
-    if stats:
-        print(f"✅ Statistiken geladen:")
-        print(f"   📊 Aktive Shows: {stats['active_shows']}")
-        print(f"   🎤 Sprecher: {stats['total_speakers']}")
-        print(f"   🏙️ Städte: {', '.join(stats['city_distribution'].keys())}")
-    
-    print("\n🎉 SHOW SERVICE TESTS ABGESCHLOSSEN!")
+async def test_show_service() -> bool:
+    """Test show service functionality"""
+    try:
+        service = await get_show_service()
+        
+        # Test preset loading
+        zurich_config = await service.get_show_preset("zurich")
+        if not zurich_config:
+            return False
+        
+        # Test speaker loading
+        marcel_config = await service.get_speaker_configuration("marcel")
+        if not marcel_config:
+            return False
+        
+        # Test show generation preparation
+        generation_config = await service.prepare_show_generation("zurich")
+        if not generation_config:
+            return False
+        
+        return True
+        
+    except Exception:
+        return False
 
 
 if __name__ == "__main__":

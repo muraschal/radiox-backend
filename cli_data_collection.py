@@ -25,7 +25,7 @@ import sys
 import os
 sys.path.append(os.path.join(os.path.dirname(__file__), 'src'))
 
-from services.data_collection_service import DataCollectionService
+from src.services.data.data_collection_service import DataCollectionService
 
 
 class DataCollectionCLI:
@@ -37,15 +37,15 @@ class DataCollectionCLI:
     def __init__(self):
         self.service = DataCollectionService()
     
-    async def run_full_collection(self, max_age: int = 12) -> Dict[str, Any]:
+    async def run_full_collection(self) -> Dict[str, Any]:
         """
         Sammelt ALLE verfügbaren Daten
         """
         
-        print(f"🔄 Sammle ALLE Daten (Max Age: {max_age}h)...")
+        print(f"🔄 Sammle ALLE Daten...")
         
         try:
-            data = await self.service.collect_all_data(max_age_hours=max_age)
+            data = await self.service.collect_all_data()
             
             print(f"✅ Datensammlung abgeschlossen!")
             return data
@@ -55,15 +55,15 @@ class DataCollectionCLI:
             logger.error(f"CLI Full Collection Fehler: {e}")
             return {}
     
-    async def run_news_only(self, max_age: int = 12) -> Dict[str, Any]:
+    async def run_news_only(self) -> Dict[str, Any]:
         """
         Sammelt nur RSS News - ALLE verfügbaren
         """
         
-        print(f"📰 Sammle ALLE RSS News (Max Age: {max_age}h)...")
+        print(f"📰 Sammle ALLE RSS News...")
         
         try:
-            data = await self.service.collect_news_only(max_age_hours=max_age)
+            data = await self.service.collect_news_only()
             
             print(f"✅ News-Sammlung abgeschlossen!")
             return data
@@ -131,9 +131,8 @@ class DataCollectionCLI:
         if "collection_timestamp" in data:
             print(f"⏰ Zeitstempel: {data['collection_timestamp']}")
         
-        # Max Age Info
-        if "max_age_hours" in data:
-            print(f"📅 Max Age: {data['max_age_hours']}h")
+        # Zeitstempel Info
+        print(f"📅 Sammlung: ALLE verfügbaren News (ohne Zeitfilter)")
         
         # News
         if "news" in data and data["news"]:
@@ -200,12 +199,7 @@ async def main():
         description="RadioX Data Collection CLI - Sammelt ALLE verfügbaren Daten ohne Bewertung"
     )
     
-    parser.add_argument(
-        "--max-age", 
-        type=int, 
-        default=12,
-        help="Maximales Alter der News in Stunden (default: 12)"
-    )
+    # Kein max-age mehr - GPT entscheidet über Relevanz
     
     parser.add_argument(
         "--location", 
@@ -250,7 +244,7 @@ async def main():
             cli.display_test_results(results)
             
         elif args.news_only:
-            data = await cli.run_news_only(args.max_age)
+            data = await cli.run_news_only()
             cli.display_results(data, args.format)
             
         elif args.context_only:
@@ -259,7 +253,7 @@ async def main():
             
         else:
             # Full Collection (default)
-            data = await cli.run_full_collection(args.max_age)
+            data = await cli.run_full_collection()
             cli.display_results(data, args.format)
     
     except KeyboardInterrupt:
