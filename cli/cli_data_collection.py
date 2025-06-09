@@ -28,7 +28,8 @@ from pathlib import Path
 # Add parent directory to path for imports
 sys.path.append(str(Path(__file__).parent.parent))
 
-from src.services.data_collection_service import DataCollectionService
+# Import fix: use correct path
+from src.services.data.data_collection_service import DataCollectionService
 from loguru import logger
 
 # Configure logger
@@ -52,16 +53,8 @@ class DataCollectionCLI:
             # Vollständige Datensammlung
             logger.info(f"🔄 Starte optimierte Datensammlung (Preset: {preset or 'default'})")
             
-            if preset:
-                data = await self.service.collect_all_data_for_preset(
-                    preset_name=preset,
-                    max_news_age_hours=max_age_hours
-                )
-            else:
-                data = await self.service.collect_all_data(
-                    show_preset=preset,
-                    max_age_hours=max_age_hours
-                )
+            # Use the available method from DataCollectionService
+            data = await self.service.collect_all_data()
             
             # Ergebnisse anzeigen
             self._display_collection_results(data)
@@ -81,11 +74,9 @@ class DataCollectionCLI:
         try:
             logger.info(f"📰 Sammle RSS News (Limit: {limit}, Max Age: {max_age_hours}h)")
             
-            news = await self.service.collect_news_only(
-                show_preset="news_only",
-                max_age_hours=max_age_hours,
-                limit=limit
-            )
+            # Use the available method from DataCollectionService  
+            news_data = await self.service.collect_news_only()
+            news = news_data.get("news", [])
             
             # News anzeigen
             self._display_news_results(news)
@@ -105,7 +96,8 @@ class DataCollectionCLI:
         try:
             logger.info("🧪 Teste alle optimierten Data Collection Services")
             
-            results = await self.service.test_all_services()
+            # Use the available method from DataCollectionService
+            results = await self.service.test_connections()
             
             # Test-Ergebnisse anzeigen
             self._display_test_results(results)
@@ -124,13 +116,18 @@ class DataCollectionCLI:
         
         try:
             # Sammle minimale Daten für Statistiken
-            data = await self.service.collect_all_data(max_age_hours=24)
+            data = await self.service.collect_all_data()
             
-            if "sources" in data:
-                stats = data.get("statistics", {})
-                self._display_statistics(stats, data["sources"])
-            else:
-                logger.warning("⚠️ Keine Statistiken verfügbar")
+            # Simple statistics from the basic data structure
+            news_count = len(data.get("news", []))
+            has_weather = bool(data.get("weather"))
+            has_crypto = bool(data.get("crypto"))
+            
+            print(f"\n📊 BASIC STATISTICS:")
+            print(f"   📰 News Articles: {news_count}")
+            print(f"   🌤️ Weather Data: {'✅' if has_weather else '❌'}")
+            print(f"   ₿ Crypto Data: {'✅' if has_crypto else '❌'}")
+            print(f"   ⏰ Timestamp: {data.get('collection_timestamp', 'unknown')}")
             
             return True
             
@@ -141,65 +138,52 @@ class DataCollectionCLI:
     def _display_collection_results(self, data: dict):
         """Zeigt Ergebnisse der vollständigen Datensammlung"""
         
-        if not data or "sources" not in data:
+        if not data:
             print("❌ Keine Daten gesammelt")
             return
         
-        sources = data["sources"]
-        stats = data.get("statistics", {})
-        
         print(f"\n🎯 SAMMLUNG ABGESCHLOSSEN:")
-        print(f"   ⏰ Timestamp: {data.get('timestamp', 'unknown')}")
-        print(f"   📊 Quellen: {len(sources)}")
-        print(f"   🎯 Preset: {data.get('show_preset', 'default')}")
-        print(f"   ⏳ Max Age: {data.get('max_age_hours', 1)}h")
+        print(f"   ⏰ Timestamp: {data.get('collection_timestamp', 'unknown')}")
+        print(f"   ✅ Success: {data.get('success', False)}")
         
-        # RSS Daten
-        if "rss" in sources:
-            rss_data = sources["rss"]
-            if "items" in rss_data:
-                print(f"\n📰 RSS NEWS:")
-                print(f"   📄 Articles: {len(rss_data['items'])}")
-                print(f"   🔧 Optimization: {rss_data.get('optimization', 'standard')}")
-                
-                # Top 5 News anzeigen
-                for i, news in enumerate(rss_data["items"][:5], 1):
-                    title = news.get("title", "No title")[:60]
-                    source = news.get("source_name", "Unknown")
-                    category = news.get("primary_category", "general")
-                    print(f"   {i}. [{category}] {title}... ({source})")
-        
-        # Bitcoin Daten
-        if "bitcoin" in sources:
-            bitcoin_data = sources["bitcoin"]
-            if "data" in bitcoin_data and bitcoin_data["data"]:
-                btc = bitcoin_data["data"]
-                print(f"\n₿ BITCOIN DATA:")
-                print(f"   💰 Price: ${btc.get('price', 0):,.0f}")
-                print(f"   📈 24h: {btc.get('percent_change_24h', 0):+.2f}%")
-                print(f"   🔧 Optimization: {bitcoin_data.get('optimization', 'standard')}")
+        # News Daten
+        news = data.get("news", [])
+        if news:
+            print(f"\n📰 RSS NEWS:")
+            print(f"   📄 Articles: {len(news)}")
+            
+            # Top 5 News anzeigen
+            for i, news_item in enumerate(news[:5], 1):
+                title = news_item.get("title", "No title")[:60]
+                source = news_item.get("source", "Unknown")
+                category = news_item.get("category", "general")
+                print(f"   {i}. [{category}] {title}... ({source})")
         
         # Weather Daten
-        if "weather" in sources:
-            weather_data = sources["weather"]
-            if "cities" in weather_data:
-                print(f"\n🌤️ WEATHER DATA:")
-                print(f"   🏙️ Cities: {len(weather_data['cities'])}")
-                print(f"   🔧 Optimization: {weather_data.get('optimization', 'standard')}")
-                
-                for city, data in weather_data["cities"].items():
-                    if data:
-                        temp = data.get("temperature", "?")
-                        desc = data.get("description", "unknown")
-                        print(f"   📍 {city.title()}: {temp}°C, {desc}")
+        weather = data.get("weather")
+        if weather:
+            print(f"\n🌤️ WEATHER DATA:")
+            temp = weather.get("temperature", "?")
+            desc = weather.get("description", "unknown")
+            location = weather.get("location", "Zürich")
+            print(f"   📍 {location}: {temp}°C, {desc}")
         
-        # Statistiken
-        if stats:
-            print(f"\n📊 STATISTICS:")
-            print(f"   ✅ Successful: {stats.get('successful_sources', 0)}")
-            print(f"   ❌ Failed: {stats.get('failed_sources', 0)}")
-            print(f"   📄 Total Items: {stats.get('total_items', 0)}")
-            print(f"   🎯 Optimization Score: {stats.get('optimization_score', 0)}/100")
+        # Crypto Daten
+        crypto = data.get("crypto")
+        if crypto:
+            print(f"\n₿ CRYPTO DATA:")
+            if "bitcoin" in crypto:
+                btc = crypto["bitcoin"]
+                price = btc.get("price_usd", "N/A")
+                change = btc.get("change_24h", 0)
+                print(f"   💰 Bitcoin: ${price:,.0f} ({change:+.1f}%)")
+        
+        # Fehler anzeigen
+        errors = data.get("errors", [])
+        if errors:
+            print(f"\n⚠️ ERRORS:")
+            for error in errors:
+                print(f"   ❌ {error}")
     
     def _display_news_results(self, news: list):
         """Zeigt RSS News Ergebnisse"""
@@ -215,8 +199,8 @@ class DataCollectionCLI:
         sources = {}
         
         for item in news:
-            cat = item.get("primary_category", "general")
-            src = item.get("source_name", "unknown")
+            cat = item.get("category", "general") 
+            src = item.get("source", "unknown")
             categories[cat] = categories.get(cat, 0) + 1
             sources[src] = sources.get(src, 0) + 1
         
@@ -231,11 +215,10 @@ class DataCollectionCLI:
         print(f"\n🎯 TOP 10 NEWS:")
         for i, news_item in enumerate(news[:10], 1):
             title = news_item.get("title", "No title")[:70]
-            source = news_item.get("source_name", "Unknown")
-            category = news_item.get("primary_category", "general")
-            priority = news_item.get("priority_score", 0)
+            source = news_item.get("source", "Unknown")
+            category = news_item.get("category", "general")
             print(f"   {i:2d}. [{category}] {title}...")
-            print(f"       📰 {source} | 🎯 P{priority:.1f}")
+            print(f"       📰 {source}")
     
     def _display_test_results(self, results: dict):
         """Zeigt Service-Test Ergebnisse"""

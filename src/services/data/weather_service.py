@@ -124,6 +124,231 @@ class WeatherService:
             logger.error(f"❌ Error retrieving weather: {e}")
             return None
 
+    async def get_weather_forecast(self, location: str = "zurich", days: int = 3) -> Optional[Dict[str, Any]]:
+        """Retrieves weather forecast for a city"""
+        try:
+            if not self._check_api_key():
+                return None
+                
+            # Normalize city names
+            location_mapping = {
+                "zürich": "zurich",
+                "zuerich": "zurich",
+                "Zürich": "zurich",
+                "Zuerich": "zurich"
+            }
+            location = location_mapping.get(location, location.lower())
+            
+            if location not in self.locations:
+                logger.warning(f"Unknown city: {location}, using fallback: zurich")
+                location = "zurich"
+            
+            loc = self.locations[location]
+            
+            # Build API URL for 5-day forecast
+            url = f"{self.base_url}/forecast"
+            params = {
+                "id": loc.city_id,
+                "appid": self.api_key,
+                "units": "metric",
+                "lang": "en"
+            }
+            
+            async with aiohttp.ClientSession() as session:
+                try:
+                    # Get forecast data from OpenWeatherMap
+                    response = await session.get(url, params=params)
+                    
+                    if response.status == 200:
+                        data = await response.json()
+                        
+                        # Process forecast data for next days
+                        forecast_data = []
+                        processed_dates = set()
+                        
+                        for item in data["list"][:days*8]:  # Each day has ~8 3-hour intervals
+                            forecast_time = datetime.fromtimestamp(item["dt"])
+                            day_date = forecast_time.date()
+                            
+                            # Take first forecast entry per day that's not today
+                            if day_date not in processed_dates and day_date > datetime.now().date():
+                                processed_dates.add(day_date)
+                                forecast_data.append({
+                                    "date": day_date.strftime("%Y-%m-%d"),
+                                    "day_name": day_date.strftime("%A"),
+                                    "time": forecast_time.strftime("%H:%M"),
+                                    "temperature": round(item["main"]["temp"], 1),
+                                    "feels_like": round(item["main"]["feels_like"], 1),
+                                    "humidity": item["main"]["humidity"],
+                                    "description": item["weather"][0]["description"],
+                                    "wind_speed": round(item.get("wind", {}).get("speed", 0) * 3.6, 1),
+                                    "clouds": item.get("clouds", {}).get("all", 0),
+                                    "rain_probability": round(item.get("pop", 0) * 100, 1)  # Probability of precipitation
+                                })
+                                
+                                if len(forecast_data) >= days:
+                                    break
+                        
+                        return {
+                            "location": loc.name,
+                            "forecast": forecast_data,
+                            "timestamp": datetime.now().isoformat()
+                        }
+                    else:
+                        logger.error(f"❌ OpenWeatherMap Forecast API error: {response.status}")
+                        return None
+                        
+                except Exception as e:
+                    logger.error(f"❌ Error retrieving forecast: {e}")
+                    return None
+                        
+        except Exception as e:
+            logger.error(f"❌ Error retrieving forecast: {e}")
+            return None
+
+    async def get_complete_weather(self, location: str = "zurich") -> Optional[Dict[str, Any]]:
+        """Gets both current weather and forecast"""
+        try:
+            current = await self.get_current_weather(location)
+            forecast = await self.get_weather_forecast(location, days=3)
+            
+            if current and forecast:
+                return {
+                    "current": current,
+                    "forecast": forecast["forecast"],
+                    "location": current["location"],
+                    "timestamp": datetime.now().isoformat()
+                }
+            return current  # Fallback to current only
+        except Exception as e:
+            logger.error(f"❌ Error retrieving complete weather: {e}")
+            return None
+
+    async def get_weather_summary_with_gpt(self, location: str = "zurich") -> str:
+        """Get intelligent weather summary using GPT based on raw data and time of day"""
+        try:
+            raw_data = await self.get_raw_weather_data(location)
+            if not raw_data:
+                return "Wetter nicht verfügbar"
+            
+            # Import here to avoid circular dependency
+            from src.config.settings import Settings
+            import openai
+            
+            settings = Settings()
+            client = openai.AsyncOpenAI(api_key=settings.openai_api_key)
+            
+            current_time = raw_data.get("current_time", "unknown")
+            current = raw_data.get("current", {})
+            forecasts = raw_data.get("all_forecasts", [])
+            
+            # Create focused prompt for weather summary
+            weather_prompt = f"""You are a weather expert for Radio Zurich speaking in English.
+
+CURRENT TIME: {current_time}
+CURRENT WEATHER: {current['temperature']}°C, {current['description']}
+FORECAST ({len(forecasts)} entries): {str(forecasts)[:500]}...
+
+TASK: Create an intelligent, time-dependent weather summary:
+- Morning: Full day + weekly outlook  
+- Midday: Rest of day + trend
+- Evening: Today only
+
+FORMAT: Maximum 3 sentences, concise, suitable for radio.
+EXAMPLE: "Currently 21°C and hazy in Zurich. The rest of the day remains mild at 22°C with few clouds. Tomorrow looks sunnier with up to 25°C."
+
+Your answer in English:"""
+
+            # Call GPT for weather summary
+            response = await client.chat.completions.create(
+                model="gpt-4",
+                messages=[{"role": "user", "content": weather_prompt}],
+                max_tokens=150,
+                temperature=0.3
+            )
+            
+            return response.choices[0].message.content.strip()
+            
+        except Exception as e:
+            logger.error(f"❌ GPT Weather Summary Error: {e}")
+            return "Weather summary not available"
+
+    async def get_raw_weather_data(self, location: str = "zurich") -> Optional[Dict[str, Any]]:
+        """Gets ALL available weather data for GPT processing"""
+        try:
+            current = await self.get_current_weather(location)
+            
+            if not self._check_api_key():
+                return current  # Fallback to current only
+                
+            # Normalize city names
+            location_mapping = {
+                "zürich": "zurich",
+                "zuerich": "zurich", 
+                "Zürich": "zurich",
+                "Zuerich": "zurich"
+            }
+            location = location_mapping.get(location, location.lower())
+            
+            if location not in self.locations:
+                location = "zurich"
+            
+            loc = self.locations[location]
+            
+            # Get 5-day/3-hour forecast (40 entries total)
+            url = f"{self.base_url}/forecast"
+            params = {
+                "id": loc.city_id,
+                "appid": self.api_key,
+                "units": "metric",
+                "lang": "en"
+            }
+            
+            async with aiohttp.ClientSession() as session:
+                try:
+                    response = await session.get(url, params=params)
+                    
+                    if response.status == 200:
+                        data = await response.json()
+                        
+                        # Process ALL forecast entries for GPT
+                        forecast_entries = []
+                        for item in data["list"]:
+                            forecast_time = datetime.fromtimestamp(item["dt"])
+                            
+                            forecast_entries.append({
+                                "datetime": forecast_time.isoformat(),
+                                "date": forecast_time.strftime("%Y-%m-%d"),
+                                "day_name": forecast_time.strftime("%A"),
+                                "time": forecast_time.strftime("%H:%M"),
+                                "temperature": round(item["main"]["temp"], 1),
+                                "feels_like": round(item["main"]["feels_like"], 1),
+                                "humidity": item["main"]["humidity"],
+                                "description": item["weather"][0]["description"],
+                                "wind_speed": round(item.get("wind", {}).get("speed", 0) * 3.6, 1),
+                                "clouds": item.get("clouds", {}).get("all", 0),
+                                "rain_probability": round(item.get("pop", 0) * 100, 1)
+                            })
+                        
+                        return {
+                            "current": current,
+                            "all_forecasts": forecast_entries,
+                            "current_time": datetime.now().isoformat(),
+                            "location": current["location"] if current else loc.name,
+                            "timestamp": datetime.now().isoformat()
+                        }
+                    else:
+                        logger.warning(f"⚠️ Forecast API error: {response.status}, using current only")
+                        return {"current": current} if current else None
+                        
+                except Exception as e:
+                    logger.warning(f"⚠️ Forecast error: {e}, using current only")
+                    return {"current": current} if current else None
+                        
+        except Exception as e:
+            logger.error(f"❌ Error retrieving raw weather data: {e}")
+            return None
+
     async def test_connection(self) -> bool:
         """Tests weather API connection"""
         try:

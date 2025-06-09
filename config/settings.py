@@ -8,6 +8,10 @@ from pydantic import Field
 from typing import Optional, Dict, List
 import os
 from pathlib import Path
+from dotenv import load_dotenv
+
+# Load environment variables explicitly
+load_dotenv()
 
 # Root-Verzeichnis ermitteln (jetzt direkt im Root, da backend/ entfernt wurde)
 ROOT_DIR = Path(__file__).parent.parent
@@ -62,7 +66,7 @@ class Settings(BaseSettings):
     vercel_project_id: Optional[str] = Field(None, env="VERCEL_PROJECT_ID")
     
     # Local Paths
-    audio_output_dir: str = Field("./output/audio", env="AUDIO_OUTPUT_DIR")
+    audio_output_dir: str = Field("./outplay", env="AUDIO_OUTPUT_DIR")
     temp_dir: str = Field("./temp", env="TEMP_DIR")
     
     # Content Monitoring

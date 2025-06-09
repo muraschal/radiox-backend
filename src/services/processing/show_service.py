@@ -35,7 +35,6 @@ class ShowConfiguration:
     
     # Optional configuration
     secondary_speaker: Optional[str] = None
-    speaker_configuration: Dict[str, Any] = field(default_factory=dict)
     rss_feed_filter: Dict[str, Any] = field(default_factory=dict)
     news_categories: List[str] = field(default_factory=list)
     exclude_categories: List[str] = field(default_factory=list)
@@ -57,7 +56,7 @@ class ShowConfiguration:
     @property
     def speaker_count(self) -> int:
         """Get number of speakers"""
-        return self.speaker_configuration.get('speaker_count', 2 if self.secondary_speaker else 1)
+        return 2 if self.secondary_speaker else 1
     
     @property
     def all_speakers(self) -> Tuple[str, ...]:
@@ -66,34 +65,6 @@ class ShowConfiguration:
         if self.secondary_speaker:
             speakers.append(self.secondary_speaker)
         return tuple(speakers)
-    
-    def get_speaker_role(self, speaker_name: str) -> str:
-        """Get speaker role efficiently"""
-        if not self.speaker_configuration:
-            return "host" if speaker_name == self.primary_speaker else "co_host"
-        
-        role_map = {
-            self.primary_speaker: self.speaker_configuration.get('primary_role', 'host'),
-            self.secondary_speaker: self.speaker_configuration.get('secondary_role', 'co_host')
-        }
-        
-        return role_map.get(speaker_name, "unknown")
-    
-    def get_segment_speaker(self, segment_type: str) -> str:
-        """Determine speaker for segment type"""
-        if not self.speaker_configuration or not self.is_duo_show:
-            return self.primary_speaker
-        
-        segment_dist = self.speaker_configuration.get('segment_distribution', {})
-        speaker = segment_dist.get(segment_type, 'primary')
-        
-        speaker_map = {
-            'primary': self.primary_speaker,
-            'secondary': self.secondary_speaker,
-            'both': 'both'
-        }
-        
-        return speaker_map.get(speaker, speaker if speaker in self.all_speakers else self.primary_speaker)
 
 
 class ShowService:
@@ -318,7 +289,7 @@ class ShowService:
             city_focus=preset_data.get("city_focus", ""),
             primary_speaker=preset_data.get("primary_speaker", "marcel"),
             secondary_speaker=preset_data.get("secondary_speaker"),
-            speaker_configuration=preset_data.get("speaker_configuration", {}),
+
             rss_feed_filter=preset_data.get("rss_feed_filter", {}),
             news_categories=preset_data.get("news_categories", []),
             exclude_categories=preset_data.get("exclude_categories", []),

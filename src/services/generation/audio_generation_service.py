@@ -61,18 +61,24 @@ class AudioGenerationService:
         self._voice_service = get_voice_config_service()
         self._config = AudioConfig()
         
-        # Initialize image service with error handling
-        try:
-            self._image_service = ImageGenerationService()
-            logger.debug("✅ ImageGenerationService initialized")
-        except Exception as e:
-            logger.warning(f"⚠️ ImageGenerationService failed: {e}")
-            self._image_service = None
+        # Lazy loading für ImageGenerationService - nicht im __init__!
+        self._image_service = None
         
-        # Setup paths
-        self._output_dir = Path(__file__).parent.parent.parent.parent / "outplay"
+        # Setup paths - use temp directory for clean organization
+        self._output_dir = Path(__file__).parent.parent.parent.parent / "temp"
         self._output_dir.mkdir(parents=True, exist_ok=True)
         self._ffmpeg_path = self._find_ffmpeg()
+    
+    def _get_image_service(self) -> Optional['ImageGenerationService']:
+        """Lazy loading für ImageGenerationService"""
+        if self._image_service is None:
+            try:
+                self._image_service = ImageGenerationService()
+                logger.debug("✅ ImageGenerationService lazy-loaded")
+            except Exception as e:
+                logger.warning(f"⚠️ ImageGenerationService lazy loading failed: {e}")
+                return None
+        return self._image_service
     
     def _find_ffmpeg(self) -> Optional[str]:
         """Find available ffmpeg executable efficiently"""
@@ -123,6 +129,10 @@ class AudioGenerationService:
             
             # Combine segments
             final_audio = await self._combine_audio_segments(valid_files, session_id, export_format)
+            
+            # Add jingle with intelligent ramping
+            if final_audio:
+                final_audio = await self._add_jingle_with_intelligent_ramping(final_audio, session_id)
             
             # Add music if requested
             if include_music and final_audio:
@@ -252,7 +262,7 @@ class AudioGenerationService:
             return None
     
     def _parse_script_into_segments(self, script_content: str) -> List[Dict[str, Any]]:
-        """Parse script into speaker segments efficiently"""
+        """Parse script into speaker segments efficiently with automatic Lucy weather integration"""
         
         if not script_content:
             return []
@@ -272,37 +282,120 @@ class AudioGenerationService:
                 text = parts[1].strip()
                 
                 if text:
-                    speaker = self._normalize_speaker_name(speaker_raw)
+                    # 🌤️ AUTOMATIC LUCY INTEGRATION: Detect weather content
+                    speaker = self._get_speaker_for_content(speaker_raw, text)
                     segments.append({
                         "speaker": speaker,
                         "text": text,
-                        "original_speaker": speaker_raw
+                        "original_speaker": speaker_raw,
+                        "auto_assigned": speaker != self._normalize_speaker_name(speaker_raw)
                     })
             else:
                 # Default speaker for lines without speaker prefix
-                segments.append({
-                    "speaker": "marcel",
-                    "text": line,
-                    "original_speaker": "default"
-                })
+                # 🌤️ Check if content is weather-related
+                if self._is_weather_content(line):
+                    segments.append({
+                        "speaker": "lucy",
+                        "text": line,
+                        "original_speaker": "auto-weather",
+                        "auto_assigned": True
+                    })
+                else:
+                    segments.append({
+                        "speaker": "marcel",
+                        "text": line,
+                        "original_speaker": "default",
+                        "auto_assigned": False
+                    })
         
         return segments
     
+    def _get_speaker_for_content(self, speaker_raw: str, text: str) -> str:
+        """Determine the best speaker for given content with automatic Lucy weather assignment"""
+        
+        # 🌤️ LUCY AUTO-ASSIGNMENT: Only for LUCY speaker + weather content, NOT for other speakers
+        # Marcel und Jarvis können über Wetter sprechen ohne automatisch zu Lucy zu werden
+        speaker_normalized = self._normalize_speaker_name(speaker_raw)
+        
+        if speaker_normalized == "lucy" and self._is_weather_content(text):
+            logger.info(f"🌤️ Weather content detected for Lucy: {text[:50]}...")
+            return "lucy"
+        
+        # Otherwise use normal speaker normalization (Marcel bleibt Marcel!)
+        return speaker_normalized
+    
+    def _is_weather_content(self, text: str) -> bool:
+        """Detect if content is weather-related for automatic Lucy assignment"""
+        
+        if not text:
+            return False
+        
+        text_lower = text.lower()
+        
+        # Weather keywords that trigger Lucy assignment
+        weather_keywords = [
+            # German weather terms
+            "wetter", "temperatur", "grad", "celsius", "regen", "sonne", "sonnig", 
+            "wolken", "bewölkt", "nebel", "wind", "sturm", "schnee", "gewitter", 
+            "vorhersage", "wettervorhersage", "wetteraussichten", "klima",
+            "hitze", "kalt", "warm", "trocken", "feucht", "luftfeuchtigkeit",
+            "luftdruck", "barometer", "niederschlag", "hagel", "frost",
+            
+            # English weather terms  
+            "weather", "temperature", "degrees", "rain", "sunny", "clouds", "cloudy",
+            "fog", "wind", "storm", "snow", "thunder", "forecast", "climate",
+            "hot", "cold", "warm", "dry", "humid", "humidity", "pressure",
+            "precipitation", "hail", "frost",
+            
+            # Weather symbols/indicators
+            "°c", "°f", "km/h", "mph", "hpa", "mbar", "%", "mm"
+        ]
+        
+        # Context phrases that indicate weather reporting
+        weather_contexts = [
+            "aktuell haben wir", "heute erwarten", "die aussichten", "morgen wird",
+            "am abend", "in der nacht", "am wochenende", "nächste woche",
+            "currently we have", "today expect", "outlook", "tomorrow will",
+            "this evening", "tonight", "weekend", "next week"
+        ]
+        
+        # Check for weather keywords
+        for keyword in weather_keywords:
+            if keyword in text_lower:
+                return True
+        
+        # Check for weather context phrases
+        for context in weather_contexts:
+            if context in text_lower:
+                # Additional check: contains weather-related terms nearby
+                for keyword in weather_keywords[:10]:  # Check main weather terms
+                    if keyword in text_lower:
+                        return True
+        
+        return False
+    
     def _normalize_speaker_name(self, speaker_raw: str) -> str:
-        """Normalize speaker names to known voices"""
+        """Normalize speaker names to known voices with Lucy integration"""
         
         speaker_lower = speaker_raw.lower().strip()
         
-        # Direct mappings
+        # Direct mappings including Lucy
         speaker_map = {
             "marcel": "marcel",
             "jarvis": "jarvis",
+            "lucy": "lucy",
+            "brad": "brad",
             "host": "marcel",
-            "moderator": "marcel",
-            "anchor": "marcel",
+            "moderator": "marcel", 
+            "anchor": "brad",
+            "news": "brad",
             "ai": "jarvis",
             "assistant": "jarvis",
-            "computer": "jarvis"
+            "computer": "jarvis",
+            "weather": "lucy",
+            "wetter": "lucy",
+            "wetterfee": "lucy",
+            "meteorology": "lucy"
         }
         
         # Check direct matches
@@ -318,7 +411,7 @@ class AudioGenerationService:
         return "marcel"
     
     def _enhance_text_for_speech(self, text: str, speaker: str) -> str:
-        """Enhance text with speech optimization tags"""
+        """Enhance text with speech optimization tags including Lucy's sultry weather style"""
         
         if not text:
             return text
@@ -336,8 +429,29 @@ class AudioGenerationService:
         if speaker == "jarvis":
             # More technical, precise delivery
             enhanced = f'<prosody rate="medium" pitch="medium">{enhanced}</prosody>'
+        elif speaker == "lucy":
+            # 🌤️ LUCY'S SULTRY WEATHER STYLE: Warm, teasing, mysterious
+            # Add longer pauses for sultry effect
+            enhanced = enhanced.replace('<break time="0.5s"/>', '<break time="0.8s"/>')
+            enhanced = enhanced.replace('<break time="0.2s"/>', '<break time="0.4s"/>')
+            
+            # Add emphasis on weather terms for seductive delivery
+            weather_terms = ["temperatur", "grad", "warm", "heiß", "kalt", "feucht", "trocken", 
+                           "temperature", "degrees", "hot", "cold", "warm", "humid", "dry"]
+            for term in weather_terms:
+                if term in enhanced.lower():
+                    enhanced = enhanced.replace(term, f'<emphasis level="moderate">{term}</emphasis>')
+            
+            # Sultry, warm delivery with slower pace
+            enhanced = f'<prosody rate="slow" pitch="+5%" volume="+2dB">{enhanced}</prosody>'
+            
+            # Add breathing effects for mystique
+            enhanced = f'<break time="0.3s"/>{enhanced}<break time="0.5s"/>'
+        elif speaker == "brad":
+            # Professional news anchor delivery
+            enhanced = f'<prosody rate="medium" pitch="medium" volume="+1dB">{enhanced}</prosody>'
         else:
-            # Natural, conversational delivery
+            # Natural, conversational delivery (Marcel default)
             enhanced = f'<prosody rate="medium" pitch="medium">{enhanced}</prosody>'
         
         return enhanced
@@ -402,8 +516,159 @@ class AudioGenerationService:
             logger.error(f"❌ Audio combination error: {e}")
             return None
     
+    async def _add_jingle_with_intelligent_ramping(self, audio_file: Path, session_id: str) -> Optional[Path]:
+        """Add jingle with intelligent audio ramping for professional radio sound"""
+        
+        if not self._ffmpeg_path:
+            logger.warning("⚠️ ffmpeg not available - skipping jingle")
+            return audio_file
+            
+        try:
+            # Find available jingle
+            jingle_path = await self._find_jingle()
+            if not jingle_path:
+                logger.warning("⚠️ No jingle found - skipping jingle mixing")
+                return audio_file
+            
+            # Get audio duration for timing calculations
+            speech_duration = await self._get_audio_duration(audio_file)
+            if speech_duration <= 0:
+                return audio_file
+            
+            logger.info(f"🎵 Adding jingle with intelligent ramping (Speech: {speech_duration:.1f}s)")
+            
+            # Create intelligent audio ramping filter
+            ramping_filter = await self._create_intelligent_ramping_filter(speech_duration)
+            
+            # Create output path
+            output_path = self._output_dir / f"{session_id}_with_jingle.mp3"
+            
+            # ffmpeg command for EPIC jingle mixing with extended timeline
+            total_duration = speech_duration + 23  # 8s intro + speech + 15s outro = EPIC!
+            cmd = [
+                self._ffmpeg_path,
+                "-i", str(jingle_path),      # Input 0: Jingle (background)
+                "-i", str(audio_file),       # Input 1: Speech (foreground)
+                "-filter_complex", ramping_filter,
+                "-map", "[final_mix]",       # Map the mixed output
+                "-t", str(total_duration),   # Total duration: 10s intro + speech + 15s outro
+                "-c:a", "libmp3lame",
+                "-b:a", "128k",
+                "-y",  # Overwrite output
+                str(output_path)
+            ]
+            
+            # Execute ffmpeg
+            result = await asyncio.create_subprocess_exec(
+                *cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
+            )
+            stdout, stderr = await result.communicate()
+            
+            if result.returncode == 0:
+                logger.success(f"✅ Jingle mixed successfully: {output_path.name}")
+                
+                # Cleanup original file
+                audio_file.unlink(missing_ok=True)
+                return output_path
+            else:
+                logger.error(f"❌ Jingle mixing failed: {stderr.decode()}")
+                return audio_file
+                
+        except Exception as e:
+            logger.error(f"❌ Jingle mixing error: {e}")
+            return audio_file
+    
+    async def _find_jingle(self) -> Optional[Path]:
+        """Find available jingle file with randomized selection"""
+        import random
+        
+        jingles_dir = Path(__file__).parent.parent.parent.parent / "jingles"
+        
+        if not jingles_dir.exists():
+            return None
+        
+        # Look for audio files in jingles directory
+        audio_extensions = [".mp3", ".wav", ".m4a", ".ogg"]
+        
+        jingle_files = []
+        for file in jingles_dir.iterdir():
+            if file.is_file() and file.suffix.lower() in audio_extensions:
+                if not file.name.startswith('.'):  # Skip hidden files like .DS_Store
+                    jingle_files.append(file)
+        
+        if not jingle_files:
+            return None
+        
+        # Randomisierte Auswahl
+        selected_jingle = random.choice(jingle_files)
+        logger.info(f"🎵 Randomisiert gewählter Jingle: {selected_jingle.name}")
+        return selected_jingle
+    
+    async def _create_intelligent_ramping_filter(self, speech_duration: float) -> str:
+        """Creates a robust FFmpeg volume filter for professional 6-stage audio ramping.
+        
+        Handles different speech durations gracefully with adaptive logic.
+
+        Args:
+            speech_duration: The duration of the speech audio in seconds.
+
+        Returns:
+            A string containing the FFmpeg volume filter graph.
+        """
+        D = speech_duration
+        logger.info(f"🎤 Creating intelligent ramping filter for speech duration: {D:.2f}s")
+
+        # --- Adaptive Ramping Logic ---
+        # For very short news, a full 6-stage ramp is not feasible and can cause errors.
+        # Use a simplified 3-stage ramp for content shorter than 60 seconds.
+        if D < 60:
+            logger.warning(f"⚠️ Speech duration ({D:.2f}s) is less than 60s. Using simplified 3-stage ramping.")
+            # Simplified timeline: 100% intro -> 6% backing -> 100% outro
+            # Ramp down from 5s-8s, stay at 6%, ramp up in last 5s
+            ramp_down_end = 8.0
+            ramp_up_start = max(ramp_down_end, D - 5.0) # Ensure ramp up doesn't overlap ramp down
+
+            volume_expression = (
+                f"if(lt(t,5),1,"                                                              # 1. Intro: 0-5s at 100%
+                f"if(lt(t,{ramp_down_end}),1-0.94*(t-5)/3,"                                    # 2. Ramp Down: 5s-8s to 6%
+                f"if(lt(t,{ramp_up_start}),0.06,"                                             # 3. Backing: 8s to (D-5s) at 6%
+                f"if(lt(t,{D}),0.06+0.94*(t-{ramp_up_start})/5,1)"                             # 4. Ramp Up: Last 5s to 100%
+                f"))))"
+            )
+        else:
+            # --- Standard 6-Stage Professional Ramping ---
+            # Timeline: 100% intro -> fade to 6% -> 6% backing -> ramp to 100% -> 100% outro -> fadeout
+            logger.info("🎬 Using standard 6-stage professional audio ramping.")
+            
+            # Define timestamps for clarity
+            intro_end = 5.0
+            ramp_down_end = 8.0
+            ramp_up_start = D - 5.0
+            speech_end = D
+            outro_end = D + 10.0
+            fadeout_duration = 4.0 # A slightly longer fadeout feels more professional
+            final_end = outro_end + fadeout_duration
+
+            # Using chained if() statements for FFmpeg filtergraph
+            # This is more robust than deeply nested ifs.
+            volume_expression = (
+                f"if(lt(t,{intro_end}),1,"                                                     # 1. Intro: 0-5s at 100%
+                f"if(lt(t,{ramp_down_end}),1-0.94*(t-{intro_end})/3,"                          # 2. Ramp Down: 5-8s, from 100% to 6% over 3s
+                f"if(lt(t,{ramp_up_start}),0.06,"                                             # 3. Backing: 8s to (D-5s) at 6%
+                f"if(lt(t,{speech_end}),0.06+0.94*(t-{ramp_up_start})/5,"                      # 4. Ramp Up: Last 5s of speech, from 6% to 100%
+                f"if(lt(t,{outro_end}),1,"                                                     # 5. Outro: D to D+10s at 100%
+                f"if(lt(t,{final_end}),1-(t-{outro_end})/{fadeout_duration},0)"                # 6. Fadeout: D+10s to D+14s, from 100% to 0%
+                f"))))))"
+            )
+
+        # Final filter string for FFmpeg
+        # Remove whitespace for compatibility
+        final_filter = f"volume='{volume_expression.replace(' ', '')}'"
+        logger.debug(f"✅ Generated FFmpeg volume filter: {final_filter}")
+        return final_filter
+
     async def _add_background_music(self, audio_file: Path, session_id: str) -> Optional[Path]:
-        """Add background music to audio file"""
+        """Adds background music with simple volume control."""
         
         if not self._ffmpeg_path:
             logger.warning("⚠️ ffmpeg not available - skipping background music")
@@ -423,6 +688,7 @@ class AudioGenerationService:
             return {
                 "success": True,
                 "audio_file": str(final_audio),
+                "audio_path": str(final_audio),  # For cover generation compatibility
                 "session_id": session_id,
                 "segments_count": len(segments),
                 "file_size": final_audio.stat().st_size,
@@ -558,4 +824,10 @@ class AudioGenerationService:
             "script_content": radio_script
         }
         
-        return await self.generate_audio_from_script(script, **kwargs)
+        # Filter nur unterstützte Parameter für generate_audio_from_script
+        audio_kwargs = {
+            k: v for k, v in kwargs.items() 
+            if k in ["include_music", "export_format"]
+        }
+        
+        return await self.generate_audio_from_script(script, **audio_kwargs)

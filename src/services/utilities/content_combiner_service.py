@@ -147,7 +147,7 @@ class ContentCombinerService:
         
         try:
             # Ziel-Datei
-            final_filename = f"{output_name}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.mp3"
+            final_filename = f"radiox_{datetime.now().strftime('%y%m%d_%H%M')}.mp3"
             final_path = self.output_dir / final_filename
             
             # Audio kopieren

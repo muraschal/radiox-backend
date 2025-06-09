@@ -10,6 +10,10 @@ import uuid
 import sys
 import os
 from loguru import logger
+from dotenv import load_dotenv
+
+# Load environment variables FIRST
+load_dotenv()
 
 # Backend-Pfad hinzufügen für relative Imports
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))

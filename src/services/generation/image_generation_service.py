@@ -33,7 +33,7 @@ class ImageGenerationService:
         self.openai_api_key = self.settings.openai_api_key
         self.dall_e_base_url = "https://api.openai.com/v1/images/generations"
         
-        # Output-Verzeichnis - DIREKT IM ROOT (nicht in backend/)
+        # Output-Verzeichnis - outplay für HTML Dashboard Zugriff
         self.output_dir = Path(__file__).parent.parent.parent.parent / "outplay"
         self.output_dir.mkdir(parents=True, exist_ok=True)
         
@@ -407,7 +407,7 @@ The image should make it immediately clear what the main news topics are about."
         """Lädt Cover-Image herunter"""
         
         try:
-            cover_filename = f"cover_{session_id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png"
+            cover_filename = f"radiox_{datetime.now().strftime('%y%m%d_%H%M')}.png"
             cover_path = self.output_dir / cover_filename
             
             async with aiohttp.ClientSession() as session:
@@ -444,7 +444,7 @@ The image should make it immediately clear what the main news topics are about."
             draw.text((250, 520), "AI News", fill="#00d4ff", font=font)
             
             # Speichern
-            fallback_filename = f"fallback_cover_{session_id}.png"
+            fallback_filename = f"radiox_{datetime.now().strftime('%y%m%d_%H%M')}_fallback.png"
             fallback_path = self.output_dir / fallback_filename
             
             image.save(fallback_path, "PNG")

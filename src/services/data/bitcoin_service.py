@@ -252,6 +252,110 @@ class BitcoinService:
             logger.error(f"Bitcoin Service test error: {e}")
             return False
     
+    async def get_bitcoin_summary_with_gpt(self) -> str:
+        """Get intelligent Bitcoin summary using GPT based on raw data and market conditions"""
+        try:
+            # Sammle ALLE verfügbaren Bitcoin-Daten
+            price_data = await self.get_bitcoin_price()
+            if not price_data:
+                return "Bitcoin-Daten nicht verfügbar"
+            
+            trend_data = await self.get_bitcoin_trend()
+            alerts_data = await self.get_bitcoin_alerts(price_threshold=100000)
+            
+            # Import here to avoid circular dependency
+            from src.config.settings import Settings
+            import openai
+            
+            settings = Settings()
+            client = openai.AsyncOpenAI(api_key=settings.openai_api_key)
+            
+            # Aktuelle Zeit für zeitabhängige Analyse
+            current_hour = datetime.now().hour
+            current_time = datetime.now().strftime("%H:%M")
+            
+            # Zeit-Kontext bestimmen
+            if 6 <= current_hour < 12:
+                time_context = "Morgen - Asiatische Märkte sind aktiv, Europa startet"
+            elif 12 <= current_hour < 18:
+                time_context = "Nachmittag - Europäische Märkte laufen, US-Märkte starten"
+            elif 18 <= current_hour < 24:
+                time_context = "Abend - US-Märkte aktiv, Asien bereitet sich vor"
+            else:
+                time_context = "Nacht - Asiatische Märkte übernehmen, wenig Volumen"
+            
+            # Delta-Relevanz-Analyse für intelligente Hervorhebung
+            change_1h = abs(price_data.get('change_1h', 0))
+            change_24h = abs(price_data.get('change_24h', 0))
+            change_7d = abs(price_data.get('change_7d', 0))
+            change_30d = abs(price_data.get('change_30d', 0))
+            
+            # Bestimme relevanteste Metrik
+            relevant_metrics = []
+            if change_1h > 2:
+                relevant_metrics.append(f"1h: {price_data['change_1h']:+.1f}% (STRONG Movement!)")
+            if change_24h > 5:
+                relevant_metrics.append(f"24h: {price_data['change_24h']:+.1f}% (Significant!)")
+            if change_7d > 10:
+                relevant_metrics.append(f"7d: {price_data['change_7d']:+.1f}% (Weekly Movement!)")
+            if change_30d > 20:
+                relevant_metrics.append(f"30d: {price_data['change_30d']:+.1f}% (Monthly Trend!)")
+            
+            # Recovery/Crash Analysis
+            recovery_analysis = ""
+            if price_data['change_24h'] > 3 and price_data['change_7d'] < -5:
+                recovery_analysis = "RECOVERY: 24h bounce after 7-day decline!"
+            elif price_data['change_24h'] < -3 and price_data['change_7d'] > 5:
+                recovery_analysis = "CORRECTION: 24h drop after strong week!"
+            
+            # GPT prompt for intelligent Bitcoin summary
+            bitcoin_prompt = f"""You are a Bitcoin market analyst for radio. Create a COMPACT, intelligent Bitcoin summary in English.
+
+CURRENT TIME: {current_time} ({time_context})
+
+BITCOIN DATA:
+- Price: ${price_data['price_usd']:,.0f}
+- 1h: {price_data['change_1h']:+.1f}%
+- 24h: {price_data['change_24h']:+.1f}%
+- 7d: {price_data['change_7d']:+.1f}%
+- 30d: {price_data['change_30d']:+.1f}%
+- 90d: {price_data['change_90d']:+.1f}%
+- Market Cap: ${price_data['market_cap']/1e9:.1f}B
+- Volume 24h: ${price_data['volume_24h']/1e9:.1f}B
+
+RELEVANT METRICS: {', '.join(relevant_metrics) if relevant_metrics else "Normal movements"}
+TREND: {trend_data.get('message', 'Stable')}
+ALERTS: {len(alerts_data)} active alerts
+{recovery_analysis}
+
+TASK: Create a time-dependent, intelligent Bitcoin summary:
+- Consider the {time_context}
+- Highlight the MOST RELEVANT price movements (not all!)
+- Use recovery/crash analysis if available
+- Maximum 2-3 sentences, concise for radio
+
+EXAMPLES:
+- "Bitcoin at $107k, strong recovery +5% today after weak last week. Asian markets driving the upswing."
+- "BTC stable at $108k despite 1h fluctuations. US markets show little reaction to yesterday's 3% rise."
+
+Your answer in English:"""
+
+            # GPT call for Bitcoin summary  
+            response = await client.chat.completions.create(
+                model="gpt-4",  # Fix: Hardcoded model
+                messages=[{"role": "user", "content": bitcoin_prompt}],
+                max_tokens=150,
+                temperature=0.3
+            )
+            
+            summary = response.choices[0].message.content.strip()
+            logger.info(f"✅ Bitcoin GPT summary created: {len(summary)} characters")
+            return summary
+            
+        except Exception as e:
+            logger.error(f"❌ Bitcoin GPT Summary Error: {e}")
+            return "Bitcoin summary not available"
+    
     # Private Methods
     
     def _get_fallback_bitcoin_data(self) -> Dict[str, Any]:

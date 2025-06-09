@@ -26,7 +26,7 @@ from dataclasses import dataclass, asdict
 import hashlib
 
 # Supabase statt SQLite
-from .supabase_service import SupabaseService
+from ..infrastructure.supabase_service import SupabaseService
 
 
 @dataclass
@@ -304,6 +304,70 @@ class ContentLoggingService:
                 "timestamp": datetime.now().isoformat()
             }
     
+    async def get_last_show_context(self) -> Optional[Dict[str, Any]]:
+        """
+        Holt Kontext der letzten Show aus Supabase für GPT-Diversität
+        
+        Returns:
+            Dictionary mit letzter Show-Info oder None
+        """
+        try:
+            # Hole die neueste Show aus broadcast_logs
+            response = self.supabase.client.table('broadcast_logs') \
+                .select('*') \
+                .eq('event_type', 'news_collected') \
+                .order('timestamp', desc=True) \
+                .limit(1) \
+                .execute()
+            
+            if response.data and len(response.data) > 0:
+                last_show = response.data[0]
+                
+                # Try to get detailed news data from JSON files if available
+                selected_news = []
+                try:
+                    session_id = last_show.get('session_id', '')
+                    
+                    # Look for matching JSON log file
+                    json_files = list(self.logs_dir.glob(f"news_log_{session_id}_*.json"))
+                    if json_files:
+                        latest_json = max(json_files, key=lambda f: f.stat().st_mtime)
+                        with open(latest_json, 'r', encoding='utf-8') as f:
+                            json_data = json.load(f)
+                            
+                        # Extract selected news from JSON data
+                        for entry in json_data.get('news_entries', []):
+                            if entry.get('selected_for_broadcast', False):
+                                selected_news.append({
+                                    'title': entry.get('title', ''),
+                                    'source': entry.get('source', ''),
+                                    'category': entry.get('category', ''),
+                                    'url': entry.get('url', ''),
+                                    'summary': entry.get('summary', '')
+                                })
+                    
+                except Exception as e:
+                    logger.warning(f"⚠️ Error loading detailed news data: {e}")
+                
+                # Return enhanced context
+                context = {
+                    'session_id': last_show.get('session_id'),
+                    'created_at': last_show.get('timestamp'),
+                    'event_data': last_show.get('event_data', {}),
+                    'selected_news': selected_news,
+                    'show_count': len(response.data)  # Total shows in database
+                }
+                
+                logger.info(f"📚 Last show context retrieved: {len(selected_news)} selected news from {context.get('session_id')}")
+                return context
+            
+            logger.info("📚 No previous shows found in database")
+            return None
+            
+        except Exception as e:
+            logger.error(f"❌ Error fetching last show context: {e}")
+            return None
+
     async def test_content_logging(self) -> bool:
         """Testet das Content Logging"""
         
