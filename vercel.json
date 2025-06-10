@@ -4,63 +4,49 @@
   "github": {
     "silent": true
   },
-  "builds": [
+  "rewrites": [
     {
-      "src": "web/**",
-      "use": "@vercel/static"
-    }
-  ],
-  "routes": [
-    {
-      "src": "/",
-      "dest": "/web/index.html"
+      "source": "/",
+      "destination": "/web/index.html"
     },
     {
-      "src": "/shows.json",
-      "dest": "/web/shows.json",
-      "headers": {
-        "Cache-Control": "s-maxage=60, stale-while-revalidate",
-        "Content-Type": "application/json"
-      }
+      "source": "/shows.json",
+      "destination": "/web/shows.json"
     },
     {
-      "src": "/radiox_(.*\\.html)",
-      "dest": "/web/radiox_$1",
-      "headers": {
-        "Cache-Control": "s-maxage=3600, stale-while-revalidate"
-      }
+      "source": "/radiox_(.*)",
+      "destination": "/web/radiox_$1"
     },
     {
-      "src": "/radiox_(.*\\.mp3)",
-      "dest": "/web/radiox_$1",
-      "headers": {
-        "Cache-Control": "s-maxage=86400, stale-while-revalidate"
-      }
-    },
-    {
-      "src": "/radiox_(.*\\.png)",
-      "dest": "/web/radiox_$1",
-      "headers": {
-        "Cache-Control": "s-maxage=86400, stale-while-revalidate"
-      }
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/web/$1"
+      "source": "/(.*)",
+      "destination": "/web/$1"
     }
   ],
   "headers": [
     {
-      "source": "/(.*\\.(?:html|js|css))",
+      "source": "/shows.json",
       "headers": [
         {
+          "key": "Content-Type",
+          "value": "application/json"
+        },
+        {
           "key": "Cache-Control",
-          "value": "public, max-age=3600, s-maxage=3600"
+          "value": "s-maxage=60, stale-while-revalidate"
         }
       ]
     },
     {
-      "source": "/(.*\\.(?:mp3|png|jpg|jpeg))",
+      "source": "/(.*\\.mp3)",
+      "headers": [
+        {
+          "key": "Cache-Control", 
+          "value": "public, max-age=86400, s-maxage=86400"
+        }
+      ]
+    },
+    {
+      "source": "/(.*\\.(?:png|jpg|jpeg))",
       "headers": [
         {
           "key": "Cache-Control", 
@@ -68,10 +54,5 @@
         }
       ]
     }
-  ],
-  "functions": {
-    "web/index.html": {
-      "includeFiles": "web/**"
-    }
-  }
+  ]
 } 

@@ -24,6 +24,7 @@ debug_*.py
 !requirements.txt
 !package.json
 !vercel.json
+!web/shows.json
 
 # Audio-Dateien
 *.mp3
