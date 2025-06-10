@@ -1,7 +1,25 @@
 {
-  "lastUpdated": "2025-06-10T16:53:42.502781",
+  "lastUpdated": "2025-06-10T16:59:05.365440",
   "totalShows": 10,
   "shows": [
+    {
+      "timestamp": "250610_1659",
+      "htmlFile": "radiox_dashboard_fancy_250610_1659.html",
+      "mp3File": "radiox_250610_1659.mp3",
+      "pngFile": "radiox_250610_1659.png",
+      "size": 58982,
+      "audioSize": 3973360,
+      "coverSize": 27962
+    },
+    {
+      "timestamp": "250610_1654",
+      "htmlFile": "radiox_dashboard_fancy_250610_1654.html",
+      "mp3File": null,
+      "pngFile": null,
+      "size": 53301,
+      "audioSize": 0,
+      "coverSize": 0
+    },
     {
       "timestamp": "250610_1653",
       "htmlFile": "radiox_dashboard_fancy_250610_1653.html",
@@ -26,6 +44,15 @@
       "mp3File": null,
       "pngFile": null,
       "size": 47684,
+      "audioSize": 0,
+      "coverSize": 0
+    },
+    {
+      "timestamp": "250610_1624",
+      "htmlFile": "radiox_dashboard_fancy_250610_1624.html",
+      "mp3File": null,
+      "pngFile": null,
+      "size": 43,
       "audioSize": 0,
       "coverSize": 0
     },
@@ -62,33 +89,6 @@
       "mp3File": null,
       "pngFile": null,
       "size": 47111,
-      "audioSize": 0,
-      "coverSize": 0
-    },
-    {
-      "timestamp": "250610_1606",
-      "htmlFile": "radiox_dashboard_fancy_250610_1606.html",
-      "mp3File": null,
-      "pngFile": null,
-      "size": 47039,
-      "audioSize": 0,
-      "coverSize": 0
-    },
-    {
-      "timestamp": "250610_1605",
-      "htmlFile": "radiox_dashboard_fancy_250610_1605.html",
-      "mp3File": null,
-      "pngFile": null,
-      "size": 47071,
-      "audioSize": 0,
-      "coverSize": 0
-    },
-    {
-      "timestamp": "250610_1603",
-      "htmlFile": "radiox_dashboard_fancy_250610_1603.html",
-      "mp3File": null,
-      "pngFile": null,
-      "size": 47266,
       "audioSize": 0,
       "coverSize": 0
     }
