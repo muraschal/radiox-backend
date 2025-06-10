@@ -1,7 +1,16 @@
 {
-  "lastUpdated": "2025-06-10T13:17:48.442785",
-  "totalShows": 5,
+  "lastUpdated": "2025-06-10T13:24:32.773037",
+  "totalShows": 6,
   "shows": [
+    {
+      "timestamp": "250610_1324",
+      "htmlFile": "radiox_dashboard_fancy_250610_1324.html",
+      "mp3File": "radiox_250610_1324.mp3",
+      "pngFile": "radiox_250610_1324.png",
+      "size": 48531,
+      "audioSize": 4349106,
+      "coverSize": 27962
+    },
     {
       "timestamp": "250610_1317",
       "htmlFile": "radiox_dashboard_fancy_250610_1317.html",
