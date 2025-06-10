@@ -1439,32 +1439,70 @@ class DashboardFancyService:
         class ShowNavigator {{
             constructor() {{
                 this.currentTimestamp = '{timestamp}';
-                this.availableShows = this.getAvailableShows();
+                this.availableShows = [];
+                this.currentIndex = -1;
+                this.init();
+            }}
+
+            async init() {{
+                this.availableShows = await this.getAvailableShows();
                 this.currentIndex = this.getCurrentIndex();
                 this.initNavigation();
             }}
 
-            getAvailableShows() {{
-                // Get all dashboard files from localStorage or scan for pattern
-                const shows = [];
-                // Scan current directory for files matching pattern radiox_dashboard_fancy_*.html
+            async getAvailableShows() {{
+                const existingShows = [];
                 
-                // For now, we'll populate this with some sample timestamps
-                // In production, this could be fetched from server or localStorage
-                const now = new Date();
-                const today = now.getDate().toString().padStart(2, '0') + 
-                            (now.getMonth() + 1).toString().padStart(2, '0').slice(-2);
+                // Smart detection: scan broadly for dashboard files
+                const currentTs = this.currentTimestamp;
+                const datePart = currentTs.split('_')[0]; // e.g., "250610"
+                const currentTime = parseInt(currentTs.split('_')[1]); // e.g., 1701
                 
-                // Generate potential show times for today
-                for (let hour = 6; hour < 22; hour++) {{
-                    for (let min of ['00', '30']) {{
-                        const timeStr = hour.toString().padStart(2, '0') + min;
-                        const timestamp = `2506${{today}}_${{timeStr}}`;
-                        shows.push(timestamp);
+                // Generate comprehensive time slots for the day (every 30 minutes)
+                const timeSlots = [];
+                
+                // Start from 6:00 AM to 11:59 PM
+                for (let hour = 6; hour < 24; hour++) {{
+                    for (let minute = 0; minute < 60; minute += 30) {{
+                        const timeStr = hour.toString().padStart(2, '0') + 
+                                      minute.toString().padStart(2, '0');
+                        const timestamp = `${{datePart}}_${{timeStr}}`;
+                        timeSlots.push(timestamp);
                     }}
                 }}
                 
-                return shows.sort();
+                // Check all potential time slots in parallel for better performance
+                const checkPromises = timeSlots.map(async timestamp => {{
+                    try {{
+                        const response = await fetch(`radiox_dashboard_fancy_${{timestamp}}.html`, {{ 
+                            method: 'HEAD',
+                            cache: 'no-cache'
+                        }});
+                        return response.ok ? timestamp : null;
+                    }} catch (error) {{
+                        return null;
+                    }}
+                }});
+                
+                // Wait for all checks to complete
+                const results = await Promise.all(checkPromises);
+                
+                // Filter out null results and add to existing shows
+                results.forEach(timestamp => {{
+                    if (timestamp) {{
+                        existingShows.push(timestamp);
+                    }}
+                }});
+                
+                // Ensure current show is included (even if not found)
+                if (!existingShows.includes(this.currentTimestamp)) {{
+                    existingShows.push(this.currentTimestamp);
+                }}
+                
+                const sortedShows = existingShows.sort();
+                console.log('🎯 Available Shows:', sortedShows);
+                
+                return sortedShows;
             }}
 
             getCurrentIndex() {{
