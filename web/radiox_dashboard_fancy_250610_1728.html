@@ -1399,12 +1399,12 @@ LUCY: Nun, Marcel, wir werden sehen. Aber lassen wir die ...</pre>
                 const datePart = currentTs.split('_')[0]; // e.g., "250610"
                 const currentTime = parseInt(currentTs.split('_')[1]); // e.g., 1701
                 
-                // Generate comprehensive time slots for the day (every 30 minutes)
+                // 🎯 SMART DISCOVERY: Scan for actual show files (every minute instead of 30-min slots)
                 const timeSlots = [];
                 
-                // Start from 6:00 AM to 11:59 PM
+                // Start from 6:00 AM to 11:59 PM - scan every minute to catch dynamic timestamps
                 for (let hour = 6; hour < 24; hour++) {
-                    for (let minute = 0; minute < 60; minute += 30) {
+                    for (let minute = 0; minute < 60; minute++) {
                         const timeStr = hour.toString().padStart(2, '0') + 
                                       minute.toString().padStart(2, '0');
                         const timestamp = `${datePart}_${timeStr}`;

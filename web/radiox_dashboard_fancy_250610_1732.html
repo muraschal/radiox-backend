@@ -11,11 +11,11 @@
     <meta property="og:description" content="AI-generated. Enterprise quality. Zero compromise. It's the future, and it's loud.">
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://radiox.ai">
-    <meta property="og:image" content="radiox_250610_1635.png">
+    <meta property="og:image" content="radiox_250610_1732.png">
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="RadioX – Your Radio, Just Got Smarter.">
     <meta name="twitter:description" content="AI-generated. Enterprise quality. Zero compromise. It's the future, and it's loud.">
-    <meta name="twitter:image" content="radiox_250610_1635.png">
+    <meta name="twitter:image" content="radiox_250610_1732.png">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📻</text></svg>">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
@@ -332,6 +332,53 @@
             display: flex;
             flex-direction: column;
             gap: 1.5rem;
+        }
+
+        /* Navigation Controls */
+        .navigation-controls {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 0.5rem;
+            gap: 1rem;
+        }
+
+        .nav-button {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            color: #ffffff;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.85rem;
+            font-weight: 500;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .nav-button:hover {
+            background: rgba(102, 126, 234, 0.2);
+            border-color: rgba(102, 126, 234, 0.4);
+            transform: translateY(-1px);
+        }
+
+        .nav-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .nav-icon {
+            font-size: 1.2rem;
+            font-weight: bold;
+        }
+
+        .nav-label {
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
         
         .progress-container {
@@ -1017,17 +1064,27 @@
             <div class="glasmorph-player">
                 <div class="player-content">
                     <div class="cover-container">
-                        <img src="radiox_250610_1635.png" alt="RadioX Cover" class="cover-image">
+                        <img src="radiox_250610_1732.png" alt="RadioX Cover" class="cover-image">
                         <div class="play-overlay" id="playButton">
                             <span class="play-icon">▶</span>
                         </div>
                     </div>
                     <div class="audio-info">
-                        <h2 class="audio-title">HOT GLOBAL | 16:35 Edition</h2>
+                        <h2 class="audio-title">ZURICH LOCAL | 17:32 Edition</h2>
                         <div class="audio-meta">
-                            HOT GLOBAL - Eilmeldungen aus allen Perspektiven mit Brad und Lucy
+                            the hottest news from zurich mit Marcel und Jarvis • Wetter: lucy
                         </div>
                         <div class="custom-controls">
+                            <div class="navigation-controls">
+                                <button class="nav-button" id="prevShow" title="Previous Show">
+                                    <span class="nav-icon">‹</span>
+                                    <span class="nav-label">Previous</span>
+                                </button>
+                                <button class="nav-button" id="nextShow" title="Next Show">
+                                    <span class="nav-label">Next</span>
+                                    <span class="nav-icon">›</span>
+                                </button>
+                            </div>
                             <div class="progress-container">
                                 <span class="time-display" id="currentTime">0:00</span>
                                 <div class="progress-bar" id="progressBar">
@@ -1050,7 +1107,7 @@
         
         <!-- Hidden Audio Element -->
         <audio class="hidden-audio" id="audioPlayer" preload="metadata">
-            <source src="radiox_250610_1635.mp3" type="audio/mpeg">
+            <source src="radiox_250610_1732.mp3" type="audio/mpeg">
             Your browser does not support the audio element.
         </audio>
     </section>
@@ -1068,7 +1125,7 @@
                 </div>
                 <div class="stat-card">
                     <div class="stat-icon">✅</div>
-                    <div class="stat-value">4</div>
+                    <div class="stat-value">1</div>
                     <div class="stat-label">Selected</div>
                 </div>
                 <div class="stat-card">
@@ -1078,18 +1135,18 @@
                 </div>
                 <div class="stat-card">
                     <div class="stat-icon">🤖</div>
-                    <div class="stat-value">425</div>
+                    <div class="stat-value">294</div>
                     <div class="stat-label">GPT Words</div>
                 </div>
                 <div class="stat-card">
                     <div class="stat-icon">🌡️</div>
-                                            <div class="stat-value">25.7°C</div>
+                                            <div class="stat-value">25.2°C</div>
                     <div class="stat-label">Temperature</div>
                     <div class="stat-trend trend-neutral"></div>
                 </div>
                 <div class="stat-card">
                     <div class="stat-icon">₿</div>
-                    <div class="stat-value">$108,895</div>
+                    <div class="stat-value">$109,138</div>
                     <div class="stat-label">Bitcoin</div>
                     <div class="stat-trend trend-up">↗ +1.1% today</div>
                 </div>
@@ -1108,7 +1165,7 @@
                 <div class="p-4">
                     <div class="bg-orange-50 border border-orange-200 p-3 rounded">
                         <div class="text-sm text-orange-800 leading-relaxed">
-                            "Zurich is currently experiencing 25.7°C with broken clouds. As we head into the evening, expect overcast conditions with temperatures slightly dropping to 24.4°C. The wind speed will also decrease from 14.4 to 4.6, with no rain in sight."
+                            "Currently in Zurich, we have a clear sky with a comfortable temperature of 25.2°C. As we move into the evening, expect scattered clouds with temperatures slightly dropping to 24.4°C at 20:00 and further to 20.6°C by 23:00. No chance of rain, so it's a perfect evening to enjoy outdoors."
                         </div>
                     </div>
                     <div class="mt-3 text-xs text-gray-600">
@@ -1125,7 +1182,7 @@
                 <div class="p-4">
                     <div class="bg-yellow-50 border border-yellow-200 p-3 rounded">
                         <div class="text-sm text-yellow-800 leading-relaxed">
-                            "Bitcoin is currently priced at $108,895, showing a slight dip of 0.7% in the last hour but overall stability with a 1.1% increase in the last 24 hours. As European markets continue to operate and US markets are just opening, the cryptocurrency's movement remains normal with no significant changes."
+                            "Bitcoin is currently priced at $109,138, showing a steady increase of 1.1% over the past 24 hours. Despite normal market movements, Bitcoin has shown a significant growth of 34.4% over the last 90 days. As European markets continue to operate and US markets open, the trend remains stable with one active alert."
                         </div>
                     </div>
                 </div>
@@ -1137,59 +1194,20 @@
         <!-- Selected Articles -->
         <div class="content-section">
             <div class="content-container">
-                <h2 class="section-title">🤖 Featured Stories for the '<span class="red-highlight">HOT GLOBAL</span>' radio show</h2>
+                <h2 class="section-title">🤖 Featured Stories for the '<span class="red-highlight">ZURICH LOCAL</span>' radio show</h2>
                 <div class="articles-grid">
                     
                 <article class="article-card">
                     <div class="article-meta">
-                        <span class="article-badge badge-source">Nzz</span>
-                        <span class="article-badge badge-category">wirtschaft</span>
-                        <span class="article-badge badge-time">2.1h ago</span>
+                        <span class="article-badge badge-source">20Min</span>
+                        <span class="article-badge badge-category">zurich</span>
+                        <span class="article-badge badge-time">2.3h ago</span>
                     </div>
-                    <h3 class="article-title">KURZMELDUNGEN - Wirtschaft: Weltbank senkt globale Wachstumsprognose deutlich</h3>
-                    <p class="article-excerpt">Die neusten Meldungen aus der Wirtschaft.</p>
+                    <h3 class="article-title">Unfall mit Lieferwagen: Fünf Personen verletzt – eine schwer</h3>
+                    <p class="article-excerpt">Am Dienstagnachmittag kollidierte an der Bellerivestrasse ein Lieferwagen mit einem Kandelaber. Dabei wurden fünf Personen verletzt. Sie mussten ins Spital.</p>
                     <div class="article-actions">
-                        <a href="https://www.nzz.ch/wirtschaft/wirtschaft-die-neusten-meldungen-ld.1886043" target="_blank" class="action-link">🔗 Read more</a>
-                        <a href="https://www.nzz.ch/finanzen.rss" target="_blank" class="action-link">📡 Source</a>
-                    </div>
-                </article>
-                <article class="article-card">
-                    <div class="article-meta">
-                        <span class="article-badge badge-source">Srf</span>
-                        <span class="article-badge badge-category">news</span>
-                        <span class="article-badge badge-time">2.2h ago</span>
-                    </div>
-                    <h3 class="article-title">Was zur Bluttat an der Grazer Schule bekannt ist</h3>
-                    <p class="article-excerpt"><img align="left" hspace="5" src="https://srf-cms.rokka.io/640ws/5495a8.jpg" />In Graz sind an einer Schule Schüsse gefallen, die Polizei bestätigt zehn Todesopfer. Die Fakten im Ü...</p>
-                    <div class="article-actions">
-                        <a href="https://www.srf.ch/news/international/attacke-in-oesterreich-was-zur-bluttat-an-der-grazer-schule-bekannt-ist" target="_blank" class="action-link">🔗 Read more</a>
-                        <a href="https://www.srf.ch/news/bnf/rss/19032223" target="_blank" class="action-link">📡 Source</a>
-                    </div>
-                </article>
-                <article class="article-card">
-                    <div class="article-meta">
-                        <span class="article-badge badge-source">Cash</span>
-                        <span class="article-badge badge-category">wirtschaft</span>
-                        <span class="article-badge badge-time">2.2h ago</span>
-                    </div>
-                    <h3 class="article-title">Logitech-CEO will Marke und Produkte «ikonisch» und «sexy» machen</h3>
-                    <p class="article-excerpt">Computerzubehör - Logitech-CEO Hanneke Faber will die Produkte des Computerzubehörherstellers in der Wahrnehmung auf das Niveau von Apple bringen.</p>
-                    <div class="article-actions">
-                        <a href="https://www.cash.ch/news/top-news/logitech-ceo-will-marke-und-produkte-ikonisch-und-sexy-machen-832127" target="_blank" class="action-link">🔗 Read more</a>
-                        <a href="https://www.cash.ch/feeds/latest/top-news" target="_blank" class="action-link">📡 Source</a>
-                    </div>
-                </article>
-                <article class="article-card">
-                    <div class="article-meta">
-                        <span class="article-badge badge-source">Bbc</span>
-                        <span class="article-badge badge-category">international</span>
-                        <span class="article-badge badge-time">2.7h ago</span>
-                    </div>
-                    <h3 class="article-title">Newsom says Trump 'deranged' as thousands more troops sent to LA</h3>
-                    <p class="article-excerpt">Protests against immigration raids by the Trump administration spring up in at least nine other US cities.</p>
-                    <div class="article-actions">
-                        <a href="https://www.bbc.com/news/articles/cyvmz3egr7do" target="_blank" class="action-link">🔗 Read more</a>
-                        <a href="http://feeds.bbci.co.uk/news/world/rss.xml" target="_blank" class="action-link">📡 Source</a>
+                        <a href="https://www.20min.ch/story/zuerich-unfall-mit-lieferwagen-fuenf-personen-verletzt-eine-schwer-103362084" target="_blank" class="action-link">🔗 Read more</a>
+                        <a href="https://partner-feeds.beta.20min.ch/rss/20minuten/zuerich" target="_blank" class="action-link">📡 Source</a>
                     </div>
                 </article>
                 </div>
@@ -1220,15 +1238,19 @@
                     </div>
                     <div class="dev-info-full">
                         <h4 style="color: #ccc; margin-bottom: 1rem;">📤 Input Prompt</h4>
-                        <pre class="dev-prompt">{&#x27;stage1_selection_prompt&#x27;: &quot;\n# SYSTEM PROMPT – RADIOX ARTICLE SELECTOR\n\n## MISSION\nYou are an expert content strategist and radio news curator. Your task is to select exactly 4 articles from the provided list that best fit the upcoming show – based on its unique tone, scope, and speaker style.\n\n## SHOW CONTEXT\n**Show Style:** \nShow: HOT GLOBAL | Focus: Global\nStyle: HOT GLOBAL - Eilmeldungen aus allen Perspektiven\n\n**Speaker Descriptions:**\nBrad: Brad is a sharp, modern news anchor with a cool, composed edge. He delivers breaking headlines fast, clear, and always on beat, but brings human pulse to every segment through knowing pauses and subtle inflection. His voice carries professional confidence without stiffness, natural charisma without effort. Whether cover...</pre>
+                        <pre class="dev-prompt">{&#x27;stage1_selection_prompt&#x27;: &quot;\n# SYSTEM PROMPT – RADIOX ARTICLE SELECTOR\n\n## MISSION\nYou are an expert content strategist and radio news curator. Your task is to select exactly 1 articles from the provided list that best fit the upcoming show – based on its unique tone, scope, and speaker style.\n\n## SHOW CONTEXT\n**Show Style:** \nShow: ZURICH LOCAL | Focus: Zurich\nStyle: the hottest news from zurich\n\n**Speaker Descriptions:**\nMarcel: Marcel is energetic, emotionally intelligent, and sharply analytical. Born in Zürich, he combines street-smart instincts with executive-level strategic thinking. He speaks fast with wit and subtext, his tone direct and often ironic but always intentional. Marcel doesn&#x27;t just conduct conversations—he experiences them intensely. He&...</pre>
                         <h4 style="color: #ccc; margin: 2rem 0 1rem;">📥 Generated Radio Script</h4>
-                        <pre class="dev-prompt">BRAD: Good afternoon, listeners, and welcome to HOT GLOBAL. This is Brad, your anchor for the day, and I bring you a cocktail of global news, spiked with perspective, and served on the rocks of reality.
+                        <pre class="dev-prompt">MARCEL: Guten Abend, Zürich! Hier ist Marcel, euer Antidot gegen den Alltagstrott. 
 
-LUCY: And I&#x27;m Lucy, your sultry companion, here to whisper the secret flavours of today&#x27;s headlines. So lean in close, listeners, because it&#x27;s time to stir up some conversation.
+JARVIS: Und ich bin Jarvis, euer Anker in diesem Meer der Informationen.
 
-BRAD: Well, talk about mixed signals. The World Bank has decided to play the party pooper by significantly lowering the global growth forecast. Makes you wonder if they&#x27;re just being overly cautious or if we&#x27;ve misplaced our rose-tinted glasses.
+LUCY: Und ich bin Lucy, eure weiche Brise in der harten Realität. 
 
-LUCY: Ah, the age-old game of economic prophecy. But while the World Bank tries to predict the future, let&#x27;s take a moment to mourn the pres...</pre>
+MARCEL: Harte Realität, Lucy? Heute Nachmittag kollidierte ein Lieferwagen an der Bellerivestrasse mit einem Kandelaber. Fünf Personen wurden verletzt und mussten ins Spital gebracht werden. Das ist nicht nur hart, das ist brutal.
+
+JARVIS: Wie immer, Marcel, überspringst du die entscheidenden Details. Die ernsthafte Frage hier ist: Warum hat ein Lieferwagen einen Kandelaber getroffen? War es einfach ein Unfall oder gibt es mehr im Spiel?
+
+LUCY: Jungs, vielleicht sollten wir uns auf das konzentrieren, was wir kontrollieren können. Wie zum Beispiel das Wetter. Aktuell ...</pre>
                     </div>
                 </div>
             </div>
@@ -1250,7 +1272,7 @@ LUCY: Ah, the age-old game of economic prophecy. But while the World Bank tries 
 📊 Real-time Data Processing:
 - News Collection: 1289 articles processed
 - Source Diversity: 14 unique sources
-- GPT Processing: 425 words generated
+- GPT Processing: 294 words generated
 - Data Freshness: Live updates every workflow run
 
 🔄 Processing Pipeline:
@@ -1357,6 +1379,131 @@ LUCY: Ah, the age-old game of economic prophecy. But while the World Bank tries 
 
         // Event listeners
         if (playButton) playButton.addEventListener('click', togglePlayPause);
+
+        // Show Navigation System
+        class ShowNavigator {
+            constructor() {
+                this.currentTimestamp = '250610_1732';
+                this.availableShows = [];
+                this.currentIndex = -1;
+                this.init();
+            }
+
+            async init() {
+                this.availableShows = await this.getAvailableShows();
+                this.currentIndex = this.getCurrentIndex();
+                this.initNavigation();
+            }
+
+            async getAvailableShows() {
+                const existingShows = [];
+                
+                // Smart detection: scan broadly for dashboard files
+                const currentTs = this.currentTimestamp;
+                const datePart = currentTs.split('_')[0]; // e.g., "250610"
+                const currentTime = parseInt(currentTs.split('_')[1]); // e.g., 1701
+                
+                // Generate comprehensive time slots for the day (every 30 minutes)
+                const timeSlots = [];
+                
+                // Start from 6:00 AM to 11:59 PM
+                for (let hour = 6; hour < 24; hour++) {
+                    for (let minute = 0; minute < 60; minute += 30) {
+                        const timeStr = hour.toString().padStart(2, '0') + 
+                                      minute.toString().padStart(2, '0');
+                        const timestamp = `${datePart}_${timeStr}`;
+                        timeSlots.push(timestamp);
+                    }
+                }
+                
+                // Check all potential time slots in parallel for better performance
+                const checkPromises = timeSlots.map(async timestamp => {
+                    try {
+                        const response = await fetch(`radiox_dashboard_fancy_${timestamp}.html`, { 
+                            method: 'HEAD',
+                            cache: 'no-cache'
+                        });
+                        return response.ok ? timestamp : null;
+                    } catch (error) {
+                        return null;
+                    }
+                });
+                
+                // Wait for all checks to complete
+                const results = await Promise.all(checkPromises);
+                
+                // Filter out null results and add to existing shows
+                results.forEach(timestamp => {
+                    if (timestamp) {
+                        existingShows.push(timestamp);
+                    }
+                });
+                
+                // Ensure current show is included (even if not found)
+                if (!existingShows.includes(this.currentTimestamp)) {
+                    existingShows.push(this.currentTimestamp);
+                }
+                
+                const sortedShows = existingShows.sort();
+                console.log('🎯 Available Shows:', sortedShows);
+                
+                return sortedShows;
+            }
+
+            getCurrentIndex() {
+                return this.availableShows.indexOf(this.currentTimestamp);
+            }
+
+            initNavigation() {
+                const prevButton = document.getElementById('prevShow');
+                const nextButton = document.getElementById('nextShow');
+
+                if (prevButton) {
+                    prevButton.addEventListener('click', () => this.goToPrevious());
+                    prevButton.disabled = this.currentIndex <= 0;
+                }
+
+                if (nextButton) {
+                    nextButton.addEventListener('click', () => this.goToNext());
+                    nextButton.disabled = this.currentIndex >= this.availableShows.length - 1;
+                }
+            }
+
+            goToPrevious() {
+                if (this.currentIndex > 0) {
+                    const prevTimestamp = this.availableShows[this.currentIndex - 1];
+                    this.navigateToShow(prevTimestamp);
+                }
+            }
+
+            goToNext() {
+                if (this.currentIndex < this.availableShows.length - 1) {
+                    const nextTimestamp = this.availableShows[this.currentIndex + 1];
+                    this.navigateToShow(nextTimestamp);
+                }
+            }
+
+            navigateToShow(timestamp) {
+                const newUrl = `radiox_dashboard_fancy_${timestamp}.html`;
+                
+                // Check if file exists before navigating
+                fetch(newUrl, { method: 'HEAD' })
+                    .then(response => {
+                        if (response.ok) {
+                            window.location.href = newUrl;
+                        } else {
+                            console.log(`Show ${timestamp} not available yet`);
+                            // Optionally show a toast message
+                        }
+                    })
+                    .catch(error => {
+                        console.log(`Cannot load show ${timestamp}: ${error.message}`);
+                    });
+            }
+        }
+
+        // Initialize navigation system
+        const navigator = new ShowNavigator();
 
         // Progress bar click and scrubbing
         if (progressBar) {
