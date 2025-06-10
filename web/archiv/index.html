@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RadioX - Professional AI Radio Station</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📻</text></svg>">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        
+        /* Reset & Base */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: 'Inter', sans-serif;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        
+        /* Container */
+        .container {
+            backdrop-filter: blur(10px);
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 1rem;
+            padding: 2rem;
+            max-width: 32rem;
+            width: 100%;
+            text-align: center;
+            color: white;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+        }
+        
+        /* Header */
+        .header {
+            margin-bottom: 1.5rem;
+        }
+        
+        .logo {
+            font-size: 3.75rem;
+            margin-bottom: 1rem;
+        }
+        
+        .title {
+            font-size: 1.875rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+        
+        .subtitle {
+            font-size: 1.125rem;
+            opacity: 0.8;
+        }
+        
+        .url {
+            font-size: 0.875rem;
+            opacity: 0.6;
+            margin-top: 0.5rem;
+        }
+        
+        /* Loading */
+        .loading {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+        
+        .loading-indicator {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.75rem;
+        }
+        
+        .loading-dot {
+            width: 0.75rem;
+            height: 0.75rem;
+            background-color: white;
+            border-radius: 9999px;
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        
+        .loading-text {
+            font-size: 1.125rem;
+        }
+        
+        .loading-subtext {
+            font-size: 0.875rem;
+            opacity: 0.6;
+        }
+        
+        /* Show Info */
+        .show-info {
+            display: none;
+            flex-direction: column;
+            gap: 1rem;
+        }
+        
+        .show-title {
+            font-size: 1.125rem;
+            font-weight: 500;
+        }
+        
+        .show-time {
+            font-size: 0.875rem;
+            opacity: 0.8;
+        }
+        
+        .actions {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+        
+        .primary-button {
+            width: 100%;
+            background-color: rgba(255, 255, 255, 0.2);
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+            font-weight: 500;
+            border: none;
+            color: white;
+            cursor: pointer;
+            transition: all 150ms ease;
+        }
+        
+        .primary-button:hover {
+            background-color: rgba(255, 255, 255, 0.3);
+        }
+        
+        .secondary-button {
+            width: 100%;
+            background-color: rgba(255, 255, 255, 0.1);
+            padding: 0.5rem 1.5rem;
+            border-radius: 0.5rem;
+            font-size: 0.875rem;
+            border: none;
+            color: white;
+            cursor: pointer;
+            transition: all 150ms ease;
+        }
+        
+        .secondary-button:hover {
+            background-color: rgba(255, 255, 255, 0.2);
+        }
+        
+        /* Show List */
+        .show-list {
+            display: none;
+            flex-direction: column;
+        }
+        
+        .show-list-title {
+            font-size: 1.125rem;
+            font-weight: 500;
+            margin-bottom: 1rem;
+        }
+        
+        .show-list-subtitle {
+            font-size: 0.75rem;
+            opacity: 0.6;
+            margin-bottom: 0.75rem;
+        }
+        
+        .shows-container {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            max-height: 16rem;
+            overflow-y: auto;
+        }
+        
+        .show-item {
+            background-color: rgba(255, 255, 255, 0.1);
+            border-radius: 0.5rem;
+            padding: 0.75rem;
+            text-align: left;
+            cursor: pointer;
+            transition: all 150ms ease;
+        }
+        
+        .show-item:hover {
+            background-color: rgba(255, 255, 255, 0.2);
+        }
+        
+        .show-item-title {
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+        
+        .show-item-meta {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.75rem;
+            opacity: 0.7;
+        }
+        
+        .back-button {
+            margin-top: 1rem;
+            font-size: 0.875rem;
+            opacity: 0.6;
+            background: none;
+            border: none;
+            color: white;
+            cursor: pointer;
+            transition: opacity 150ms ease;
+        }
+        
+        .back-button:hover {
+            opacity: 0.8;
+        }
+        
+        /* Footer */
+        .footer {
+            margin-top: 2rem;
+            padding-top: 1rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.2);
+            font-size: 0.75rem;
+            opacity: 0.6;
+        }
+        
+        .footer a {
+            color: white;
+            text-decoration: none;
+            transition: opacity 150ms ease;
+            display: inline-block;
+            margin-top: 0.25rem;
+        }
+        
+        .footer a:hover {
+            opacity: 0.8;
+        }
+        
+        /* Animations */
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="logo">📻</div>
+            <h1 class="title">RadioX</h1>
+            <p class="subtitle">Professional AI Radio Station</p>
+            <div class="url">radiox.rapold.io</div>
+        </div>
+
+        <!-- Loading State -->
+        <div id="loading" class="loading">
+            <div class="loading-indicator">
+                <div class="loading-dot"></div>
+                <span class="loading-text">Lade neueste Show...</span>
+            </div>
+            <div class="loading-subtext">Du wirst automatisch weitergeleitet</div>
+        </div>
+
+        <!-- Show Info (hidden initially) -->
+        <div id="showInfo" class="show-info">
+            <div class="show-title" id="showTitle">Neueste Show</div>
+            <div class="show-time" id="showTime"></div>
+            <div class="actions">
+                <button onclick="goToLatestShow()" class="primary-button">
+                    🎧 Show anhören
+                </button>
+                <button onclick="showAllShows()" class="secondary-button">
+                    📚 Alle Shows anzeigen
+                </button>
+            </div>
+        </div>
+
+        <!-- Show List (hidden initially) -->
+        <div id="showList" class="show-list">
+            <div class="show-list-title">📚 Verfügbare Shows</div>
+            <div class="show-list-subtitle">Die letzten 10 Shows</div>
+            <div id="showsContainer" class="shows-container">
+                <!-- Shows werden hier dynamisch eingefügt -->
+            </div>
+            <button onclick="hideShowList()" class="back-button">
+                ← Zurück
+            </button>
+        </div>
+
+        <!-- Footer -->
+        <div class="footer">
+            <div>Powered by AI • Made with ❤️ by RadioX Team</div>
+            <div>
+                <a href="https://github.com/muraschal/radiox-backend" target="_blank">
+                    🔗 GitHub Repository
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let shows = [];
+        let latestShow = null;
+
+        // Formatiere Timestamp zu lesbarem Datum
+        function formatShowTime(timestamp) {
+            const year = 2000 + parseInt(timestamp.substr(0, 2));
+            const month = parseInt(timestamp.substr(2, 2)) - 1;
+            const day = parseInt(timestamp.substr(4, 2));
+            const hour = parseInt(timestamp.substr(7, 2));
+            const minute = parseInt(timestamp.substr(9, 2));
+            
+            const date = new Date(year, month, day, hour, minute);
+            return date.toLocaleString('de-DE', {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        }
+
+        // Fallback Shows für lokales Testing
+        const fallbackShows = [
+            {
+                "timestamp": "250610_0833",
+                "htmlFile": "radiox_250610_0833.html",
+                "mp3File": "radiox_250610_0833.mp3",
+                "pngFile": "radiox_250610_0833.png",
+                "size": 1786878,
+                "audioSize": 6920428,
+                "coverSize": 1910872
+            },
+            {
+                "timestamp": "250610_0755",
+                "htmlFile": "radiox_250610_0755.html",
+                "mp3File": "radiox_250610_0755.mp3",
+                "pngFile": "radiox_250610_0755.png",
+                "size": 1776502,
+                "audioSize": 6787445,
+                "coverSize": 1777889
+            }
+        ];
+
+        // Lade Shows aus JSON mit Fallback
+        async function loadShows() {
+            try {
+                const response = await fetch('shows.json');
+                if (response.ok) {
+                    const data = await response.json();
+                    shows = data.shows || [];
+                    latestShow = shows[0]; // Erste Show ist die neueste
+                    
+                    if (latestShow) {
+                        showLatestShow();
+                        // Auto-redirect nach 4 Sekunden
+                        setTimeout(() => {
+                            window.location.href = latestShow.htmlFile;
+                        }, 4000);
+                    } else {
+                        showError('Keine Shows verfügbar');
+                    }
+                } else {
+                    throw new Error('shows.json nicht gefunden');
+                }
+            } catch (error) {
+                console.error('Fehler beim Laden der Shows:', error);
+                console.log('Verwende Fallback-Shows für lokales Testing...');
+                
+                // Fallback für lokales Testing
+                shows = fallbackShows;
+                latestShow = shows[0];
+                
+                if (latestShow) {
+                    showLatestShow();
+                    // Kein Auto-redirect im Fallback-Modus
+                    document.getElementById('showInfo').querySelector('.show-time').textContent = 
+                        'Lokaler Test-Modus (shows.json nicht gefunden)';
+                } else {
+                    showError('Keine Shows verfügbar (auch nicht im Fallback)');
+                }
+            }
+        }
+
+        function showLatestShow() {
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('showInfo').style.display = 'flex';
+            
+            document.getElementById('showTitle').textContent = `Show vom ${formatShowTime(latestShow.timestamp)}`;
+            document.getElementById('showTime').textContent = `Audio: ${Math.round(latestShow.audioSize / 1024 / 1024)} MB`;
+        }
+
+        function showError(message) {
+            document.getElementById('loading').innerHTML = `
+                <div style="color: #ff9999;">❌ ${message}</div>
+                <div class="loading-subtext">Versuche es später erneut</div>
+            `;
+        }
+
+        function goToLatestShow() {
+            if (latestShow) {
+                window.location.href = latestShow.htmlFile;
+            }
+        }
+
+        function showAllShows() {
+            document.getElementById('showInfo').style.display = 'none';
+            document.getElementById('showList').style.display = 'flex';
+            
+            const container = document.getElementById('showsContainer');
+            container.innerHTML = shows.map(show => `
+                <div class="show-item" onclick="window.location.href='${show.htmlFile}'">
+                    <div class="show-item-title">Show vom ${formatShowTime(show.timestamp)}</div>
+                    <div class="show-item-meta">
+                        <span>HTML: ${Math.round(show.size / 1024 / 1024)} MB</span>
+                        <span>🎧 ${Math.round(show.audioSize / 1024 / 1024)} MB</span>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function hideShowList() {
+            document.getElementById('showList').style.display = 'none';
+            document.getElementById('showInfo').style.display = 'flex';
+        }
+
+        // Starte beim Laden der Seite
+        window.addEventListener('load', loadShows);
+    </script>
+</body>
+</html> 
