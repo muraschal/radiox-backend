@@ -11,11 +11,11 @@
     <meta property="og:description" content="AI-generated. Enterprise quality. Zero compromise. It's the future, and it's loud.">
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://radiox.ai">
-    <meta property="og:image" content="radiox_250610_1345.png">
+    <meta property="og:image" content="radiox_250610_1529.png">
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="RadioX – Your Radio, Just Got Smarter.">
     <meta name="twitter:description" content="AI-generated. Enterprise quality. Zero compromise. It's the future, and it's loud.">
-    <meta name="twitter:image" content="radiox_250610_1345.png">
+    <meta name="twitter:image" content="radiox_250610_1529.png">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📻</text></svg>">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
@@ -737,6 +737,19 @@
              color: #667eea;
          }
         
+        /* Tablet Optimierung */
+        @media (max-width: 1024px) {
+            .header {
+                padding: 3rem 1rem;
+            }
+            .title {
+                font-size: 5rem;
+            }
+            .subtitle {
+                font-size: 1.1rem;
+            }
+        }
+        
         /* Mobile Responsive */
         @media (max-width: 768px) {
             .player-content {
@@ -765,8 +778,16 @@
             .articles-grid {
                 grid-template-columns: 1fr;
             }
+            
+            .header {
+                padding: 2rem 1rem;
+            }
             .title {
-                font-size: 4rem;
+                font-size: 3.5rem;
+            }
+            .subtitle {
+                font-size: 1rem;
+                line-height: 1.4;
             }
         }
         
@@ -780,12 +801,51 @@
                 padding: 1rem;
             }
             
+            .header {
+                padding: 1.5rem 0.5rem;
+            }
             .title {
-                font-size: 3rem;
+                font-size: 2.5rem;
+                letter-spacing: -0.03em;
+                line-height: 1.1;
+            }
+            .subtitle {
+                font-size: 0.9rem;
+                line-height: 1.4;
+                padding: 0 0.5rem;
             }
             
             .audio-title {
                 font-size: 1.4rem;
+            }
+            
+            .stats-container {
+                grid-template-columns: 1fr;
+                gap: 0.5rem;
+            }
+        }
+        
+        /* Extra Small Mobile */
+        @media (max-width: 360px) {
+            .header {
+                padding: 1rem 0.5rem;
+            }
+            .title {
+                font-size: 2rem;
+                line-height: 1;
+            }
+            .subtitle {
+                font-size: 0.8rem;
+                padding: 0 1rem;
+            }
+            
+            .audio-title {
+                font-size: 1.2rem;
+            }
+            
+            .cover-image {
+                width: 200px;
+                height: 200px;
             }
         }
     </style>
@@ -794,7 +854,9 @@
     <!-- Header -->
     <header class="header">
         <div class="logo-container">
-            <h1 class="title">RADIO<span class="red-x">X</span><sup class="ai-sup">AI</sup></h1>
+            <a href="index.html" style="text-decoration: none; color: inherit;">
+                <h1 class="title">RADIO<span class="red-x">X</span><sup class="ai-sup">AI</sup></h1>
+            </a>
             <p class="subtitle">AI-generated. Enterprise quality. Zero compromise. It's the future, and it's loud.</p>
         </div>
     </header>
@@ -806,15 +868,15 @@
             <div class="glasmorph-player">
                 <div class="player-content">
                     <div class="cover-container">
-                        <img src="radiox_250610_1345.png" alt="RadioX Cover" class="cover-image">
+                        <img src="radiox_250610_1529.png" alt="RadioX Cover" class="cover-image">
                         <div class="play-overlay" id="playButton">
                             <span class="play-icon">▶</span>
                         </div>
                     </div>
                     <div class="audio-info">
-                        <h2 class="audio-title">Global News | 250610_1345 Edition</h2>
+                        <h2 class="audio-title">HOT GLOBAL | 15:29 Edition</h2>
                         <div class="audio-meta">
-                            Global News - Eilmeldungen aus allen Perspektiven
+                            HOT GLOBAL - Eilmeldungen aus allen Perspektiven
                         </div>
                         <div class="custom-controls">
                             <div class="progress-container">
@@ -839,7 +901,7 @@
         
         <!-- Hidden Audio Element -->
         <audio class="hidden-audio" id="audioPlayer" preload="metadata">
-            <source src="radiox_250610_1345.mp3" type="audio/mpeg">
+            <source src="radiox_250610_1529.mp3" type="audio/mpeg">
             Your browser does not support the audio element.
         </audio>
     </section>
@@ -852,7 +914,7 @@
                 
                 <div class="stat-card">
                     <div class="stat-icon">📰</div>
-                    <div class="stat-value">1231</div>
+                    <div class="stat-value">1288</div>
                     <div class="stat-label">News Total</div>
                 </div>
                 <div class="stat-card">
@@ -862,25 +924,25 @@
                 </div>
                 <div class="stat-card">
                     <div class="stat-icon">📡</div>
-                    <div class="stat-value">13</div>
+                    <div class="stat-value">14</div>
                     <div class="stat-label">Sources</div>
                 </div>
                 <div class="stat-card">
                     <div class="stat-icon">🤖</div>
-                    <div class="stat-value">409</div>
+                    <div class="stat-value">399</div>
                     <div class="stat-label">GPT Words</div>
                 </div>
                 <div class="stat-card">
                     <div class="stat-icon">🌡️</div>
-                    <div class="stat-value">N/A°C</div>
+                    <div class="stat-value">25.5°C°C</div>
                     <div class="stat-label">Temperature</div>
                     <div class="stat-trend trend-neutral"></div>
                 </div>
                 <div class="stat-card">
                     <div class="stat-icon">₿</div>
-                    <div class="stat-value">$109,838</div>
+                    <div class="stat-value">$109,799</div>
                     <div class="stat-label">Bitcoin</div>
-                    <div class="stat-trend trend-up">↗ +1.9% today</div>
+                    <div class="stat-trend trend-up">↗ +2.0% today</div>
                 </div>
             </div>
         </div>
@@ -893,17 +955,15 @@
             <div class="bg-white rounded-lg shadow-sm">
                 <div class="bg-orange-500 text-white px-4 py-3 rounded-t-lg">
                     <h3 class="font-bold">🌤️ Weather Intelligence</h3>
-                    <div class="text-xs text-orange-200">GPT-powered time-aware analysis</div>
                 </div>
                 <div class="p-4">
                     <div class="bg-orange-50 border border-orange-200 p-3 rounded">
                         <div class="text-sm text-orange-800 leading-relaxed">
-                            ""Currently, it's a pleasant 24.3°C with clear skies in Zurich. The temperature will slightly rise to 24.8°C by 17:00 with some scattered clouds and no chance of rain. The wind speed will also increase to 14.8 km/h, so it's a perfect day for outdoor activities.""
+                            "Zurich is enjoying a clear sky with a pleasant 25.5°C. The temperature will slightly rise to 25.7°C by 5pm with scattered clouds, and cool down to 23.4°C by 8pm under broken clouds. No rain is expected for the rest of the day, so enjoy the outdoors!"
                         </div>
                     </div>
-                    <div class="mt-3 text-xs text-gray-600 flex justify-between">
+                    <div class="mt-3 text-xs text-gray-600">
                         <span>Zürich</span>
-                        <span>Live Analysis</span>
                     </div>
                 </div>
             </div>
@@ -912,17 +972,12 @@
             <div class="bg-white rounded-lg shadow-sm">
                 <div class="bg-yellow-500 text-white px-4 py-3 rounded-t-lg">
                     <h3 class="font-bold">₿ Bitcoin Intelligence</h3>
-                    <div class="text-xs text-yellow-200">GPT-powered market analysis with delta relevance</div>
                 </div>
                 <div class="p-4">
                     <div class="bg-yellow-50 border border-yellow-200 p-3 rounded">
                         <div class="text-sm text-yellow-800 leading-relaxed">
-                            ""Bitcoin is currently priced at $109,838, showing a steady increase of 1.9% over the past 24 hours. With European markets in full swing and US markets just opening, the cryptocurrency maintains its stability, reflecting a solid 4.3% growth over the past week.""
+                            "Bitcoin is currently priced at $109,799, showing a steady increase of 2% over the last 24 hours. As European markets continue to operate and US markets open, the cryptocurrency maintains its stability, reflecting a positive growth of 5.3% over the past month. Keep an eye on the active alerts for any significant changes."
                         </div>
-                    </div>
-                    <div class="mt-3 text-xs text-gray-600 flex justify-between">
-                        <span>Market Analysis</span>
-                        <span>Live Intelligence</span>
                     </div>
                 </div>
             </div>
@@ -933,58 +988,58 @@
         <!-- Selected Articles -->
         <div class="content-section">
             <div class="content-container">
-                <h2 class="section-title">🤖 Featured Stories for the 'Global News' radio show</h2>
+                <h2 class="section-title">🤖 Featured Stories for the 'HOT GLOBAL' radio show</h2>
                 <div class="articles-grid">
                     
                 <article class="article-card">
                     <div class="article-meta">
-                        <span class="article-badge badge-source">Cash</span>
-                        <span class="article-badge badge-category">wirtschaft</span>
-                        <span class="article-badge badge-time">2.6h ago</span>
+                        <span class="article-badge badge-source">Techcrunch</span>
+                        <span class="article-badge badge-category">latest</span>
+                        <span class="article-badge badge-time">2.1h ago</span>
                     </div>
-                    <h3 class="article-title">Bericht: Zuckerberg heuert persönlich Entwickler für Super-KI an</h3>
-                    <p class="article-excerpt">Künstliche Intelligenz - Meta-Gründer Mark Zuckerberg macht die Anwerbung neuer Experten für Künstliche Intelligenz  zur Chefsache.</p>
+                    <h3 class="article-title">Ongoing cyberattack at US grocery distributor giant UNFI affecting customer orders</h3>
+                    <p class="article-excerpt">United Natural Foods said it is "diligently managing through the cyber incident" that sparked disruption outages.</p>
                     <div class="article-actions">
-                        <a href="https://www.cash.ch/news/top-news/bericht-zuckerberg-heuert-personlich-entwickler-fur-super-ki-an-832041" target="_blank" class="action-link">🔗 Read more</a>
-                        <a href="https://www.cash.ch/feeds/latest/top-news" target="_blank" class="action-link">📡 Source</a>
+                        <a href="https://techcrunch.com/2025/06/10/ongoing-cyberattack-at-us-grocery-distributor-giant-unfi-affecting-customer-orders/" target="_blank" class="action-link">🔗 Read more</a>
+                        <a href="https://techcrunch.com/feed/" target="_blank" class="action-link">📡 Source</a>
                     </div>
                 </article>
                 <article class="article-card">
                     <div class="article-meta">
                         <span class="article-badge badge-source">Bbc</span>
                         <span class="article-badge badge-category">international</span>
-                        <span class="article-badge badge-time">4.3h ago</span>
+                        <span class="article-badge badge-time">2.2h ago</span>
                     </div>
-                    <h3 class="article-title">BTS stars finish military service as fans await comeback</h3>
-                    <p class="article-excerpt">RM and V were discharged on Tuesday and all seven BTS members would have finished the requirement by the end of June.</p>
+                    <h3 class="article-title">Ten dead in Austria school shooting</h3>
+                    <p class="article-excerpt">Police say the gunman is among the dead, but is not clear if he was a current or former student at the school.</p>
                     <div class="article-actions">
-                        <a href="https://www.bbc.com/news/articles/cwynzkg7ml7o" target="_blank" class="action-link">🔗 Read more</a>
+                        <a href="https://www.bbc.com/news/articles/ced27g4e6xwo" target="_blank" class="action-link">🔗 Read more</a>
                         <a href="http://feeds.bbci.co.uk/news/world/rss.xml" target="_blank" class="action-link">📡 Source</a>
                     </div>
                 </article>
                 <article class="article-card">
                     <div class="article-meta">
-                        <span class="article-badge badge-source">20Min</span>
-                        <span class="article-badge badge-category">wirtschaft</span>
-                        <span class="article-badge badge-time">4.9h ago</span>
+                        <span class="article-badge badge-source">Bbc</span>
+                        <span class="article-badge badge-category">international</span>
+                        <span class="article-badge badge-time">3.2h ago</span>
                     </div>
-                    <h3 class="article-title">Apple-Keynote: Das wahre Highlight und die grösste Enttäuschung</h3>
-                    <p class="article-excerpt">Worauf können sich Apple-Fans freuen und wo verliert der Konzern den Anschluss? Digital-Experte Jean-Claude Frick ordnet die Keynote ein.</p>
+                    <h3 class="article-title">Greta Thunberg deported, Israel says, after Gaza aid boat intercepted</h3>
+                    <p class="article-excerpt">The activists' yacht, which was trying to carry aid to Gaza, was intercepted by Israeli forces in the early hours of Monday.</p>
                     <div class="article-actions">
-                        <a href="https://www.20min.ch/story/wwdc-2025-apple-keynote-das-wahre-highlight-und-die-groesste-enttaeuschung-103361793" target="_blank" class="action-link">🔗 Read more</a>
-                        <a href="https://partner-feeds.beta.20min.ch/rss/20minuten/wirtschaft" target="_blank" class="action-link">📡 Source</a>
+                        <a href="https://www.bbc.com/news/articles/c5y264x3nnno" target="_blank" class="action-link">🔗 Read more</a>
+                        <a href="http://feeds.bbci.co.uk/news/world/rss.xml" target="_blank" class="action-link">📡 Source</a>
                     </div>
                 </article>
                 <article class="article-card">
                     <div class="article-meta">
                         <span class="article-badge badge-source">Nzz</span>
                         <span class="article-badge badge-category">international</span>
-                        <span class="article-badge badge-time">10.2h ago</span>
+                        <span class="article-badge badge-time">4.2h ago</span>
                     </div>
-                    <h3 class="article-title">Wie Erdogan der türkischen Opposition langsam die Luft abschnürt</h3>
-                    <p class="article-excerpt">Seit der Verhaftung des Istanbuler Bürgermeisters wächst der Druck auf die grösste türkische Oppositionspartei CHP. Auch intern gibt es Ärger. Ein Gerichtsurteil Ende Juni könnte d...</p>
+                    <h3 class="article-title">LIVE-TICKER - Proteste in Kalifornien: Trump beordert Marines und weitere 2000 Nationalgardisten nach Los Angeles +++ Gouverneur Newsom hält Einsatz von Soldaten für «unamerikanisch»</h3>
+                    <p class="article-excerpt">In Kalifornien protestieren Menschen gegen die Migrationspolitik der US-Regierung. Präsident Donald Trump setzt Nationalgarde und Soldaten dagegen ein. Die wichtigsten Neuigkeiten ...</p>
                     <div class="article-actions">
-                        <a href="https://www.nzz.ch/international/wie-erdogan-der-tuerkischen-opposition-langsam-die-luft-abschnuert-ld.1888177" target="_blank" class="action-link">🔗 Read more</a>
+                        <a href="https://www.nzz.ch/international/proteste-gegen-abschiebungen-in-kalifornien-journalistin-bei-live-schalte-in-los-angeles-von-geschoss-getroffen-ausschreitungen-auch-in-san-francisco-ld.1888176" target="_blank" class="action-link">🔗 Read more</a>
                         <a href="https://www.nzz.ch/international.rss" target="_blank" class="action-link">📡 Source</a>
                     </div>
                 </article>
@@ -1015,13 +1070,17 @@
                     </div>
                     <div class="dev-info-full">
                         <h4 style="color: #ccc; margin-bottom: 1rem;">📤 Input Prompt</h4>
-                        <pre class="dev-prompt">{&#x27;stage1_selection_prompt&#x27;: &quot;\n# SYSTEM PROMPT – RADIOX ARTICLE SELECTOR\n\n## MISSION\nYou are an expert content strategist and radio news curator. Your task is to select exactly 4 articles from the provided list that best fit the upcoming show – based on its unique tone, scope, and speaker style.\n\n## SHOW CONTEXT\n**Show Style:** \nShow: Global News | Focus: Global\nStyle: Global News - Eilmeldungen aus allen Perspektiven\n\n**Speaker Descriptions:**\nBrad: Brad is a sharp, modern news anchor with a cool, composed edge. He delivers breaking headlines fast, clear, and always on beat, but brings human pulse to every segment through knowing pauses and subtle inflection. His voice carries professional confidence without stiffness, natural charisma without effort. Whether cov...</pre>
+                        <pre class="dev-prompt">{&#x27;stage1_selection_prompt&#x27;: &quot;\n# SYSTEM PROMPT – RADIOX ARTICLE SELECTOR\n\n## MISSION\nYou are an expert content strategist and radio news curator. Your task is to select exactly 4 articles from the provided list that best fit the upcoming show – based on its unique tone, scope, and speaker style.\n\n## SHOW CONTEXT\n**Show Style:** \nShow: HOT GLOBAL | Focus: Global\nStyle: HOT GLOBAL - Eilmeldungen aus allen Perspektiven\n\n**Speaker Descriptions:**\nBrad: Brad is a sharp, modern news anchor with a cool, composed edge. He delivers breaking headlines fast, clear, and always on beat, but brings human pulse to every segment through knowing pauses and subtle inflection. His voice carries professional confidence without stiffness, natural charisma without effort. Whether cover...</pre>
                         <h4 style="color: #ccc; margin: 2rem 0 1rem;">📥 Generated Radio Script</h4>
-                        <pre class="dev-prompt">brad: Good afternoon, world! Coming to you live, I&#x27;m Brad, your trusted gatekeeper to the buzzing news hive. This is Global News. Let&#x27;s dive right in, shall we?
+                        <pre class="dev-prompt">BRAD: And good afternoon, humanity! This is Brad, your voice in the whirlwind of global events, serving you the latest, the fastest, and the hottest, with style! 
 
-In the tech world, Facebook—excuse me, Meta&#x27;s top dog Mark Zuckerberg is personally recruiting developers for Super AI. Yes, you heard that right. It&#x27;s no longer just about connecting people, it&#x27;s about leading the race towards the next frontier of artificial intelligence. And who better to get the job done than the man himself?
+LUCY: And I&#x27;m Lucy, infusing the airwaves with an intimate allure. Let&#x27;s dive into our breaking headlines, shall we?
 
-In the realm of music and pop culture, the world collectively heaves a sigh of relief as members of the global sensation BTS wrap up their military service. Fans, take heart! The boys are back in town and we await their epic comeback. Now, that&#x27;s what I call service to fans a...</pre>
+BRAD: Right on, Lucy. It seems the digital world is under siege again. United Natural Foods is diligently managing a cyberattack that&#x27;s wreaking havoc on customer orders. What&#x27;s your take, Lucy?
+
+LUCY: Well, Brad, it&#x27;s like a digital storm disrupting the calm of online groceries. All we can do is hope they weather it without too much damage.
+
+BRAD: Indeed. Now, a deeply unsettling event in Austria - a school shooting leaving ten tragically dead. The gunman is among the casualties, but his...</pre>
                     </div>
                 </div>
             </div>
@@ -1041,9 +1100,9 @@ In the realm of music and pop culture, the world collectively heaves a sigh of r
 ========================
 
 📊 Real-time Data Processing:
-- News Collection: 1231 articles processed
-- Source Diversity: 13 unique sources
-- GPT Processing: 409 words generated
+- News Collection: 1288 articles processed
+- Source Diversity: 14 unique sources
+- GPT Processing: 399 words generated
 - Data Freshness: Live updates every workflow run
 
 🔄 Processing Pipeline:
