@@ -54,7 +54,7 @@ class AudioGenerationService:
     - Error Handling (Graceful degradation)
     """
     
-    __slots__ = ('_settings', '_voice_service', '_image_service', '_config', '_output_dir', '_ffmpeg_path')
+    __slots__ = ('_settings', '_voice_service', '_image_service', '_config', '_output_dir', '_ffmpeg_path', '_current_show_config')
     
     def __init__(self):
         self._settings = get_settings()
@@ -63,6 +63,9 @@ class AudioGenerationService:
         
         # Lazy loading for ImageGenerationService - not in __init__!
         self._image_service = None
+        
+        # Current show configuration for speaker detection
+        self._current_show_config = None
         
         # Setup paths - use temp directory for clean organization
         self._output_dir = Path(__file__).parent.parent.parent.parent / "temp"
@@ -98,7 +101,7 @@ class AudioGenerationService:
     
     async def generate_audio_from_script(
         self, script: Dict[str, Any], include_music: bool = False,
-        export_format: str = "mp3"
+        export_format: str = "mp3", show_config: Dict[str, Any] = None
     ) -> Dict[str, Any]:
         """
         Main audio generation pipeline.
@@ -110,6 +113,9 @@ class AudioGenerationService:
         
         if not self._settings.elevenlabs_api_key:
             return {"success": False, "error": "ElevenLabs API key missing."}
+        
+        # Store show config for use in parsing (if provided)
+        self._current_show_config = show_config
         
         segments = self._parse_script_into_segments(script_content)
         if not segments:
@@ -128,6 +134,9 @@ class AudioGenerationService:
         
         if include_music and final_audio:
             final_audio = await self._add_background_music(final_audio, session_id)
+        
+        # Clear show config after use
+        self._current_show_config = None
         
         return await self._create_audio_result(final_audio, segments, script, session_id)
     
@@ -240,11 +249,20 @@ class AudioGenerationService:
             return None
     
     def _parse_script_into_segments(self, script_content: str) -> List[Dict[str, Any]]:
-        """Parse script into speaker segments efficiently with automatic Lucy weather integration"""
+        """Parse script into speaker segments efficiently with automatic Lucy weather integration and solo show support"""
         
         if not script_content:
             return []
         
+        # Check if this is a solo show (no speaker tags)
+        has_speaker_tags = any(':' in line and line.split(':', 1)[0].strip().isupper() 
+                              for line in script_content.split('\n') if line.strip())
+        
+        if not has_speaker_tags:
+            # Solo show: Parse by paragraphs instead of speaker tags
+            return self._parse_solo_script_by_paragraphs(script_content)
+        
+        # Duo show: Parse by speaker tags (existing logic)
         segments = []
         lines = script_content.strip().split('\n')
         
@@ -287,6 +305,89 @@ class AudioGenerationService:
                     })
         
         return segments
+    
+    def _parse_solo_script_by_paragraphs(self, script_content: str) -> List[Dict[str, Any]]:
+        """Parse solo show script by paragraphs with intelligent speaker assignment"""
+        
+        segments = []
+        
+        # Split by double newlines to get paragraphs
+        paragraphs = [p.strip() for p in script_content.split('\n\n') if p.strip()]
+        
+        # If no double newlines, split by single newlines but group related sentences
+        if len(paragraphs) <= 1:
+            lines = [line.strip() for line in script_content.split('\n') if line.strip()]
+            paragraphs = self._group_lines_into_paragraphs(lines)
+        
+        # Determine primary speaker from available voices or use intelligent fallback
+        primary_speaker = self._get_primary_speaker_for_solo_show()
+        
+        for paragraph in paragraphs:
+            if not paragraph:
+                continue
+            
+            # Intelligent speaker assignment for solo shows
+            speaker = self._get_solo_speaker_for_paragraph(paragraph, primary_speaker)
+            
+            segments.append({
+                "speaker": speaker,
+                "text": paragraph,
+                "original_speaker": "solo-monologue",
+                "auto_assigned": speaker != primary_speaker  # True if not primary speaker
+            })
+        
+        return segments
+    
+    def _group_lines_into_paragraphs(self, lines: List[str]) -> List[str]:
+        """Group single lines into logical paragraphs for solo shows"""
+        if not lines:
+            return []
+        
+        paragraphs = []
+        current_paragraph = []
+        
+        for line in lines:
+            current_paragraph.append(line)
+            
+            # End paragraph on natural breaks (sentences ending with ., !, ?)
+            # or when we have enough content (3-4 sentences)
+            if (line.endswith(('.', '!', '?')) and len(current_paragraph) >= 2) or len(current_paragraph) >= 4:
+                paragraphs.append(' '.join(current_paragraph))
+                current_paragraph = []
+        
+        # Add remaining lines as final paragraph
+        if current_paragraph:
+            paragraphs.append(' '.join(current_paragraph))
+        
+        return paragraphs
+    
+    def _get_primary_speaker_for_solo_show(self) -> str:
+        """Get primary speaker directly from show config - DB-driven, no fallbacks"""
+        
+        if not self._current_show_config:
+            raise ValueError("❌ No show_config provided - system requires database configuration")
+        
+        try:
+            primary_speaker_config = self._current_show_config.get("speaker", {})
+            voice_name = primary_speaker_config.get("voice_name", "").lower()
+            
+            if not voice_name:
+                raise ValueError("❌ No voice_name in show_config speaker configuration")
+            
+            return voice_name
+            
+        except Exception as e:
+            raise ValueError(f"❌ Failed to extract speaker from show_config: {e}")
+    
+    def _get_solo_speaker_for_paragraph(self, paragraph: str, primary_speaker: str) -> str:
+        """Determine the best speaker for a solo paragraph - now fully generic!"""
+        
+        # 🌤️ Weather content goes to Lucy (special case)
+        if self._is_weather_content(paragraph):
+            return "lucy"
+        
+        # For solo shows, use the dynamic primary speaker (not hardcoded Marcel!)
+        return primary_speaker
     
     def _get_speaker_for_content(self, speaker_raw: str, text: str) -> str:
         """Determine the best speaker for given content with automatic Lucy weather assignment"""
@@ -788,12 +889,18 @@ class AudioGenerationService:
         script_content = processed_data.get("radio_script", "")
         session_id = processed_data.get("session_id", f"session_{datetime.now().strftime('%Y%m%d_%H%M%S')}")
         
+        # Extract show_config from processed_data for generic speaker support
+        show_config = processed_data.get("show_config", {})
+        
         # Filter kwargs to only pass parameters that generate_audio_from_script accepts
         valid_kwargs = {}
         if "include_music" in kwargs:
             valid_kwargs["include_music"] = kwargs["include_music"]
         if "export_format" in kwargs:
             valid_kwargs["export_format"] = kwargs["export_format"]
+        
+        # Add show_config for generic speaker support
+        valid_kwargs["show_config"] = show_config
         
         return await self.generate_audio_from_script(
             {"script_content": script_content, "session_id": session_id}, 

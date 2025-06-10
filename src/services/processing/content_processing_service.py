@@ -457,6 +457,9 @@ class ContentProcessingService:
             show_config, weather, primary_speaker_config, secondary_speaker_config
         )
         
+        # Check if this is a solo show
+        is_duo_show = show_details.get("is_duo_show", False)
+        
         # Build show style from database configuration
         show_style = self._create_show_style_description(show_details)
         
@@ -492,9 +495,7 @@ Write the entire dialogue in ENGLISH. All speaker dialogue must be in English la
 Current time guidance: {greeting_guidance}
 
 📋 FORMAT:
-Output only the speakable text in this format:
-SPEAKER: ...
-SPEAKER2: ...
+{self._get_format_instructions(is_duo_show)}
 
 No explanations. No narrative text. No names in dialogue unless naturally occurring.
 
@@ -839,6 +840,23 @@ Only the dialogue text - directly usable as radio script."""
         except Exception as e:
             logger.error(f"Failed to create content blocks: {e}")
             return "Content blocks unavailable"
+
+    def _get_format_instructions(self, is_duo_show: bool) -> str:
+        """Returns format instructions based on whether it's a solo or duo show"""
+        if is_duo_show:
+            # Traditional dialogue format for duo shows
+            return """Output only the speakable text in this format:
+SPEAKER: ...
+SPEAKER2: ..."""
+        else:
+            # Natural monologue format for solo shows
+            return """Output only the speakable text as a natural monologue with paragraph breaks:
+
+First paragraph about the topic...
+
+Second paragraph transitioning to next topic...
+
+Third paragraph with conclusion or weather/crypto update..."""
     
 
     
