@@ -180,6 +180,9 @@ class AudioGenerationService:
             voice_id = voice_config["voice_id"]
             url = f"{self._config.api_base_url}/text-to-speech/{voice_id}"
             
+            # 🎤 Using voice ID from database configuration
+            logger.info(f"🎤 Using voice ID from database: {voice_id}")
+            
             payload = {
                 "text": self._enhance_text_for_speech(text, speaker),
                 "model_id": voice_config.get("model_id", "eleven_turbo_v2"),
