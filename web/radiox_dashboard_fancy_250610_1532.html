@@ -11,11 +11,11 @@
     <meta property="og:description" content="AI-generated. Enterprise quality. Zero compromise. It's the future, and it's loud.">
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://radiox.ai">
-    <meta property="og:image" content="radiox_250610_1347.png">
+    <meta property="og:image" content="radiox_250610_1532.png">
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="RadioX – Your Radio, Just Got Smarter.">
     <meta name="twitter:description" content="AI-generated. Enterprise quality. Zero compromise. It's the future, and it's loud.">
-    <meta name="twitter:image" content="radiox_250610_1347.png">
+    <meta name="twitter:image" content="radiox_250610_1532.png">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📻</text></svg>">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
@@ -737,6 +737,19 @@
              color: #667eea;
          }
         
+        /* Tablet Optimierung */
+        @media (max-width: 1024px) {
+            .header {
+                padding: 3rem 1rem;
+            }
+            .title {
+                font-size: 5rem;
+            }
+            .subtitle {
+                font-size: 1.1rem;
+            }
+        }
+        
         /* Mobile Responsive */
         @media (max-width: 768px) {
             .player-content {
@@ -765,8 +778,16 @@
             .articles-grid {
                 grid-template-columns: 1fr;
             }
+            
+            .header {
+                padding: 2rem 1rem;
+            }
             .title {
-                font-size: 4rem;
+                font-size: 3.5rem;
+            }
+            .subtitle {
+                font-size: 1rem;
+                line-height: 1.4;
             }
         }
         
@@ -780,12 +801,51 @@
                 padding: 1rem;
             }
             
+            .header {
+                padding: 1.5rem 0.5rem;
+            }
             .title {
-                font-size: 3rem;
+                font-size: 2.5rem;
+                letter-spacing: -0.03em;
+                line-height: 1.1;
+            }
+            .subtitle {
+                font-size: 0.9rem;
+                line-height: 1.4;
+                padding: 0 0.5rem;
             }
             
             .audio-title {
                 font-size: 1.4rem;
+            }
+            
+            .stats-container {
+                grid-template-columns: 1fr;
+                gap: 0.5rem;
+            }
+        }
+        
+        /* Extra Small Mobile */
+        @media (max-width: 360px) {
+            .header {
+                padding: 1rem 0.5rem;
+            }
+            .title {
+                font-size: 2rem;
+                line-height: 1;
+            }
+            .subtitle {
+                font-size: 0.8rem;
+                padding: 0 1rem;
+            }
+            
+            .audio-title {
+                font-size: 1.2rem;
+            }
+            
+            .cover-image {
+                width: 200px;
+                height: 200px;
             }
         }
     </style>
@@ -794,7 +854,9 @@
     <!-- Header -->
     <header class="header">
         <div class="logo-container">
-            <h1 class="title">RADIO<span class="red-x">X</span><sup class="ai-sup">AI</sup></h1>
+            <a href="index.html" style="text-decoration: none; color: inherit;">
+                <h1 class="title">RADIO<span class="red-x">X</span><sup class="ai-sup">AI</sup></h1>
+            </a>
             <p class="subtitle">AI-generated. Enterprise quality. Zero compromise. It's the future, and it's loud.</p>
         </div>
     </header>
@@ -806,15 +868,15 @@
             <div class="glasmorph-player">
                 <div class="player-content">
                     <div class="cover-container">
-                        <img src="radiox_250610_1347.png" alt="RadioX Cover" class="cover-image">
+                        <img src="radiox_250610_1532.png" alt="RadioX Cover" class="cover-image">
                         <div class="play-overlay" id="playButton">
                             <span class="play-icon">▶</span>
                         </div>
                     </div>
                     <div class="audio-info">
-                        <h2 class="audio-title">Global News | 250610_1347 Edition</h2>
+                        <h2 class="audio-title">ZURICH LOCAL | 15:32 Edition</h2>
                         <div class="audio-meta">
-                            Global News - Eilmeldungen aus allen Perspektiven
+                            the hottest news from zurich
                         </div>
                         <div class="custom-controls">
                             <div class="progress-container">
@@ -839,7 +901,7 @@
         
         <!-- Hidden Audio Element -->
         <audio class="hidden-audio" id="audioPlayer" preload="metadata">
-            <source src="radiox_250610_1347.mp3" type="audio/mpeg">
+            <source src="radiox_250610_1532.mp3" type="audio/mpeg">
             Your browser does not support the audio element.
         </audio>
     </section>
@@ -852,7 +914,7 @@
                 
                 <div class="stat-card">
                     <div class="stat-icon">📰</div>
-                    <div class="stat-value">1231</div>
+                    <div class="stat-value">1278</div>
                     <div class="stat-label">News Total</div>
                 </div>
                 <div class="stat-card">
@@ -867,20 +929,20 @@
                 </div>
                 <div class="stat-card">
                     <div class="stat-icon">🤖</div>
-                    <div class="stat-value">405</div>
+                    <div class="stat-value">427</div>
                     <div class="stat-label">GPT Words</div>
                 </div>
                 <div class="stat-card">
                     <div class="stat-icon">🌡️</div>
-                    <div class="stat-value">N/A°C</div>
+                    <div class="stat-value">25.3°C°C</div>
                     <div class="stat-label">Temperature</div>
                     <div class="stat-trend trend-neutral"></div>
                 </div>
                 <div class="stat-card">
                     <div class="stat-icon">₿</div>
-                    <div class="stat-value">$109,763</div>
+                    <div class="stat-value">$109,753</div>
                     <div class="stat-label">Bitcoin</div>
-                    <div class="stat-trend trend-up">↗ +1.8% today</div>
+                    <div class="stat-trend trend-up">↗ +2.0% today</div>
                 </div>
             </div>
         </div>
@@ -897,7 +959,7 @@
                 <div class="p-4">
                     <div class="bg-orange-50 border border-orange-200 p-3 rounded">
                         <div class="text-sm text-orange-800 leading-relaxed">
-                            "Currently in Zurich, it's a pleasant 24.3°C with clear skies. Expect the temperature to slightly rise to 24.8°C by 5pm, accompanied by scattered clouds and a wind speed of 14.8. No rain is in sight for the rest of the day, so enjoy the beautiful weather."
+                            "Zurich is currently enjoying a clear sky with a pleasant 25.3°C. Expect scattered clouds later in the afternoon with a slight increase in temperature to 25.7°C. As we move into the evening, the temperature will cool down to 23.4°C under broken clouds."
                         </div>
                     </div>
                     <div class="mt-3 text-xs text-gray-600">
@@ -914,7 +976,7 @@
                 <div class="p-4">
                     <div class="bg-yellow-50 border border-yellow-200 p-3 rounded">
                         <div class="text-sm text-yellow-800 leading-relaxed">
-                            "Bitcoin is currently trading at $109,763, showing a steady growth of 1.8% in the last 24 hours. As European markets continue to operate and US markets begin, the cryptocurrency demonstrates stability with a 5% increase over the past month and a significant 32.6% surge over the last 90 days."
+                            "Bitcoin is currently priced at $109,753, showing a steady increase of 2% over the last 24 hours. As European markets continue to operate and US markets begin, the cryptocurrency maintains stability with normal movements and a positive weekly trend of 4%. Stay tuned for any active alerts."
                         </div>
                     </div>
                 </div>
@@ -926,59 +988,59 @@
         <!-- Selected Articles -->
         <div class="content-section">
             <div class="content-container">
-                <h2 class="section-title">🤖 Featured Stories for the 'Global News' radio show</h2>
+                <h2 class="section-title">🤖 Featured Stories for the 'ZURICH LOCAL' radio show</h2>
                 <div class="articles-grid">
                     
                 <article class="article-card">
                     <div class="article-meta">
-                        <span class="article-badge badge-source">Nzz</span>
-                        <span class="article-badge badge-category">wirtschaft</span>
-                        <span class="article-badge badge-time">2.7h ago</span>
+                        <span class="article-badge badge-source">Tagesanzeiger</span>
+                        <span class="article-badge badge-category">zurich</span>
+                        <span class="article-badge badge-time">2.1h ago</span>
                     </div>
-                    <h3 class="article-title">Ein Power-Paar in Basel: Die Frau des Novartis-Chefs übernimmt die Geschäftsleitung der Biotechfirma Idorsia</h3>
-                    <p class="article-excerpt">Srishti Gupta wirkte in den letzten Jahren weitgehend im Hintergrund. Doch nun tritt auch die Gattin des Novartis-CEO Vas Narasimhan eine Topposition im Management an. Sie soll die...</p>
+                    <h3 class="article-title">Kontrolle wegen Quaggamuschel: Polizei verzeigt am Pfingstwochenende 21 Schiffsführer auf dem Zürichsee</h3>
+                    <p class="article-excerpt">Die Kantonspolizei hat am Wochenende Schiffsführer in Zusammenhang mit der Quaggamuschel kontrolliert. Die Inspektion im Zürichsee sollte zeigen, ob die Boote korrekt angemeldet un...</p>
                     <div class="article-actions">
-                        <a href="https://www.nzz.ch/wirtschaft/srishti-gupa-die-frau-von-vas-narasimhan-wird-idorsia-chefin-ld.1888253" target="_blank" class="action-link">🔗 Read more</a>
-                        <a href="https://www.nzz.ch/finanzen.rss" target="_blank" class="action-link">📡 Source</a>
+                        <a href="https://www.tagesanzeiger.ch/kontrolle-wegen-quaggamuschel-polizei-verzeigt-am-pfingstwochenende-21-schiffsfuehrer-auf-dem-zuerichsee-162907614603" target="_blank" class="action-link">🔗 Read more</a>
+                        <a href="https://www.tagesanzeiger.ch/zuerich/rss.html" target="_blank" class="action-link">📡 Source</a>
                     </div>
                 </article>
                 <article class="article-card">
                     <div class="article-meta">
-                        <span class="article-badge badge-source">Nzz</span>
-                        <span class="article-badge badge-category">international</span>
-                        <span class="article-badge badge-time">3.3h ago</span>
+                        <span class="article-badge badge-source">Tagesanzeiger</span>
+                        <span class="article-badge badge-category">zurich</span>
+                        <span class="article-badge badge-time">6.1h ago</span>
                     </div>
-                    <h3 class="article-title">KOMMENTAR - Trumps Truppenaufgebot in Los Angeles ist unverhältnismässig und gefährlich</h3>
-                    <p class="article-excerpt">Die amerikanische Regierung will gegen papierlose Migranten vorgehen. Mit der Entsendung der Nationalgarde und der Marinesoldaten tut sie viel mehr als das: Sie torpediert das föde...</p>
+                    <h3 class="article-title">Chinesisches Restaurant Baobae: In diesem Zürcher Lokal essen die Gäste mit kleinen Zangen – das funktioniert erstaunlich gut</h3>
+                    <p class="article-excerpt">Besitzer Dan Shu hat sich in Zürich mit Lokalen wie dem Gaijin Izakaya und dem Old Inn einen Namen gemacht. Nun zelebriert er auf unkonventionelle Weise die chinesische Küche.</p>
                     <div class="article-actions">
-                        <a href="https://www.nzz.ch/meinung/trumps-truppenaufgebot-in-la-ist-unverhaeltnismaessig-und-gefaehrlich-ld.1888207" target="_blank" class="action-link">🔗 Read more</a>
-                        <a href="https://www.nzz.ch/international.rss" target="_blank" class="action-link">📡 Source</a>
+                        <a href="https://www.tagesanzeiger.ch/restaurant-baobae-so-schmeckt-es-in-dan-shus-persoenlichstem-restaurant-893040055142" target="_blank" class="action-link">🔗 Read more</a>
+                        <a href="https://www.tagesanzeiger.ch/zuerich/rss.html" target="_blank" class="action-link">📡 Source</a>
                     </div>
                 </article>
                 <article class="article-card">
                     <div class="article-meta">
-                        <span class="article-badge badge-source">Bbc</span>
-                        <span class="article-badge badge-category">wirtschaft</span>
-                        <span class="article-badge badge-time">3.3h ago</span>
+                        <span class="article-badge badge-source">Tagesanzeiger</span>
+                        <span class="article-badge badge-category">zurich</span>
+                        <span class="article-badge badge-time">5.5h ago</span>
                     </div>
-                    <h3 class="article-title">Eurostar plans direct trains to Frankfurt and Geneva</h3>
-                    <p class="article-excerpt">The firm hopes a fleet of up to 50 new trains will be up and running by the early 2030s.</p>
+                    <h3 class="article-title">Streit mit Flugplatz-Eigentümer: Der Traum vom Elektrogleiten auf dem Hasenstrick ist geplatzt</h3>
+                    <p class="article-excerpt">Nach Jahren der Planung zieht die Fluggruppe Hasenstrick ihr Gesuch zurück. Denn der Eigentümer will keinen unnötigen Knatsch – und ist am Hasenstrick vor allem als Ausflugsort int...</p>
                     <div class="article-actions">
-                        <a href="https://www.bbc.com/news/articles/cded0zypxl7o" target="_blank" class="action-link">🔗 Read more</a>
-                        <a href="http://feeds.bbci.co.uk/news/business/rss.xml" target="_blank" class="action-link">📡 Source</a>
+                        <a href="https://www.tagesanzeiger.ch/hasenstrick-besitzer-laesst-traum-vom-elektro-gleiten-platzen-856269339155" target="_blank" class="action-link">🔗 Read more</a>
+                        <a href="https://www.tagesanzeiger.ch/zuerich/rss.html" target="_blank" class="action-link">📡 Source</a>
                     </div>
                 </article>
                 <article class="article-card">
                     <div class="article-meta">
-                        <span class="article-badge badge-source">Bbc</span>
-                        <span class="article-badge badge-category">international</span>
-                        <span class="article-badge badge-time">9.7h ago</span>
+                        <span class="article-badge badge-source">20Min</span>
+                        <span class="article-badge badge-category">zurich</span>
+                        <span class="article-badge badge-time">7.8h ago</span>
                     </div>
-                    <h3 class="article-title">World fertility rates in 'unprecedented decline', UN says</h3>
-                    <p class="article-excerpt">Hundreds of millions of people are not able to have the number of children they want, the UN warns.</p>
+                    <h3 class="article-title">Kurz vor Hitzewelle: Gemeinde verbietet Bewässern von Rasen</h3>
+                    <p class="article-excerpt">Um die Population des Japankäfers zu tilgen, sind verschiedene Massnahmen in Kloten nötig. Diese hat der Kanton Zürich nun bekanntgegeben.</p>
                     <div class="article-actions">
-                        <a href="https://www.bbc.com/news/articles/clynq459wxgo" target="_blank" class="action-link">🔗 Read more</a>
-                        <a href="http://feeds.bbci.co.uk/news/world/rss.xml" target="_blank" class="action-link">📡 Source</a>
+                        <a href="https://www.20min.ch/story/japankaefer-kurz-vor-hitzewelle-gemeinde-verbietet-bewaessern-von-rasen-103361781" target="_blank" class="action-link">🔗 Read more</a>
+                        <a href="https://partner-feeds.beta.20min.ch/rss/20minuten/zuerich" target="_blank" class="action-link">📡 Source</a>
                     </div>
                 </article>
                 </div>
@@ -1008,13 +1070,21 @@
                     </div>
                     <div class="dev-info-full">
                         <h4 style="color: #ccc; margin-bottom: 1rem;">📤 Input Prompt</h4>
-                        <pre class="dev-prompt">{&#x27;stage1_selection_prompt&#x27;: &quot;\n# SYSTEM PROMPT – RADIOX ARTICLE SELECTOR\n\n## MISSION\nYou are an expert content strategist and radio news curator. Your task is to select exactly 4 articles from the provided list that best fit the upcoming show – based on its unique tone, scope, and speaker style.\n\n## SHOW CONTEXT\n**Show Style:** \nShow: Global News | Focus: Global\nStyle: Global News - Eilmeldungen aus allen Perspektiven\n\n**Speaker Descriptions:**\nBrad: Brad is a sharp, modern news anchor with a cool, composed edge. He delivers breaking headlines fast, clear, and always on beat, but brings human pulse to every segment through knowing pauses and subtle inflection. His voice carries professional confidence without stiffness, natural charisma without effort. Whether cov...</pre>
+                        <pre class="dev-prompt">{&#x27;stage1_selection_prompt&#x27;: &quot;\n# SYSTEM PROMPT – RADIOX ARTICLE SELECTOR\n\n## MISSION\nYou are an expert content strategist and radio news curator. Your task is to select exactly 4 articles from the provided list that best fit the upcoming show – based on its unique tone, scope, and speaker style.\n\n## SHOW CONTEXT\n**Show Style:** \nShow: ZURICH LOCAL | Focus: Zurich\nStyle: the hottest news from zurich\n\n**Speaker Descriptions:**\nMarcel: Marcel is energetic, emotionally intelligent, and sharply analytical. Born in Zürich, he combines street-smart instincts with executive-level strategic thinking. He speaks fast with wit and subtext, his tone direct and often ironic but always intentional. Marcel doesn&#x27;t just conduct conversations—he experiences them intensely. He&...</pre>
                         <h4 style="color: #ccc; margin: 2rem 0 1rem;">📥 Generated Radio Script</h4>
-                        <pre class="dev-prompt">brad: Good afternoon, world! This is Brad, your cool and composed news anchor, bringing you breaking headlines with more flair than a peacock&#x27;s tail. Let&#x27;s dive right into the vortex of global news, starting with big moves in the biotech industry. 
+                        <pre class="dev-prompt">MARCEL: Good afternoon, Zurich! Marcel here, your guide through the urban jungle of our beloved city, where the news is as sharp as our Swiss knives!
 
-In Basel, we have a power couple making waves. Srishti Gupta, the wife of Novartis CEO Vas Narasimhan, is stepping out of the shadows and into a top management position at biotech firm Idorsia. The question is, can she turn the tide for this deficit-ridden company? Only time will tell.
+JARVIS: And Jarvis, your intellectual compass, ready to dissect the headlines with surgical precision. 
 
-Moving on to transportation, Eurostar has plans to extend its reach, with direct trains to Frankfurt and Geneva. They&#x27;re looking to have up to 50 new trains chugging away by the early 2030s. Ambitious, yes. But what&#x27;s progress without a littl...</pre>
+LUCY: And I&#x27;m Lucy, your sultry sidekick, here to wrap every news nugget in velvet, just for you.
+
+MARCEL: Kicking off with some water news, it seems our friendly Kantonspolizei have been playing shell game with the ship captains on Lake Zurich. Twenty-one of them got caught out this weekend, all thanks to a tiny mussel!
+
+JARVIS: The invasive Quaggamussel, to be precise. An excellent example of unchecked expansion and ecological disruption.
+
+LUCY: Or an even better example of how small things can cause big trouble. 
+
+MARCEL: Speaking...</pre>
                     </div>
                 </div>
             </div>
@@ -1034,9 +1104,9 @@ Moving on to transportation, Eurostar has plans to extend its reach, with direct
 ========================
 
 📊 Real-time Data Processing:
-- News Collection: 1231 articles processed
+- News Collection: 1278 articles processed
 - Source Diversity: 13 unique sources
-- GPT Processing: 405 words generated
+- GPT Processing: 427 words generated
 - Data Freshness: Live updates every workflow run
 
 🔄 Processing Pipeline:
