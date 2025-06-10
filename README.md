@@ -92,6 +92,160 @@ python main.py --data-only
 
 ## 🏗️ Professional Architecture
 
+### 📊 Database Schema
+
+```mermaid
+erDiagram
+    show_presets ||--|| voice_configurations : "primary_speaker"
+    show_presets ||--o| voice_configurations : "secondary_speaker"
+    show_presets ||--o| voice_configurations : "weather_speaker"
+    show_presets ||--o{ rss_feed_preferences : "uses"
+    show_presets ||--o{ broadcast_scripts : "generates"
+    broadcast_scripts ||--o{ used_article_titles : "tracks"
+    
+    show_presets {
+        uuid id PK
+        text preset_name UK "zurich, basel, etc."
+        text display_name "Zürich Lokal"
+        text description
+        text city_focus "Zurich"
+        jsonb news_categories "category weights"
+        text primary_speaker FK "marcel, brad, jarvis"
+        text secondary_speaker FK "optional co-host"
+        text weather_speaker FK "lucy for weather"
+        boolean is_duo_show "solo vs dialogue"
+        text show_behavior "energetic, professional"
+        integer duration_minutes "target length"
+        boolean is_active
+        timestamptz created_at
+        timestamptz updated_at
+    }
+    
+    voice_configurations {
+        uuid id PK
+        text speaker_name UK "marcel, brad, jarvis, lucy"
+        text voice_name "Display name"
+        text voice_id "ElevenLabs ID"
+        text language "en, de, de-CH"
+        text model "eleven_turbo_v2"
+        decimal stability "0.0-1.0"
+        decimal similarity_boost "0.0-1.0"
+        decimal style "0.0-1.0"
+        boolean use_speaker_boost
+        text description "Host, AI Assistant, etc."
+        boolean is_active
+        timestamptz created_at
+    }
+    
+    rss_feed_preferences {
+        uuid id PK
+        text feed_name UK "SRF News, 20min"
+        text feed_url "RSS endpoint"
+        text category "politics, tech, sports"
+        text language "de, en"
+        text region "CH, international"
+        integer priority "1-10 importance"
+        integer fetch_frequency_minutes
+        boolean is_active
+        timestamptz last_fetched
+        timestamptz created_at
+    }
+    
+    broadcast_scripts {
+        uuid id PK
+        text session_id UK "session_YYMMDD_HHMMSS"
+        text preset_name FK "references show_presets"
+        text radio_script "Final generated script"
+        jsonb selected_news "Chosen articles"
+        jsonb generation_metadata "GPT params, etc."
+        timestamptz created_at
+        text status "generated, archived"
+    }
+    
+    used_article_titles {
+        uuid id PK
+        text article_title UK "Exact title for dedup"
+        text source_feed "Origin RSS feed"
+        text article_url "Original link"
+        timestamptz first_used_at "When first selected"
+        timestamptz created_at
+        integer usage_count "Times reused"
+    }
+```
+
+### 🔄 System Workflow
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant Main as "RadioX Master"
+    participant Show as "Show Service"
+    participant Data as "Data Collection"
+    participant GPT as "Content Processing"
+    participant Audio as "Audio Generation"
+    participant Image as "Image Generation"
+    participant DB as "Supabase Database"
+    participant APIs as "External APIs<br/>(RSS, Weather, Crypto)"
+    
+    User->>Main: python main.py --news-count 3
+    
+    Note over Main: 📻 RadioX v3.3 Workflow Start
+    
+    Main->>Show: get_show_preset("zurich")
+    Show->>DB: SELECT show configuration
+    DB-->>Show: Show config + speaker voices
+    Show-->>Main: Complete show configuration
+    
+    Main->>Data: collect_data(preset="zurich")
+    Data->>APIs: Fetch RSS feeds (25+ sources)
+    APIs-->>Data: News articles
+    Data->>APIs: Get Zurich weather
+    APIs-->>Data: Weather data
+    Data->>APIs: Get Bitcoin prices
+    APIs-->>Data: Crypto data
+    Data-->>Main: Raw collected data
+    
+    Main->>GPT: process_data(raw_data, show_config)
+    GPT->>DB: get_last_show_context()
+    DB-->>GPT: Previous show data
+    GPT->>DB: get_used_article_titles()
+    DB-->>GPT: Used articles list
+    GPT->>GPT: Filter & select unique content
+    GPT->>APIs: Generate script with GPT-4
+    APIs-->>GPT: Radio script (Marcel/Jarvis dialogue)
+    GPT->>DB: log_selected_articles()
+    GPT-->>Main: Processed script + metadata
+    
+    Main->>Image: generate_cover_art(script_content)
+    Image->>APIs: DALL-E 3 cover generation
+    APIs-->>Image: AI-generated cover image
+    Image-->>Main: Cover image (.png)
+    
+    Main->>Audio: generate_audio_from_script(script, show_config)
+    Audio->>Audio: Parse script into segments
+    Audio->>Audio: Detect solo vs duo show
+    
+    loop For each script segment
+        Audio->>APIs: ElevenLabs TTS (Marcel/Jarvis/Lucy)
+        APIs-->>Audio: Audio segment
+    end
+    
+    Audio->>Audio: Combine segments with FFmpeg
+    Audio->>Audio: Add 3-phase jingle system<br/>(100% → 10% → 100%)
+    Audio->>Image: Embed cover in MP3 metadata
+    Audio-->>Main: Final audio (.mp3)
+    
+    Main->>Main: generate_dashboard(all_data)
+    Main->>Main: Finalize files with timestamp
+    Main->>Main: Archive previous shows
+    
+    Main-->>User: ✅ Complete show generated<br/>📻 Audio: radiox_YYMMDD_HHMM.mp3<br/>🎨 Cover: radiox_YYMMDD_HHMM.png<br/>📊 Dashboard: radiox_YYMMDD_HHMM.html
+    
+    Note over Main,DB: 🎯 Result: Broadcast-ready radio show<br/>with professional audio mixing
+```
+
+### 🏗️ Component Architecture
+
 ```
 🎙️ RadioX v3.3 - Enterprise AI Radio Platform
 │
@@ -103,7 +257,7 @@ python main.py --data-only
 │
 ├── 🔊 Ultra-Professional Audio Engine  
 │   ├── ElevenLabs V3 TTS (Marcel, Jarvis, Lucy, Brad)
-│   ├── Ultra-Quiet Jingle Engineering (2% backing level)
+│   ├── Ultra-Quiet Jingle Engineering (10% backing level)
 │   ├── Multi-Format Jingle Support (MP3/FLAC/WAV/OGG)
 │   ├── Parallel Segment Processing
 │   ├── Advanced FFmpeg Audio Engineering
