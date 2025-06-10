@@ -1,7 +1,79 @@
 {
-  "lastUpdated": "2025-06-10T15:56:06.566326",
+  "lastUpdated": "2025-06-10T16:19:17.696063",
   "totalShows": 10,
   "shows": [
+    {
+      "timestamp": "250610_1619",
+      "htmlFile": "radiox_dashboard_fancy_250610_1619.html",
+      "mp3File": "radiox_250610_1619.mp3",
+      "pngFile": "radiox_250610_1619.png",
+      "size": 53690,
+      "audioSize": 7811825,
+      "coverSize": 1691367
+    },
+    {
+      "timestamp": "250610_1615",
+      "htmlFile": "radiox_dashboard_fancy_250610_1615.html",
+      "mp3File": null,
+      "pngFile": null,
+      "size": 47602,
+      "audioSize": 0,
+      "coverSize": 0
+    },
+    {
+      "timestamp": "250610_1611",
+      "htmlFile": "radiox_dashboard_fancy_250610_1611.html",
+      "mp3File": null,
+      "pngFile": null,
+      "size": 47435,
+      "audioSize": 0,
+      "coverSize": 0
+    },
+    {
+      "timestamp": "250610_1607",
+      "htmlFile": "radiox_dashboard_fancy_250610_1607.html",
+      "mp3File": null,
+      "pngFile": null,
+      "size": 47111,
+      "audioSize": 0,
+      "coverSize": 0
+    },
+    {
+      "timestamp": "250610_1606",
+      "htmlFile": "radiox_dashboard_fancy_250610_1606.html",
+      "mp3File": null,
+      "pngFile": null,
+      "size": 47039,
+      "audioSize": 0,
+      "coverSize": 0
+    },
+    {
+      "timestamp": "250610_1605",
+      "htmlFile": "radiox_dashboard_fancy_250610_1605.html",
+      "mp3File": null,
+      "pngFile": null,
+      "size": 47071,
+      "audioSize": 0,
+      "coverSize": 0
+    },
+    {
+      "timestamp": "250610_1603",
+      "htmlFile": "radiox_dashboard_fancy_250610_1603.html",
+      "mp3File": null,
+      "pngFile": null,
+      "size": 47266,
+      "audioSize": 0,
+      "coverSize": 0
+    },
+    {
+      "timestamp": "250610_1600",
+      "htmlFile": "radiox_dashboard_fancy_250610_1600.html",
+      "mp3File": null,
+      "pngFile": null,
+      "size": 47527,
+      "audioSize": 0,
+      "coverSize": 0
+    },
     {
       "timestamp": "250610_1556",
       "htmlFile": "radiox_dashboard_fancy_250610_1556.html",
@@ -17,78 +89,6 @@
       "mp3File": null,
       "pngFile": null,
       "size": 48551,
-      "audioSize": 0,
-      "coverSize": 0
-    },
-    {
-      "timestamp": "250610_1547",
-      "htmlFile": "radiox_dashboard_fancy_250610_1547.html",
-      "mp3File": null,
-      "pngFile": null,
-      "size": 47648,
-      "audioSize": 0,
-      "coverSize": 0
-    },
-    {
-      "timestamp": "250610_1539",
-      "htmlFile": "radiox_dashboard_fancy_250610_1539.html",
-      "mp3File": "radiox_250610_1539.mp3",
-      "pngFile": "radiox_250610_1539.png",
-      "size": 49683,
-      "audioSize": 5337087,
-      "coverSize": 1495761
-    },
-    {
-      "timestamp": "250610_1532",
-      "htmlFile": "radiox_dashboard_fancy_250610_1532.html",
-      "mp3File": "radiox_250610_1532.mp3",
-      "pngFile": "radiox_250610_1532.png",
-      "size": 49729,
-      "audioSize": 3322598,
-      "coverSize": 27962
-    },
-    {
-      "timestamp": "250610_1529",
-      "htmlFile": "radiox_dashboard_fancy_250610_1529.html",
-      "mp3File": null,
-      "pngFile": null,
-      "size": 49481,
-      "audioSize": 0,
-      "coverSize": 0
-    },
-    {
-      "timestamp": "250610_1428",
-      "htmlFile": "radiox_dashboard_fancy_250610_1428.html",
-      "mp3File": "radiox_250610_1428.mp3",
-      "pngFile": "radiox_250610_1428.png",
-      "size": 48131,
-      "audioSize": 3407862,
-      "coverSize": 27962
-    },
-    {
-      "timestamp": "250610_1426",
-      "htmlFile": "radiox_dashboard_fancy_250610_1426.html",
-      "mp3File": null,
-      "pngFile": null,
-      "size": 47941,
-      "audioSize": 0,
-      "coverSize": 0
-    },
-    {
-      "timestamp": "250610_1423",
-      "htmlFile": "radiox_dashboard_fancy_250610_1423.html",
-      "mp3File": null,
-      "pngFile": "radiox_250610_1423.png",
-      "size": 41889,
-      "audioSize": 0,
-      "coverSize": 27962
-    },
-    {
-      "timestamp": "250610_1420",
-      "htmlFile": "radiox_dashboard_fancy_250610_1420.html",
-      "mp3File": null,
-      "pngFile": null,
-      "size": 47959,
       "audioSize": 0,
       "coverSize": 0
     }
