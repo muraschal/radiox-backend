@@ -1,317 +1,168 @@
 # 📚 RadioX Documentation
 
-<div align="center">
-
-![Documentation](https://img.shields.io/badge/docs-comprehensive-brightgreen)
-![Version](https://img.shields.io/badge/version-v3.2-blue)
-![Status](https://img.shields.io/badge/status-complete-success)
-
-**🎙️ Professional AI Radio Production System Documentation**
-
-[🏠 Main Project](../) • [🚀 Quick Start](#-quick-start) • [📖 All Guides](#-all-guides) • [💬 Support](#-support)
-
-</div>
+**Complete documentation for the RadioX AI Radio Production System**
 
 ---
 
-## 🎯 Quick Start
+## 🚀 Quick Navigation
 
-| 👤 **I am a...** | 🎯 **I want to...** | 📖 **Start here** |
-|-------------------|---------------------|-------------------|
-| **User** | Generate professional radio shows | [🎙️ Show Generation](user-guide/show-generation.md) |
-| **User** | Configure Marcel, Jarvis, Lucy, Brad voices | [🎤 Voice Configuration](user-guide/voice-configuration.md) |
-| **Developer** | Understand the enterprise architecture | [🏗️ Architecture](developer-guide/architecture.md) |
-| **Developer** | Set up development environment | [🔧 Development](developer-guide/development.md) |
-| **DevOps** | Deploy production system | [🏭 Production](deployment/production.md) |
-| **DevOps** | Use containerized deployment | [🐳 Docker](deployment/docker.md) |
+### 👥 **For Users**
+- **[🎙️ Show Generation Guide](user-guide/show-generation.md)** - Complete workflow for creating radio shows
+- **[🎤 Voice Configuration](user-guide/voice-configuration.md)** - Setup Marcel, Jarvis, Lucy, Brad voices
+- **[🎵 Jingle Setup Guide](user-guide/jingle-setup.md)** - Multi-format jingle configuration & optimization
+- **[📊 RSS Dashboard](user-guide/rss-dashboard.md)** - Managing news feeds and content sources
+- **[🔧 API Reference](user-guide/api-reference.md)** - Complete API documentation
 
----
+### 👨‍💻 **For Developers**
+- **[🏗️ System Architecture](developer-guide/architecture.md)** - Technical system design & components
+- **[🔧 Development Setup](developer-guide/development.md)** - Local development environment
+- **[🛠️ Services Documentation](developer-guide/services.md)** - Complete service architecture
+- **[🗄️ Database Schema](developer-guide/database-schema.md)** - Supabase database structure
+- **[📊 Data Collection](developer-guide/data-collection.md)** - RSS feeds & data processing
+- **[🧪 Testing Guide](developer-guide/testing.md)** - Testing strategies & tools
+- **[🤝 Contributing Guide](developer-guide/contributing.md)** - How to contribute to RadioX
+- **[📈 Migration Guide v3.2](developer-guide/migration-v3.2.md)** - Migration from older versions
 
-## 📖 All Guides
-
-### 👥 **User Guides**
-*Perfect for content creators, radio hosts, and production teams*
-
-| 📋 Guide | ⏱️ Time | 🎯 Difficulty | 📝 Description |
-|----------|---------|---------------|----------------|
-| **[🎙️ Show Generation](user-guide/show-generation.md)** | 15 min | Beginner | Complete workflow with archiving & diversity |
-| **[🎤 Voice Configuration](user-guide/voice-configuration.md)** | 10 min | Beginner | Marcel, Jarvis, Lucy, Brad voice management |
-| **[📰 RSS Dashboard](user-guide/rss-dashboard.md)** | 10 min | Beginner | Professional news dashboard with filtering |
-| **[📚 API Reference](user-guide/api-reference.md)** | 20 min | Intermediate | Complete API documentation |
-
-### 👨‍💻 **Developer Guides**
-*Essential for developers working with RadioX v3.2*
-
-| 📋 Guide | ⏱️ Time | 🎯 Difficulty | 📝 Description |
-|----------|---------|---------------|----------------|
-| **[🏗️ Architecture](developer-guide/architecture.md)** | 25 min | Intermediate | Enterprise system design & microservices |
-| **[🔧 Development](developer-guide/development.md)** | 30 min | Intermediate | Local development with new features |
-| **[🔄 Migration v3.2](developer-guide/migration-v3.2.md)** | 15 min | Intermediate | Archive system & unified naming |
-| **[📊 Data Collection](developer-guide/data-collection.md)** | 20 min | Intermediate | Enhanced data pipeline with Supabase |
-| **[⚙️ Services](developer-guide/services.md)** | 25 min | Intermediate | Bitcoin, Weather & Content services |
-| **[🗄️ Database Schema](developer-guide/database-schema.md)** | 20 min | Intermediate | Supabase schema with show tracking |
-| **[🧪 Testing](developer-guide/testing.md)** | 15 min | Intermediate | Testing with archive & diversity features |
-| **[🤝 Contributing](developer-guide/contributing.md)** | 10 min | Beginner | Contributing to v3.2 codebase |
-
-### 🚀 **Deployment Guides**
-*For production deployments and system administration*
-
-| 📋 Guide | ⏱️ Time | 🎯 Difficulty | 📝 Description |
-|----------|---------|---------------|----------------|
-| **[🏭 Production](deployment/production.md)** | 45 min | Advanced | Enterprise production deployment |
-| **[🐳 Docker](deployment/docker.md)** | 30 min | Intermediate | Containerized deployment with volumes |
-| **[📊 Monitoring](deployment/monitoring.md)** | 25 min | Intermediate | Monitoring with archive management |
+### 🚀 **For DevOps**
+- **[🐳 Docker Deployment](deployment/docker.md)** - Containerized deployment
+- **[🏭 Production Setup](deployment/production.md)** - Production deployment guide
+- **[📊 Monitoring](deployment/monitoring.md)** - System monitoring & alerting
 
 ---
 
-## 🌟 What's New in v3.2
+## 🎯 Feature Documentation
 
-### **✨ Revolutionary Features**
+### 🎙️ **Audio System**
+RadioX uses a sophisticated 3-phase audio system:
 
-#### 🎯 **Smart Content Diversität**
-- **Supabase Show Tracking** - Automatic previous show analysis
-- **100% Unique Content** - GPT-4 avoids repeating topics/sources
-- **Intelligent News Selection** - Context-aware article selection
+```
+PHASE 1 - INTRO (0-12s):
+├── 0-3s:  Pure 100% jingle (powerful intro)
+└── 3-13s: Ultra-smooth fade 100% → 10%
 
-#### 📂 **Automatic Archive System**
-- **Zero-Maintenance Archiving** - Old shows moved to timestamped folders
-- **Unified File Organization** - `radiox_yymmdd_hhmm.*` naming consistency
-- **Archive Management** - Clean production environment
+PHASE 2 - BACKGROUND (12s-End-7s):
+├── Speech: 100% volume (dominant)
+└── Jingle: 10% volume (subtle backing)
 
-#### 🎵 **Professional Audio Engineering**
-- **6-Stage Jingle Ramping** - 100% intro → 6% backing → epic outro
-- **Enhanced Voice Pipeline** - Lucy weather, Brad news, dynamic assignment
-- **Audio Player Integration** - Correct path mapping for dashboards
+PHASE 3 - OUTRO (Last 7s):
+└── Ultra-smooth ramp-up 10% → 100%
+```
 
-#### 🏗️ **Enterprise Architecture**
-- **Microservices Design** - Modular, scalable components
-- **Supabase Integration** - Enterprise database with show logging
-- **Performance Optimization** - Parallel processing & efficient workflows
+**📖 Detailed Documentation:** [Jingle Setup Guide](user-guide/jingle-setup.md)
 
----
+### 🎭 **Voice System**
+RadioX supports multiple AI voices with intelligent assignment:
 
-## 🎭 Features Overview
+| Voice | Use Case | Characteristics |
+|-------|----------|----------------|
+| **Marcel** | Host, main presenter | Energetic, conversational |
+| **Jarvis** | AI assistant, technical | Precise, digital |
+| **Lucy** | Weather reports | Sultry, atmospheric |
+| **Brad** | News anchor | Professional, authoritative |
 
-### **🎙️ Professional Show Generation**
-- **Dynamic AI Conversations** - Marcel & Jarvis with contextual variety
-- **Multi-Voice Support** - Lucy (sultry weather) & Brad (authoritative news)
-- **Time-based Adaptation** - Morning energetic, evening relaxed styles
-- **Content Diversity Engine** - Guaranteed unique shows via Supabase tracking
+**📖 Detailed Documentation:** [Voice Configuration](user-guide/voice-configuration.md)
 
-### **🔊 Hollywood-Quality Audio**
-- **ElevenLabs V3 TTS** - Professional voice synthesis with emotions
-- **Intelligent Audio Ramping** - 6% backing during speech, 100% outros
-- **DALL-E 3 Cover Art** - AI-generated artwork per show
-- **Complete Production Pipeline** - MP3 with metadata, HTML dashboard, PNG cover
+### 🎨 **Visual System**
+- **DALL-E 3 Cover Art** - AI-generated covers per show
+- **Tailwind Dashboard** - Modern, responsive show notes
+- **Unified Naming** - `radiox_yymmdd_hhmm.ext` consistency
 
-### **📊 Enterprise Data Management**
-- **25+ RSS Feeds** - Swiss & international sources with smart filtering
-- **Live Data Integration** - Bitcoin prices, Zurich weather, breaking news
-- **Supabase Backend** - Show tracking, content logging, analytics
-- **Automatic Archive System** - Timestamped folder organization
+**📖 Detailed Documentation:** [Show Generation Guide](user-guide/show-generation.md)
 
-### **🏗️ Professional Architecture**
-- **Clean Microservices** - Modular, maintainable components
-- **Unified Naming System** - Consistent `radiox_yymmdd_hhmm.*` files
-- **Archive Management** - Automatic old show organization
-- **Enterprise Database** - Supabase with comprehensive logging
+### 📊 **Data System**
+- **25+ RSS Feeds** - Real-time Swiss & international news
+- **Supabase Integration** - Enterprise database
+- **Smart Filtering** - Content diversity & quality control
+
+**📖 Detailed Documentation:** [Data Collection](developer-guide/data-collection.md)
 
 ---
 
-## 🚀 Quick Commands
+## 🛠️ Technical Architecture
 
-### **🎙️ Professional Show Generation**
+```mermaid
+graph TD
+    A[📊 Data Collection] --> B[🎯 Content Processing]
+    B --> C[🤖 GPT-4 Script Generation]
+    C --> D[🔊 Audio Production]
+    D --> E[🎵 Jingle Integration]
+    E --> F[🎨 Cover Art Generation]
+    F --> G[📊 Dashboard Creation]
+    G --> H[📂 Archive System]
+    H --> I[✅ Broadcast Ready]
+```
 
+**📖 Detailed Documentation:** [System Architecture](developer-guide/architecture.md)
+
+---
+
+## 🚀 Getting Started
+
+### Quick Setup
 ```bash
-# Quick news brief (1 article)
-python main.py --news-count 1
+# 1. Clone repository
+git clone https://github.com/muraschal/radiox-backend.git
+cd radiox-backend
 
-# Standard production show (3 articles) 
+# 2. Install dependencies
+python -m venv venv && source venv/bin/activate
+pip install -r requirements.txt
+
+# 3. Configure APIs
+cp env_template.txt .env
+# Add API keys: OPENAI_API_KEY, ELEVENLABS_API_KEY, etc.
+
+# 4. Add jingles
+mkdir jingles
+# Add your jingle files (MP3, FLAC, WAV, OGG)
+
+# 5. Generate first show
 python main.py --news-count 3
-
-# Extended show (5 articles)
-python main.py --news-count 5
-
-# Data collection only
-python main.py --data-only
-
-# Processing with existing data
-python main.py --processing-only
 ```
 
-### **📂 Archive Management**
-
-```bash
-# View archived shows
-ls -la outplay/archive/
-
-# Show current files
-ls -la outplay/radiox_*
-
-# Archive stats
-du -sh outplay/archive/
-```
-
-### **🧪 Testing & Validation**
-
-```bash
-# System health check
-python main.py --test
-
-# Quick generation test
-python main.py --news-count 1
-
-# Data collection test
-python main.py --data-only
-
-# Check Supabase integration
-python cli/cli_master.py quick
-```
-
-### **🔧 Development & Debugging**
-
-```bash
-# Development with verbose output
-python main.py --news-count 2 | grep "✅\|❌\|🎯"
-
-# Audio-only generation (skip covers)
-python main.py --news-count 3 --no-audio
-
-# Check last show context
-python -c "from src.services.utilities.content_logging_service import ContentLoggingService; import asyncio; asyncio.run(ContentLoggingService().get_last_show_context())"
-```
+**📖 Detailed Documentation:** [Development Setup](developer-guide/development.md)
 
 ---
 
-## 📂 File Structure (v3.2)
+## 📈 Latest Updates
 
-### **🎵 Professional Output Structure**
-```bash
-outplay/
-├── radiox_250609_1845.mp3    ← Current show (unified naming)
-├── radiox_250609_1845.html   ← Dashboard with audio player
-├── radiox_250609_1845.png    ← AI-generated cover art
-└── archive/                  ← Automatic archiving
-    ├── show_20250609_184000/ ← Timestamped archive folders
-    │   ├── radiox_250609_1840.mp3
-    │   ├── radiox_250609_1840.html
-    │   └── radiox_250609_1840.png
-    └── show_20250609_183500/
-        ├── radiox_250609_1835.mp3
-        ├── radiox_250609_1835.html
-        └── radiox_250609_1835.png
-```
+### 🎯 **v3.3 - Audio System Revolution**
+- ✅ **MP3 Metadata Fix** - Correct `"RadioX - Edition : HH:MM Edition"` format
+- ✅ **3-Phase Jingle System** - Cinematic audio transitions
+- ✅ **Professional Volume Levels** - 10% background, 100% speech dominance
+- ✅ **Multi-Format Support** - MP3, FLAC, WAV, OGG jingles
+- ✅ **Cover Embedding Fix** - Proper workflow order
+- ✅ **Complete Documentation** - All services fully documented
 
-### **🎵 Professional Audio Timeline**
-```
-📻 RadioX Professional Audio Engineering:
-
-0-5s:     100% 🎵 Kraftvoller Jingle Intro
-5-8s:     Smooth Fade 100% → 6%
-8s-end:   6% 🎵 Subtle Professional Backing  ← Radio-quality sound
-end+5s:   15% → 70% 🎵 Dramatic Buildup  
-end+10s:  100% 🎵 Power Outro
-final:    100% → 0% Epic Fadeout
-```
+**📖 Migration Guide:** [Migration v3.2](developer-guide/migration-v3.2.md)
 
 ---
 
-## 📈 Documentation Stats
+## 🎯 Performance & Quality
 
-<div align="center">
+### Audio Quality Metrics
+- ✅ **Zero Audio Clipping** - Professional limiting
+- ✅ **Seamless Transitions** - Inaudible phase changes  
+- ✅ **Speech Intelligibility** - 100% clarity maintained
+- ✅ **Musical Cohesion** - Jingle enhances, never distracts
+- ✅ **Broadcast Ready** - Professional radio standards
 
-| 📊 Metric | 📈 Value |
-|-----------|----------|
-| **Version** | v3.2 Professional |
-| **Total Guides** | 15 comprehensive guides |
-| **Architecture** | Enterprise microservices |
-| **New Features** | Archive system, show diversity, unified naming |
-| **Code Examples** | 400+ practical examples |
-| **Audio Quality** | Professional 6-stage ramping |
-| **Database** | Supabase enterprise integration |
-| **Voices** | Marcel, Jarvis, Lucy, Brad |
-| **Archive Management** | Automatic timestamped folders |
-| **Show Diversity** | 100% unique content via AI tracking |
-
-</div>
+### System Performance
+- **🚀 Audio Generation:** ~2-3 minutes for 4-news show
+- **🎵 Jingle Integration:** Professional 10% backing
+- **🎨 Cover Creation:** ~30 seconds via DALL-E 3
+- **📊 Dashboard:** Generated in <5 seconds
+- **🔄 Content Diversity:** 100% unique show-to-show
 
 ---
 
-## 🔍 Find What You Need
+## 🤝 Support & Community
 
-### **🎯 By v3.2 Features**
-
-| 🌟 **New Feature** | 📖 **Documentation** |
-|--------------------|--------------------|
-| Archive old shows automatically | [🎙️ Show Generation](user-guide/show-generation.md) |
-| Generate unique content every show | [🎙️ Show Generation](user-guide/show-generation.md) |
-| Professional 6% jingle backing | [🎤 Voice Configuration](user-guide/voice-configuration.md) |
-| Lucy sultry weather reports | [🎤 Voice Configuration](user-guide/voice-configuration.md) |
-| Unified naming system | [🏗️ Architecture](developer-guide/architecture.md) |
-| Supabase show tracking | [🗄️ Database Schema](developer-guide/database-schema.md) |
-| Enterprise deployment | [🏭 Production](deployment/production.md) |
-
-### **🎯 By Use Case**
-
-| 🎯 **I want to...** | 📖 **Guide** |
-|---------------------|--------------|
-| Create my first professional show | [🎙️ Show Generation](user-guide/show-generation.md) |
-| Configure Marcel, Jarvis, Lucy, Brad | [🎤 Voice Configuration](user-guide/voice-configuration.md) |
-| Understand the new architecture | [🏗️ Architecture](developer-guide/architecture.md) |
-| Set up professional development | [🔧 Development](developer-guide/development.md) |
-| Manage archived shows | [🎙️ Show Generation](user-guide/show-generation.md) |
-| Deploy enterprise system | [🏭 Production](deployment/production.md) |
+- **🐛 Bug Reports:** [GitHub Issues](https://github.com/muraschal/radiox-backend/issues)
+- **💡 Feature Requests:** [GitHub Discussions](https://github.com/muraschal/radiox-backend/discussions)
+- **📖 Documentation:** This directory (`/docs/`)
+- **🤝 Contributing:** [Contributing Guide](developer-guide/contributing.md)
 
 ---
 
-## 💡 Pro Tips for v3.2
-
-### **🚀 For Content Creators**
-1. **Start Fresh**: Each show is automatically unique thanks to Supabase tracking
-2. **Professional Audio**: Listen for the 6% jingle backing during speech
-3. **Archive Management**: Old shows automatically organized in timestamped folders
-4. **Voice Variety**: Lucy for weather, Brad for news, Marcel for hosting
-
-### **👨‍💻 For Developers**
-1. **New Architecture**: Microservices with Supabase integration
-2. **Testing**: Use `python main.py --test` for comprehensive checks
-3. **Debugging**: Archive system logs show file movement operations
-4. **Performance**: Parallel processing significantly reduces generation time
-
-### **🚀 For Production**
-1. **Enterprise Ready**: Supabase backend handles show tracking & analytics
-2. **Zero Maintenance**: Archive system requires no manual intervention
-3. **Scalable**: Microservices architecture supports high-volume production
-4. **Monitoring**: Track show diversity and archive growth metrics
-
----
-
-## 💬 Support
-
-### **🆘 Getting Help with v3.2**
-
-| 🎯 **Type** | 📍 **Where** | ⏱️ **Response Time** |
-|-------------|--------------|----------------------|
-| **Archive Issues** | [GitHub Issues](https://github.com/your-org/RadioX/issues) | 12-24 hours |
-| **Audio Quality** | [GitHub Issues](https://github.com/your-org/RadioX/issues) | 24-48 hours |
-| **Supabase Integration** | [GitHub Discussions](https://github.com/your-org/RadioX/discussions) | 24 hours |
-| **Feature Questions** | [GitHub Discussions](https://github.com/your-org/RadioX/discussions) | 12 hours |
-
-### **🤝 v3.2 Community**
-
-- **💬 Discord #v3-2-features** - Real-time help with new features
-- **🐦 Twitter @RadioXAI** - Updates and feature announcements  
-- **📧 enterprise@radiox.ai** - Enterprise support and consulting
-- **📱 Telegram RadioX_v32** - Community discussions
-
----
-
-<div align="center">
-
-**🎙️ Professional AI Radio Production - RadioX v3.2**
-
-[🏠 Main Project](../) • [🎙️ Generate Your First Show](user-guide/show-generation.md) • [💬 Get Support](#-support)
-
-**Ready to create professional radio shows?** → `python main.py --news-count 3`
-
-</div> 
+**🎙️ Ready to create broadcast-quality AI radio shows?** → Start with the [Show Generation Guide](user-guide/show-generation.md) 

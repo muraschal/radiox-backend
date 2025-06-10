@@ -21,12 +21,12 @@
 ### 🎙️ **Intelligent Show Generation**
 - **GPT-4 Powered Scripts** - Natural Marcel & Jarvis dialogues
 - **Smart Content Diversity** - Automatic show-to-show variety using Supabase tracking
-- **Ultra-Professional Audio Mixing** - 6-stage jingle system with 2% ultra-quiet backing
+- **Ultra-Professional Audio Mixing** - 3-phase jingle system with 10% subtle backing
 - **Adaptive Voice Selection** - Lucy for weather, Brad for news, dynamic speaker assignment
 
 ### 🔊 **Professional Audio Production**  
 - **ElevenLabs V3 TTS** - Hollywood-quality voice synthesis
-- **Ultra-Quiet Jingle Engineering** - 100% intro → 2% backing → 100% outro (broadcast standard)
+- **Professional Jingle Engineering** - 100% intro → 10% backing → 100% outro (broadcast standard)
 - **Multi-Format Jingle Support** - MP3, FLAC, WAV, OGG intelligent selection
 - **Parallel Audio Generation** - High-performance segment processing
 - **Professional Audio Engineering** - Advanced FFmpeg filtering with speech dominance
@@ -47,7 +47,7 @@
 
 ```bash
 # 1. Clone & Setup Environment
-git clone https://github.com/your-org/radiox-backend.git
+git clone https://github.com/muraschal/radiox-backend.git
 cd radiox-backend
 python -m venv venv && source venv/bin/activate
 pip install -r requirements.txt
@@ -139,16 +139,21 @@ gpt_prompt += create_diversity_instruction(last_show_context)
 # Result: 100% unique content selection every show
 ```
 
-### 🎵 **Ultra-Professional Audio Timeline**
+### 🎵 **Professional Audio Timeline**
 ```
-0-5s:   100% Powerful Jingle Intro
-5-8s:   Speech starts (during 100% jingle for dramatic effect)
-8-10s:  Smooth Fade 100% → 2% (ultra-quiet transition)
-10s-end: 2% Ultra-Quiet Jingle Backing  ← Broadcast professional standard
-end-5s: 2% → 100% Power Build-up
-final:  100% Epic Outro → 0% Smooth Fadeout
+PHASE 1 - INTRO (0-12s):
+0-3s:   100% Pure Jingle (powerful intro without speech)
+3-13s:  Ultra-smooth fade 100% → 10% (cinematic transition)
 
-Mix Ratio: Speech 88% : Jingle 12% (speech dominates)
+PHASE 2 - BACKGROUND (12s-End-7s):
+12s+:   Speech starts at 100% volume (dominant)
+        Jingle continues at 10% subtle backing
+
+PHASE 3 - OUTRO (Last 7s):
+        Ultra-smooth ramp-up 10% → 100% over 7s
+        Cinematic ending with full jingle power
+
+Mix Ratio: Speech 100% : Jingle 10% (speech dominates)
 ```
 
 ### 🎵 **Multi-Format Jingle System**
@@ -223,7 +228,7 @@ ls -la jingles/                  # View available jingles (all formats)
 ## 📈 Performance Metrics
 
 - **🚀 Audio Generation**: ~2-3 minutes for 4-news show
-- **🎵 Jingle Integration**: Ultra-quiet 2% backing with broadcast-standard mixing
+- **🎵 Jingle Integration**: Professional 10% backing with broadcast-standard mixing
 - **🎨 Cover Creation**: ~30 seconds via DALL-E 3
 - **📊 Dashboard**: Generated in <5 seconds with perfect audio synchronization
 - **🔄 Content Diversity**: 100% unique show-to-show
@@ -233,9 +238,9 @@ ls -la jingles/                  # View available jingles (all formats)
 ## 🌟 What's New in v3.3
 
 ### ✨ **Audio Engineering Revolution**
-- 🎵 **Ultra-Quiet Jingle Mixing** - 2% backing level for broadcast-professional sound
+- 🎵 **Professional Jingle Mixing** - 10% backing level for broadcast-professional sound
 - 🎼 **Multi-Format Jingle Support** - MP3, FLAC, WAV, OGG intelligent selection
-- 🔊 **Advanced FFmpeg Engineering** - 6-stage dynamic filter with speech dominance
+- 🔊 **Advanced FFmpeg Engineering** - 3-phase audio system with speech dominance
 - ⚡ **Perfect Workflow Synchronization** - Dashboard always finds correct audio files
 - 🌍 **English Codebase** - Complete translation for international development
 
@@ -249,11 +254,11 @@ ls -la jingles/                  # View available jingles (all formats)
 
 ### 🎵 **Professional Audio Features**
 ```python
-# Ultra-quiet jingle engineering
-Dynamic Filter: 100% → 2% → 100% (6-stage professional)
-Fallback Filter: 2% constant (broadcast standard)
-Speech Boost: +40% with dynamic mixing
-Mix Dominance: Speech 88% : Jingle 12%
+# Professional jingle engineering
+3-Phase System: 100% → 10% → 100% (cinematic transitions)
+Background Level: 10% subtle backing (broadcast standard)
+Speech Volume: 100% with dynamic mixing
+Mix Dominance: Speech 100% : Jingle 10%
 ```
 
 ## 🤝 Contributing
@@ -299,7 +304,7 @@ MIT License - see [LICENSE](LICENSE) file for details.
 
 **🎙️ Ultra-Professional AI Radio Production - Made with ❤️ by RadioX Team**
 
-[📚 Documentation](docs/) • [🐛 Issues](https://github.com/your-org/radiox/issues) • [💡 Features](https://github.com/your-org/radiox/discussions)
+[📚 Documentation](docs/) • [🐛 Issues](https://github.com/muraschal/radiox-backend/issues) • [💡 Features](https://github.com/muraschal/radiox-backend/discussions)
 
 **Ready to create your first broadcast-quality AI radio show?** → `python main.py --news-count 3`
 
