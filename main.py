@@ -164,7 +164,10 @@ class RadioXMaster:
                 filepath = dashboard_result.get('filepath', '').split('/')[-1]  # Just filename
                 print(f"✅ Dashboard: {filepath}")
 
-            # --- STEP 6: Cleanup ---
+            # --- STEP 8: Web Sync & Git Publishing ---
+            await self._execute_web_sync_and_publish()
+
+            # --- STEP 9: Cleanup ---
             await self._cleanup_temp_directory()
             
             # --- FINAL STEP: Create Result ---
@@ -291,6 +294,83 @@ class RadioXMaster:
             logger.error(f"❌ Dashboard Generation failed: {e}")
             logger.error(traceback.format_exc())
             return {"success": False, "error": str(e)}
+
+    async def _execute_web_sync_and_publish(self) -> None:
+        """Execute web sync and git publishing after successful show generation"""
+        try:
+            print("🌐 Syncing to web & publishing...")
+            
+            # Step 1: Run web sync
+            import subprocess
+            sync_result = subprocess.run(
+                ["python", "sync_web_shows.py"],
+                capture_output=True,
+                text=True,
+                timeout=60
+            )
+            
+            if sync_result.returncode != 0:
+                logger.warning(f"⚠️ Web sync warning: {sync_result.stderr}")
+                print("⚠️ Web sync had issues but continuing...")
+            else:
+                print("✅ Web sync completed")
+            
+            # Step 2: Git add, commit, push
+            # Add all changes in web folder
+            git_add = subprocess.run(
+                ["git", "add", "web/"],
+                capture_output=True,
+                text=True,
+                timeout=30
+            )
+            
+            if git_add.returncode == 0:
+                # Check if there are changes to commit
+                git_status = subprocess.run(
+                    ["git", "status", "--porcelain", "web/"],
+                    capture_output=True,
+                    text=True,
+                    timeout=30
+                )
+                
+                if git_status.stdout.strip():
+                    # There are changes, commit them
+                    timestamp = datetime.now().strftime('%y%m%d_%H%M')
+                    commit_message = f"Add latest RadioX show {timestamp} to web deployment"
+                    
+                    git_commit = subprocess.run(
+                        ["git", "commit", "-m", commit_message],
+                        capture_output=True,
+                        text=True,
+                        timeout=30
+                    )
+                    
+                    if git_commit.returncode == 0:
+                        # Push to remote
+                        git_push = subprocess.run(
+                            ["git", "push", "origin", "main"],
+                            capture_output=True,
+                            text=True,
+                            timeout=60
+                        )
+                        
+                        if git_push.returncode == 0:
+                            print("✅ Published to radiox.rapold.io")
+                        else:
+                            print("⚠️ Git push failed, changes committed locally")
+                    else:
+                        print("⚠️ Git commit failed")
+                else:
+                    print("ℹ️ No new changes to publish")
+            else:
+                print("⚠️ Git add failed")
+                
+        except subprocess.TimeoutExpired:
+            logger.warning("⚠️ Web sync/publish timeout")
+            print("⚠️ Publishing timeout, show generated successfully")
+        except Exception as e:
+            logger.warning(f"⚠️ Web sync/publish warning: {e}")
+            print("⚠️ Publishing had issues, show generated successfully")
     
     def _validate_step_result(self, result: Dict[str, Any], step_name: str) -> None:
         """Validate step result with fail-fast pattern"""
