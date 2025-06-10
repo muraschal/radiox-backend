@@ -28,10 +28,31 @@ def get_show_files(directory: Path) -> List[Dict[str, Any]]:
     """Sammle alle Show-Dateien aus einem Verzeichnis."""
     
     show_files = {}
-    pattern = re.compile(r'radiox_(\d{6}_\d{4})\.(html|mp3|png)')
     
-    for file_path in directory.glob("radiox_*"):
-        match = pattern.match(file_path.name)
+    # Patterns für neue und alte Dateien
+    pattern_new = re.compile(r'radiox_dashboard_fancy_(\d{6}_\d{4})\.html')
+    pattern_media = re.compile(r'radiox_(\d{6}_\d{4})\.(mp3|png)')
+    
+    # Sammle neue Dashboard-Dateien
+    for file_path in directory.glob("radiox_dashboard_fancy_*.html"):
+        match = pattern_new.match(file_path.name)
+        if match:
+            timestamp = match.group(1)
+            
+            if timestamp not in show_files:
+                show_files[timestamp] = {
+                    "timestamp": timestamp,
+                    "files": {}
+                }
+            
+            show_files[timestamp]["files"]["html"] = {
+                "path": file_path,
+                "size": file_path.stat().st_size if file_path.exists() else 0
+            }
+    
+    # Sammle Media-Dateien (MP3, PNG)
+    for file_path in directory.glob("radiox_*.mp3"):
+        match = pattern_media.match(file_path.name)
         if match:
             timestamp = match.group(1)
             extension = match.group(2)
@@ -47,18 +68,35 @@ def get_show_files(directory: Path) -> List[Dict[str, Any]]:
                 "size": file_path.stat().st_size if file_path.exists() else 0
             }
     
-    # Filtere nur vollständige Shows (mit HTML + MP3)
+    for file_path in directory.glob("radiox_*.png"):
+        match = pattern_media.match(file_path.name)
+        if match:
+            timestamp = match.group(1)
+            extension = match.group(2)
+            
+            if timestamp not in show_files:
+                show_files[timestamp] = {
+                    "timestamp": timestamp,
+                    "files": {}
+                }
+            
+            show_files[timestamp]["files"][extension] = {
+                "path": file_path,
+                "size": file_path.stat().st_size if file_path.exists() else 0
+            }
+    
+    # Erstelle vollständige Shows (nur Dashboard ist Pflicht)
     complete_shows = []
     for timestamp, show_data in show_files.items():
         files = show_data["files"]
-        if "html" in files and "mp3" in files:
+        if "html" in files:  # Dashboard ist Pflicht
             complete_shows.append({
                 "timestamp": timestamp,
-                "htmlFile": f"radiox_{timestamp}.html",
-                "mp3File": f"radiox_{timestamp}.mp3",
+                "htmlFile": f"radiox_dashboard_fancy_{timestamp}.html",
+                "mp3File": f"radiox_{timestamp}.mp3" if "mp3" in files else None,
                 "pngFile": f"radiox_{timestamp}.png" if "png" in files else None,
                 "size": files["html"]["size"],
-                "audioSize": files["mp3"]["size"],
+                "audioSize": files["mp3"]["size"] if "mp3" in files else 0,
                 "coverSize": files["png"]["size"] if "png" in files else 0,
                 "files": files
             })
@@ -91,7 +129,14 @@ def copy_show_files(shows: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         # Kopiere alle Dateien der Show
         for ext, file_info in show["files"].items():
             source_path = file_info["path"]
-            target_path = WEB_DIR / source_path.name
+            
+            # Bestimme Ziel-Namen
+            if ext == "html":
+                target_name = f"radiox_dashboard_fancy_{show['timestamp']}.html"
+            else:
+                target_name = f"radiox_{show['timestamp']}.{ext}"
+            
+            target_path = WEB_DIR / target_name
             
             try:
                 shutil.copy2(source_path, target_path)
@@ -99,7 +144,7 @@ def copy_show_files(shows: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
                     "path": target_path,
                     "size": target_path.stat().st_size
                 }
-                print(f"  ✅ {source_path.name} → {target_path.name}")
+                print(f"  ✅ {source_path.name} → {target_name}")
             except Exception as e:
                 print(f"  ❌ Fehler beim Kopieren von {source_path.name}: {e}")
                 success = False
@@ -112,7 +157,7 @@ def copy_show_files(shows: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
             copied_shows.append(web_show)
         else:
             # Cleanup bei Fehler
-            for file_path in WEB_DIR.glob(f"radiox_{show['timestamp']}.*"):
+            for file_path in WEB_DIR.glob(f"radiox*{show['timestamp']}.*"):
                 file_path.unlink()
     
     return copied_shows
@@ -145,7 +190,59 @@ def generate_shows_json(shows: List[Dict[str, Any]]):
         json.dump(shows_data, f, indent=2, ensure_ascii=False)
     
     print(f"📄 Erstellt: {shows_json_path}")
+    
+    # Also update index.html if it exists and needs updating
+    update_index_page(shows_data)
+    
     return shows_data
+
+def update_index_page(shows_data: Dict[str, Any]):
+    """Aktualisiere index.html mit neuesten Show-Daten."""
+    
+    index_path = WEB_DIR / "index.html"
+    
+    # Prüfe ob index.html existiert
+    if not index_path.exists():
+        print("ℹ️ index.html nicht gefunden - wird bei Bedarf automatisch generiert")
+        return
+    
+    try:
+        # Lese aktuelle index.html
+        with open(index_path, 'r', encoding='utf-8') as f:
+            content = f.read()
+        
+        # Update hardcoded Shows mit aktuellen Shows
+        if shows_data.get("shows"):
+            current_shows = []
+            for show in shows_data["shows"][:5]:  # Top 5 Shows
+                html_file = show.get("htmlFile")
+                if html_file:
+                    current_shows.append(f"'{html_file}'")
+            
+            if current_shows:
+                import re
+                shows_array = ',\n            '.join(current_shows)
+                new_shows_const = f"""const CURRENT_SHOWS = [
+            {shows_array}
+        ];"""
+                
+                # Replace CURRENT_SHOWS array
+                content = re.sub(
+                    r'const CURRENT_SHOWS = \[[^\]]*\];',
+                    new_shows_const,
+                    content,
+                    flags=re.MULTILINE | re.DOTALL
+                )
+        
+        # Schreibe aktualisierte index.html zurück
+        with open(index_path, 'w', encoding='utf-8') as f:
+            f.write(content)
+        
+        print(f"📄 index.html aktualisiert mit {len(shows_data.get('shows', []))} Shows")
+        
+    except Exception as e:
+        print(f"⚠️ Fehler beim Aktualisieren der index.html: {e}")
+        # Don't fail if index update fails
 
 def print_summary(shows_data: Dict[str, Any]):
     """Zeige Zusammenfassung der Synchronisation."""
@@ -177,39 +274,55 @@ def main():
     print("🌐 RadioX Web Shows Synchronizer")
     print("=" * 40)
     
-    # Prüfe ob outplay Verzeichnis existiert
-    if not OUTPLAY_DIR.exists():
-        print(f"❌ Outplay Verzeichnis nicht gefunden: {OUTPLAY_DIR}")
+    # Sammle Shows direkt aus web (Dashboard werden bereits dort generiert)
+    if not WEB_DIR.exists():
+        print(f"❌ Web Verzeichnis nicht gefunden: {WEB_DIR}")
         return
     
-    # Sammle Shows aus outplay
-    print("📂 Sammle Shows aus outplay/...")
-    all_shows = get_show_files(OUTPLAY_DIR)
+    print("📂 Sammle Shows aus web/...")
+    all_shows = get_show_files(WEB_DIR)
     
     if not all_shows:
-        print("❌ Keine vollständigen Shows gefunden!")
+        print("❌ Keine Shows gefunden!")
         return
     
-    print(f"📊 {len(all_shows)} vollständige Shows gefunden")
+    print(f"📊 {len(all_shows)} Shows gefunden")
     
-    # Bereinige web Verzeichnis
-    print("🧹 Bereinige web Verzeichnis...")
-    clean_web_directory()
+    # Bereinige alte Shows (behalte nur die neuesten MAX_SHOWS)
+    print(f"🧹 Bereinige alte Shows (behalte {MAX_SHOWS} neueste)...")
+    cleanup_old_shows(all_shows)
     
-    # Kopiere neueste Shows
-    print(f"📂 Kopiere maximal {MAX_SHOWS} neueste Shows...")
-    copied_shows = copy_show_files(all_shows)
-    
-    if not copied_shows:
-        print("❌ Keine Shows erfolgreich kopiert!")
-        return
+    # Aktualisiere Shows-Liste nach Bereinigung
+    cleaned_shows = get_show_files(WEB_DIR)
     
     # Generiere shows.json
     print("📄 Generiere shows.json...")
-    shows_data = generate_shows_json(copied_shows)
+    shows_data = generate_shows_json(cleaned_shows)
     
     # Zeige Zusammenfassung
     print_summary(shows_data)
+
+def cleanup_old_shows(shows: List[Dict[str, Any]]):
+    """Bereinige alte Shows im web Verzeichnis (behalte nur die neuesten MAX_SHOWS)."""
+    
+    if len(shows) <= MAX_SHOWS:
+        print(f"ℹ️ Nur {len(shows)} Shows vorhanden, keine Bereinigung nötig")
+        return
+    
+    # Sortiere nach Timestamp (neueste zuerst)
+    shows.sort(key=lambda x: x["timestamp"], reverse=True)
+    
+    # Lösche alte Shows
+    shows_to_delete = shows[MAX_SHOWS:]
+    
+    for show in shows_to_delete:
+        timestamp = show["timestamp"]
+        for file_path in WEB_DIR.glob(f"*{timestamp}*"):
+            if file_path.is_file():
+                file_path.unlink()
+                print(f"🗑️ Gelöscht: {file_path.name}")
+    
+    print(f"✅ {len(shows_to_delete)} alte Shows bereinigt")
 
 if __name__ == "__main__":
     main() 

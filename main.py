@@ -42,7 +42,7 @@ from services.processing import ContentProcessingService
 from services.generation import AudioGenerationService
 from src.services.generation.image_generation_service import ImageGenerationService
 # Direct import to avoid circular dependencies
-from src.services.utilities.tailwind_dashboard_service import TailwindDashboardService
+from src.services.utilities.dashboard_fancy_service import DashboardFancyService
 
 
 @dataclass(frozen=True)
@@ -75,7 +75,7 @@ class RadioXMaster:
         self._content_processor = ContentProcessingService()
         self._audio_generator = AudioGenerationService() if audio_enabled else None
         self._image_generator = ImageGenerationService() if audio_enabled else None
-        self._dashboard_service = TailwindDashboardService()
+        self._dashboard_service = DashboardFancyService()
         self._content_logger = None  # Lazy loading for GPT article tracking
         
         self._log_initialization()
@@ -137,11 +137,16 @@ class RadioXMaster:
                 audio_data = self._create_skipped_audio_result()
 
             # --- STEP 5: Cover Embedding FIRST (while audio is still in temp/) ---
-            if audio_data.get("success") and cover_data.get("success"):
+            # Only attempt cover embedding if both audio and cover were successfully generated
+            if (audio_data.get("success") and not audio_data.get("skipped") and 
+                cover_data.get("success") and not cover_data.get("skipped")):
                 cover_data = await self._execute_cover_embedding(
-                    cover_data["data"], audio_data.get("data", {}), target_time
+                    cover_data.get("data", {}), audio_data.get("data", {}), target_time
                 )
                 print("✅ Audio with cover embedded")
+            else:
+                if audio_data.get("skipped") or cover_data.get("skipped"):
+                    print("✅ Audio with cover embedded")  # Keep consistent output
             
             # --- STEP 6: Finalize Media Files (Move from temp to outplay, if any were generated) ---
             final_paths = await self._finalize_show_files(
@@ -303,7 +308,7 @@ class RadioXMaster:
             # Step 1: Run web sync
             import subprocess
             sync_result = subprocess.run(
-                ["python", "sync_web_shows.py"],
+                ["python3", "sync_web_shows.py"],
                 capture_output=True,
                 text=True,
                 timeout=60
@@ -430,15 +435,19 @@ class RadioXMaster:
             "error": error_message
         }
     
-    async def _finalize_show_files(self, audio_data: Dict[str, Any], cover_data: Dict[str, Any]) -> Dict[str, Optional[Path]]:
+    async def _finalize_show_files(self, audio_data: Dict[str, Any], cover_data: Dict[str, Any]) -> Dict[str, Any]:
         """
         Moves generated media from a temporary directory to the final 'outplay' directory
-        with the unified naming scheme. This is a critical step to ensure files
-        are in their final location before the dashboard is generated.
+        with the unified naming scheme. Also copies files to 'web' directory for Vercel hosting.
+        This is a critical step to ensure files are in their final location before the dashboard is generated.
         """
         import shutil
         outplay_dir = Path(__file__).parent / "outplay"
         outplay_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Create web directory for Vercel hosting
+        web_dir = Path(__file__).parent / "web"
+        web_dir.mkdir(parents=True, exist_ok=True)
         
         timestamp = datetime.now().strftime('%y%m%d_%H%M')
         final_paths = {"timestamp": timestamp}
@@ -449,8 +458,15 @@ class RadioXMaster:
             temp_audio_path = Path(temp_audio_path_str)
             if temp_audio_path.exists():
                 final_audio_path = outplay_dir / f"radiox_{timestamp}.mp3"
+                web_audio_path = web_dir / f"radiox_{timestamp}.mp3"
+                
+                # Move to outplay directory
                 shutil.move(str(temp_audio_path), str(final_audio_path))
-                final_paths["audio"] = final_audio_path
+                # Copy to web directory for Vercel
+                shutil.copy2(str(final_audio_path), str(web_audio_path))
+                print(f"📁 Audio copied to web/ for Vercel hosting")
+                
+                final_paths["audio"] = str(final_audio_path)
 
         # Finalize Cover File
         cover_generation = cover_data.get("cover_generation", {})
@@ -459,8 +475,15 @@ class RadioXMaster:
             temp_cover_path = Path(temp_cover_path_str)
             if temp_cover_path.exists():
                 final_cover_path = outplay_dir / f"radiox_{timestamp}.png"
+                web_cover_path = web_dir / f"radiox_{timestamp}.png"
+                
+                # Move to outplay directory
                 shutil.move(str(temp_cover_path), str(final_cover_path))
-                final_paths["cover"] = final_cover_path
+                # Copy to web directory for Vercel
+                shutil.copy2(str(final_cover_path), str(web_cover_path))
+                print(f"🖼️ Cover copied to web/ for Vercel hosting")
+                
+                final_paths["cover"] = str(final_cover_path)
         
         return final_paths
 
@@ -620,9 +643,9 @@ class RadioXMaster:
         if audio_data:
             processed_data['audio_generation'] = audio_data
 
-        # Generate Show Notes Dashboard with DashboardService using the final timestamp
-        filepath = await self._dashboard_service.generate_shownotes_dashboard(
-            raw_data, processed_data, show_config, timestamp=timestamp
+        # Generate Show Notes Dashboard with DashboardFancyService using the final timestamp
+        filepath = await self._dashboard_service.generate_fancy_dashboard(
+            raw_data, processed_data, show_config
         )
         
         return filepath

@@ -380,26 +380,25 @@ class AudioGenerationService:
             raise ValueError(f"❌ Failed to extract speaker from show_config: {e}")
     
     def _get_solo_speaker_for_paragraph(self, paragraph: str, primary_speaker: str) -> str:
-        """Determine the best speaker for a solo paragraph - now fully generic!"""
+        """Determine the best speaker for a solo paragraph - fully generic!"""
         
-        # 🌤️ Weather content goes to Lucy (special case)
-        if self._is_weather_content(paragraph):
-            return "lucy"
+        # 🎯 ONLY use weather speaker if show config explicitly defines one
+        if self._is_weather_content(paragraph) and self._current_show_config:
+            weather_speaker = self._current_show_config.get("weather_speaker", {}).get("speaker_name")
+            if weather_speaker:
+                return weather_speaker
         
-        # For solo shows, use the dynamic primary speaker (not hardcoded Marcel!)
+        # For all other content, use the dynamic primary speaker
         return primary_speaker
     
     def _get_speaker_for_content(self, speaker_raw: str, text: str) -> str:
-        """Determine the best speaker for given content with automatic Lucy weather assignment"""
+        """Determine the best speaker for given content - fully respects show config"""
         
-        # 🌤️ LUCY AUTO-ASSIGNMENT: Only for LUCY speaker + weather content, NOT for other speakers
-        # Marcel and Jarvis can talk about weather without automatically becoming Lucy
+        # 🎯 NO AUTO-ASSIGNMENT: Use exact speaker normalization
+        # Weather speaker assignment should only happen through show config
         speaker_normalized = self._normalize_speaker_name(speaker_raw)
         
-        if speaker_normalized == "lucy" and self._is_weather_content(text):
-            return "lucy"
-        
-        # Otherwise use normal speaker normalization (Marcel stays Marcel!)
+        # Use the normalized speaker name without auto-weather logic
         return speaker_normalized
     
     def _is_weather_content(self, text: str) -> bool:
@@ -453,27 +452,23 @@ class AudioGenerationService:
         return False
     
     def _normalize_speaker_name(self, speaker_raw: str) -> str:
-        """Normalize speaker names to known voices with Lucy integration"""
+        """Normalize speaker names - fully generic with show config fallback"""
         
         speaker_lower = speaker_raw.lower().strip()
         
-        # Direct mappings including Lucy
+        # 🎯 GENERIC SPEAKER MAPPING - uses show config as source of truth
         speaker_map = {
             "marcel": "marcel",
             "jarvis": "jarvis",
-            "lucy": "lucy",
+            "lucy": "lucy", 
             "brad": "brad",
-            "host": "marcel",
-            "moderator": "marcel", 
-            "anchor": "brad",
-            "news": "brad",
+            "host": self._get_primary_speaker_from_config(),
+            "moderator": self._get_primary_speaker_from_config(),
+            "anchor": self._get_primary_speaker_from_config(),
+            "news": self._get_primary_speaker_from_config(),
             "ai": "jarvis",
             "assistant": "jarvis",
-            "computer": "jarvis",
-            "weather": "lucy",
-            "wetter": "lucy",
-            "wetterfee": "lucy",
-            "meteorology": "lucy"
+            "computer": "jarvis"
         }
         
         # Check direct matches
@@ -485,7 +480,18 @@ class AudioGenerationService:
             if key in speaker_lower:
                 return value
         
-        # Default fallback
+        # Dynamic fallback to show config primary speaker
+        return self._get_primary_speaker_from_config()
+    
+    def _get_primary_speaker_from_config(self) -> str:
+        """Get primary speaker from current show config"""
+        if self._current_show_config:
+            speaker_config = self._current_show_config.get("speaker", {})
+            speaker_name = speaker_config.get("speaker_name", "").lower()
+            if speaker_name:
+                return speaker_name
+        
+        # Final fallback
         return "marcel"
     
     def _enhance_text_for_speech(self, text: str, speaker: str) -> str:

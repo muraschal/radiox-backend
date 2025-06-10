@@ -62,10 +62,18 @@ class ImageGenerationService:
             # 1. DALL-E Prompt erstellen
             prompt = self._create_dalle_prompt(broadcast_content, target_time)
             
-            # 2. DALL-E API Request
-            cover_url = await self._request_dalle_image(prompt)
+            # 2. DALL-E API Request mit Retry
+            cover_url = None
+            for attempt in range(2):  # 2 Versuche
+                cover_url = await self._request_dalle_image(prompt)
+                if cover_url:
+                    break
+                if attempt == 0:
+                    logger.info("🔄 DALL-E Retry nach 2 Sekunden...")
+                    await asyncio.sleep(2)
             
             if not cover_url:
+                logger.info("📋 Verwende Fallback Cover nach DALL-E Fehlschlag")
                 return await self._generate_fallback_cover(session_id, broadcast_content)
             
             # 3. Cover-Image herunterladen
@@ -283,41 +291,53 @@ class ImageGenerationService:
     # Private Methods
     
     def _create_dalle_prompt(self, broadcast_content: Dict[str, Any], target_time: Optional[str] = None) -> str:
-        """🎨 UNIVERSELLER PROMPT FÜR RADIOX COVER GENERATOR"""
+        """Professional DALL-E prompt for consistent RadioX covers"""
         
-        # Extract dynamic values from broadcast content
-        edition_name = self._get_edition_name(target_time)
-        show_style = self._extract_show_style(broadcast_content)
-        speakers = self._extract_speaker_descriptions(broadcast_content)
-        time_mood = self._get_time_mood(target_time)
-        topic_symbols = self._extract_topic_symbols(broadcast_content)
+        # Extract show data from broadcast_content
+        show_config = broadcast_content.get("show_config", {})
+        show_info = show_config.get("show", {})
+        selected_news = broadcast_content.get("selected_news", [])
         
-        # Create the new professional prompt
-        prompt = f"""Create a cinematic, AI-generated visual cover for the fictional radio show "RADIO X – {edition_name}".
+        # Show Category
+        show_name = show_info.get("name", "Radio Show")
+        city_focus = show_info.get("city_focus", "Local")
+        category = f"{show_name} - {city_focus} Focus"
+        
+        # Topics (from selected news)
+        topics = []
+        for news_item in selected_news[:3]:  # Max 3 topics
+            title = news_item.get("title", "")
+            if title:
+                # Extract key topic from title (first 3-4 words)
+                topic_words = title.split()[:4]
+                topics.append(" ".join(topic_words))
+        
+        if not topics:
+            topics = ["Breaking News", "Local Updates", "Tech Innovation"]
+        
+        topics_str = ", ".join(topics[:3])
+        
+        # Hosts (from speaker configurations)
+        hosts = []
+        primary_speaker = show_config.get("speaker", {})
+        secondary_speaker = show_config.get("secondary_speaker", {})
+        
+        if primary_speaker.get("voice_name"):
+            hosts.append(primary_speaker["voice_name"])
+        if secondary_speaker.get("voice_name"):
+            hosts.append(secondary_speaker["voice_name"])
+            
+        if not hosts:
+            hosts = ["AI Host"]
+            
+        hosts_str = " & ".join(hosts)
+        
+        # Create optimized prompt (balance between professional and stability)
+        prompt = f"""Create a sleek podcast cover for "RadioX" - {category}. Topics: {topics_str}. Hosts: {hosts_str}. 
 
-📍 Context:
-This is a {show_style}
+Style: Modern minimalist design with bold typography, dark blue/black background, electric accent colors (neon cyan, yellow). Include subtle AI elements (waveforms, circuits). Professional tech aesthetic, square format."""
 
-🎙️ Speakers:
-The hosts should be subtly represented in the image:
-{speakers}
-
-🕒 Time of Day:
-Reflect the visual mood of {time_mood}
-
-🧠 Content:
-Represent the following news topics with visual **symbolism only** (no text or direct illustration):
-{topic_symbols['symbol_1']}
-{topic_symbols['symbol_2']}
-{topic_symbols['symbol_3']}
-
-🎨 Art Direction:
-– Magazine-style composition or streaming platform key art
-– Strong composition, minimal color palette, cinematic contrast
-– No headlines, no article text – only RADIO X logo and EDITION title in modern typography
-– Style mix: cyberpunk x Swiss brutalism x symbolic realism"""
-
-        logger.debug(f"🎨 Cinematic RadioX Cover Prompt created for {edition_name}")
+        logger.debug(f"DALL-E prompt created: {len(prompt)} characters")
         return prompt
     
     def _extract_show_style(self, broadcast_content: Dict[str, Any]) -> str:
@@ -553,7 +573,17 @@ Represent the following news topics with visual **symbolism only** (no text or d
                         logger.info("✅ DALL-E Cover-Art generiert")
                         return image_url
                     else:
-                        logger.error(f"❌ DALL-E API Fehler {response.status}")
+                        response_text = await response.text()
+                        logger.error(f"❌ DALL-E API Fehler {response.status}: {response_text[:200]}")
+                        
+                        # Spezifische Behandlung für bekannte Fehler
+                        if response.status == 429:
+                            logger.warning("⚠️ DALL-E Rate Limit erreicht - verwende Fallback Cover")
+                        elif response.status == 500:
+                            logger.warning("⚠️ DALL-E Server-Problem - verwende Fallback Cover") 
+                        elif response.status == 400:
+                            logger.warning("⚠️ DALL-E Prompt-Problem - verwende Fallback Cover")
+                        
                         return None
         
         except Exception as e:
