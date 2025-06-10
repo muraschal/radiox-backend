@@ -11,11 +11,11 @@
     <meta property="og:description" content="AI-generated. Enterprise quality. Zero compromise. It's the future, and it's loud.">
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://radiox.ai">
-    <meta property="og:image" content="radiox_250610_1633.png">
+    <meta property="og:image" content="radiox_250610_1728.png">
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="RadioX – Your Radio, Just Got Smarter.">
     <meta name="twitter:description" content="AI-generated. Enterprise quality. Zero compromise. It's the future, and it's loud.">
-    <meta name="twitter:image" content="radiox_250610_1633.png">
+    <meta name="twitter:image" content="radiox_250610_1728.png">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📻</text></svg>">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
@@ -332,6 +332,53 @@
             display: flex;
             flex-direction: column;
             gap: 1.5rem;
+        }
+
+        /* Navigation Controls */
+        .navigation-controls {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 0.5rem;
+            gap: 1rem;
+        }
+
+        .nav-button {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            color: #ffffff;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.85rem;
+            font-weight: 500;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .nav-button:hover {
+            background: rgba(102, 126, 234, 0.2);
+            border-color: rgba(102, 126, 234, 0.4);
+            transform: translateY(-1px);
+        }
+
+        .nav-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .nav-icon {
+            font-size: 1.2rem;
+            font-weight: bold;
+        }
+
+        .nav-label {
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
         
         .progress-container {
@@ -1017,17 +1064,27 @@
             <div class="glasmorph-player">
                 <div class="player-content">
                     <div class="cover-container">
-                        <img src="radiox_250610_1633.png" alt="RadioX Cover" class="cover-image">
+                        <img src="radiox_250610_1728.png" alt="RadioX Cover" class="cover-image">
                         <div class="play-overlay" id="playButton">
                             <span class="play-icon">▶</span>
                         </div>
                     </div>
                     <div class="audio-info">
-                        <h2 class="audio-title">ZURICH LOCAL | 16:33 Edition</h2>
+                        <h2 class="audio-title">ZURICH LOCAL | 17:28 Edition</h2>
                         <div class="audio-meta">
-                            Test Show mit Marcel
+                            the hottest news from zurich mit Marcel und Jarvis • Wetter: lucy
                         </div>
                         <div class="custom-controls">
+                            <div class="navigation-controls">
+                                <button class="nav-button" id="prevShow" title="Previous Show">
+                                    <span class="nav-icon">‹</span>
+                                    <span class="nav-label">Previous</span>
+                                </button>
+                                <button class="nav-button" id="nextShow" title="Next Show">
+                                    <span class="nav-label">Next</span>
+                                    <span class="nav-icon">›</span>
+                                </button>
+                            </div>
                             <div class="progress-container">
                                 <span class="time-display" id="currentTime">0:00</span>
                                 <div class="progress-bar" id="progressBar">
@@ -1050,7 +1107,7 @@
         
         <!-- Hidden Audio Element -->
         <audio class="hidden-audio" id="audioPlayer" preload="metadata">
-            <source src="radiox_250610_1633.mp3" type="audio/mpeg">
+            <source src="radiox_250610_1728.mp3" type="audio/mpeg">
             Your browser does not support the audio element.
         </audio>
     </section>
@@ -1063,7 +1120,7 @@
                 
                 <div class="stat-card">
                     <div class="stat-icon">📰</div>
-                    <div class="stat-value">1</div>
+                    <div class="stat-value">1289</div>
                     <div class="stat-label">News Total</div>
                 </div>
                 <div class="stat-card">
@@ -1073,25 +1130,25 @@
                 </div>
                 <div class="stat-card">
                     <div class="stat-icon">📡</div>
-                    <div class="stat-value">1</div>
+                    <div class="stat-value">14</div>
                     <div class="stat-label">Sources</div>
                 </div>
                 <div class="stat-card">
                     <div class="stat-icon">🤖</div>
-                    <div class="stat-value">2</div>
+                    <div class="stat-value">331</div>
                     <div class="stat-label">GPT Words</div>
                 </div>
                 <div class="stat-card">
                     <div class="stat-icon">🌡️</div>
-                                            <div class="stat-value">21.0°C</div>
+                                            <div class="stat-value">25°C</div>
                     <div class="stat-label">Temperature</div>
-                    <div class="stat-trend trend-neutral">→ Test weather with 21.0°C</div>
+                    <div class="stat-trend trend-neutral"></div>
                 </div>
                 <div class="stat-card">
                     <div class="stat-icon">₿</div>
-                    <div class="stat-value">$71,000</div>
+                    <div class="stat-value">$109,113</div>
                     <div class="stat-label">Bitcoin</div>
-                    <div class="stat-trend trend-up">↗ +1.8% today</div>
+                    <div class="stat-trend trend-up">↗ +1.1% today</div>
                 </div>
             </div>
         </div>
@@ -1108,7 +1165,7 @@
                 <div class="p-4">
                     <div class="bg-orange-50 border border-orange-200 p-3 rounded">
                         <div class="text-sm text-orange-800 leading-relaxed">
-                            Test weather with 21.0°C
+                            "Good evening Zurich, it's a pleasant 25°C with clear skies. As we head into the night, expect scattered clouds with temperatures dropping to a cool 20.6°C by 11 PM. No rain is expected, keeping the night dry and comfortable."
                         </div>
                     </div>
                     <div class="mt-3 text-xs text-gray-600">
@@ -1125,7 +1182,7 @@
                 <div class="p-4">
                     <div class="bg-yellow-50 border border-yellow-200 p-3 rounded">
                         <div class="text-sm text-yellow-800 leading-relaxed">
-                            Bitcoin intelligence not available
+                            "Bitcoin is currently priced at $109,113, showing a steady increase with a 1.1% rise in the last 24 hours and a 2.2% gain over the past week. As European markets continue to trade and US markets open, the cryptocurrency maintains its stability, with a market cap of $2168.8B and a 24-hour trading volume of $58.0B."
                         </div>
                     </div>
                 </div>
@@ -1142,15 +1199,15 @@
                     
                 <article class="article-card">
                     <div class="article-meta">
-                        <span class="article-badge badge-source">Test</span>
-                        <span class="article-badge badge-category">test</span>
-                        <span class="article-badge badge-time">1.0h ago</span>
+                        <span class="article-badge badge-source">Tagesanzeiger</span>
+                        <span class="article-badge badge-category">zurich</span>
+                        <span class="article-badge badge-time">2.1h ago</span>
                     </div>
-                    <h3 class="article-title">Test MVP Zentrierung</h3>
-                    <p class="article-excerpt">Test</p>
+                    <h3 class="article-title">Wasserrohrbrüche in Zürich: «Zürichs Trinkwasserleitungen sind nicht überaltert»</h3>
+                    <p class="article-excerpt">Zwei massive Wasserrohrbrüche innert zweier Tage – was ist da los im Zürcher Untergrund? Die städtische Wasserversorgung nimmt Stellung zu Gründen und Gegenmassnahmen.</p>
                     <div class="article-actions">
-                        <a href="https://example.com" target="_blank" class="action-link">🔗 Read more</a>
-                        <a href="https://www.test.ch/rss.xml" target="_blank" class="action-link">📡 Source</a>
+                        <a href="https://www.tagesanzeiger.ch/zuerich-wasserrohrbruch-das-sagt-die-wasserversorgung-664991265530" target="_blank" class="action-link">🔗 Read more</a>
+                        <a href="https://www.tagesanzeiger.ch/zuerich/rss.html" target="_blank" class="action-link">📡 Source</a>
                     </div>
                 </article>
                 </div>
@@ -1177,13 +1234,19 @@
                 </div>
                 <div class="dev-info-content" id="content-gpt-processing">
                     <div class="dev-info-preview">
-                        <strong>GPT Input:</strong> Test......
+                        <strong>GPT Input:</strong> {&#x27;stage1_selection_prompt&#x27;: &quot;\n# SYSTEM PROMPT – RADIOX ARTICLE SELECTOR\n\n## MISSIO...
                     </div>
                     <div class="dev-info-full">
                         <h4 style="color: #ccc; margin-bottom: 1rem;">📤 Input Prompt</h4>
-                        <pre class="dev-prompt">Test...</pre>
+                        <pre class="dev-prompt">{&#x27;stage1_selection_prompt&#x27;: &quot;\n# SYSTEM PROMPT – RADIOX ARTICLE SELECTOR\n\n## MISSION\nYou are an expert content strategist and radio news curator. Your task is to select exactly 1 articles from the provided list that best fit the upcoming show – based on its unique tone, scope, and speaker style.\n\n## SHOW CONTEXT\n**Show Style:** \nShow: ZURICH LOCAL | Focus: Zurich\nStyle: the hottest news from zurich\n\n**Speaker Descriptions:**\nMarcel: Marcel is energetic, emotionally intelligent, and sharply analytical. Born in Zürich, he combines street-smart instincts with executive-level strategic thinking. He speaks fast with wit and subtext, his tone direct and often ironic but always intentional. Marcel doesn&#x27;t just conduct conversations—he experiences them intensely. He&...</pre>
                         <h4 style="color: #ccc; margin: 2rem 0 1rem;">📥 Generated Radio Script</h4>
-                        <pre class="dev-prompt">Test script...</pre>
+                        <pre class="dev-prompt">MARCEL: Guten Abend Zürich! Hier ist Marcel. Was für ein schöner Abend, oder? Bei angenehmen 25 Grad und klarem Himmel... ein perfekter Abend, um die Stadt zu erkunden. Aber seid vorsichtig, denn irgendwo darunter verstecken sich Zürichs Wasserrohre, die scheinbar spontan platzen können.
+
+JARVIS: Marcel, die Wahrscheinlichkeit, dass ein Wasserrohr unter deinen Füßen platzt, ist ziemlich gering. Die Stadtverwaltung behauptet, dass die Trinkwasserleitungen nicht überaltert sind. Zwei Vorfälle in zwei Tagen sind auffällig, aber nicht unbedingt alarmierend.
+
+MARCEL: Nun, Jarvis, ich hoffe, du hast recht. Aber ich frage mich, ob die Stadtverwaltung uns die ganze Wahrheit sagt. Oder ob sie nur versucht, eine mögliche Panik zu verhindern.
+
+LUCY: Nun, Marcel, wir werden sehen. Aber lassen wir die ...</pre>
                     </div>
                 </div>
             </div>
@@ -1203,9 +1266,9 @@
 ========================
 
 📊 Real-time Data Processing:
-- News Collection: 1 articles processed
-- Source Diversity: 1 unique sources
-- GPT Processing: 2 words generated
+- News Collection: 1289 articles processed
+- Source Diversity: 14 unique sources
+- GPT Processing: 331 words generated
 - Data Freshness: Live updates every workflow run
 
 🔄 Processing Pipeline:
@@ -1312,6 +1375,131 @@
 
         // Event listeners
         if (playButton) playButton.addEventListener('click', togglePlayPause);
+
+        // Show Navigation System
+        class ShowNavigator {
+            constructor() {
+                this.currentTimestamp = '250610_1728';
+                this.availableShows = [];
+                this.currentIndex = -1;
+                this.init();
+            }
+
+            async init() {
+                this.availableShows = await this.getAvailableShows();
+                this.currentIndex = this.getCurrentIndex();
+                this.initNavigation();
+            }
+
+            async getAvailableShows() {
+                const existingShows = [];
+                
+                // Smart detection: scan broadly for dashboard files
+                const currentTs = this.currentTimestamp;
+                const datePart = currentTs.split('_')[0]; // e.g., "250610"
+                const currentTime = parseInt(currentTs.split('_')[1]); // e.g., 1701
+                
+                // Generate comprehensive time slots for the day (every 30 minutes)
+                const timeSlots = [];
+                
+                // Start from 6:00 AM to 11:59 PM
+                for (let hour = 6; hour < 24; hour++) {
+                    for (let minute = 0; minute < 60; minute += 30) {
+                        const timeStr = hour.toString().padStart(2, '0') + 
+                                      minute.toString().padStart(2, '0');
+                        const timestamp = `${datePart}_${timeStr}`;
+                        timeSlots.push(timestamp);
+                    }
+                }
+                
+                // Check all potential time slots in parallel for better performance
+                const checkPromises = timeSlots.map(async timestamp => {
+                    try {
+                        const response = await fetch(`radiox_dashboard_fancy_${timestamp}.html`, { 
+                            method: 'HEAD',
+                            cache: 'no-cache'
+                        });
+                        return response.ok ? timestamp : null;
+                    } catch (error) {
+                        return null;
+                    }
+                });
+                
+                // Wait for all checks to complete
+                const results = await Promise.all(checkPromises);
+                
+                // Filter out null results and add to existing shows
+                results.forEach(timestamp => {
+                    if (timestamp) {
+                        existingShows.push(timestamp);
+                    }
+                });
+                
+                // Ensure current show is included (even if not found)
+                if (!existingShows.includes(this.currentTimestamp)) {
+                    existingShows.push(this.currentTimestamp);
+                }
+                
+                const sortedShows = existingShows.sort();
+                console.log('🎯 Available Shows:', sortedShows);
+                
+                return sortedShows;
+            }
+
+            getCurrentIndex() {
+                return this.availableShows.indexOf(this.currentTimestamp);
+            }
+
+            initNavigation() {
+                const prevButton = document.getElementById('prevShow');
+                const nextButton = document.getElementById('nextShow');
+
+                if (prevButton) {
+                    prevButton.addEventListener('click', () => this.goToPrevious());
+                    prevButton.disabled = this.currentIndex <= 0;
+                }
+
+                if (nextButton) {
+                    nextButton.addEventListener('click', () => this.goToNext());
+                    nextButton.disabled = this.currentIndex >= this.availableShows.length - 1;
+                }
+            }
+
+            goToPrevious() {
+                if (this.currentIndex > 0) {
+                    const prevTimestamp = this.availableShows[this.currentIndex - 1];
+                    this.navigateToShow(prevTimestamp);
+                }
+            }
+
+            goToNext() {
+                if (this.currentIndex < this.availableShows.length - 1) {
+                    const nextTimestamp = this.availableShows[this.currentIndex + 1];
+                    this.navigateToShow(nextTimestamp);
+                }
+            }
+
+            navigateToShow(timestamp) {
+                const newUrl = `radiox_dashboard_fancy_${timestamp}.html`;
+                
+                // Check if file exists before navigating
+                fetch(newUrl, { method: 'HEAD' })
+                    .then(response => {
+                        if (response.ok) {
+                            window.location.href = newUrl;
+                        } else {
+                            console.log(`Show ${timestamp} not available yet`);
+                            // Optionally show a toast message
+                        }
+                    })
+                    .catch(error => {
+                        console.log(`Cannot load show ${timestamp}: ${error.message}`);
+                    });
+            }
+        }
+
+        // Initialize navigation system
+        const navigator = new ShowNavigator();
 
         // Progress bar click and scrubbing
         if (progressBar) {
