@@ -1,7 +1,25 @@
 {
-  "lastUpdated": "2025-06-10T07:39:49.295306",
+  "lastUpdated": "2025-06-10T07:55:16.048523",
   "totalShows": 10,
   "shows": [
+    {
+      "timestamp": "250610_0755",
+      "htmlFile": "radiox_250610_0755.html",
+      "mp3File": "radiox_250610_0755.mp3",
+      "pngFile": "radiox_250610_0755.png",
+      "size": 1776502,
+      "audioSize": 6787445,
+      "coverSize": 1777889
+    },
+    {
+      "timestamp": "250610_0751",
+      "htmlFile": "radiox_250610_0751.html",
+      "mp3File": "radiox_250610_0751.mp3",
+      "pngFile": "radiox_250610_0751.png",
+      "size": 1783025,
+      "audioSize": 6151384,
+      "coverSize": 1830206
+    },
     {
       "timestamp": "250610_0716",
       "htmlFile": "radiox_250610_0716.html",
@@ -73,24 +91,6 @@
       "size": 1780245,
       "audioSize": 9430285,
       "coverSize": 2147862
-    },
-    {
-      "timestamp": "250610_0252",
-      "htmlFile": "radiox_250610_0252.html",
-      "mp3File": "radiox_250610_0252.mp3",
-      "pngFile": "radiox_250610_0252.png",
-      "size": 1780662,
-      "audioSize": 9288635,
-      "coverSize": 2006212
-    },
-    {
-      "timestamp": "250610_0248",
-      "htmlFile": "radiox_250610_0248.html",
-      "mp3File": "radiox_250610_0248.mp3",
-      "pngFile": "radiox_250610_0248.png",
-      "size": 1779726,
-      "audioSize": 6046907,
-      "coverSize": 1725761
     }
   ]
 }
