@@ -31,6 +31,9 @@ debug_*.py
 *.m4a
 *.aac
 
+# Ausnahmen für Web-Publishing
+!web/*.mp3
+
 # Logs
 *.log
 logs/

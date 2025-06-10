@@ -164,7 +164,29 @@
             });
         }
 
-        // Lade Shows aus JSON
+        // Fallback Shows für lokales Testing
+        const fallbackShows = [
+            {
+                "timestamp": "250610_0716",
+                "htmlFile": "radiox_250610_0716.html",
+                "mp3File": "radiox_250610_0716.mp3",
+                "pngFile": "radiox_250610_0716.png",
+                "size": 1784992,
+                "audioSize": 5453125,
+                "coverSize": 2027634
+            },
+            {
+                "timestamp": "250610_0327",
+                "htmlFile": "radiox_250610_0327.html",
+                "mp3File": "radiox_250610_0327.mp3",
+                "pngFile": "radiox_250610_0327.png",
+                "size": 1786322,
+                "audioSize": 6226950,
+                "coverSize": 1905767
+            }
+        ];
+
+        // Lade Shows aus JSON mit Fallback
         async function loadShows() {
             try {
                 const response = await fetch('shows.json');
@@ -187,7 +209,20 @@
                 }
             } catch (error) {
                 console.error('Fehler beim Laden der Shows:', error);
-                showError('Shows konnten nicht geladen werden');
+                console.log('Verwende Fallback-Shows für lokales Testing...');
+                
+                // Fallback für lokales Testing
+                shows = fallbackShows;
+                latestShow = shows[0];
+                
+                if (latestShow) {
+                    showLatestShow();
+                    // Kein Auto-redirect im Fallback-Modus
+                    document.getElementById('showInfo').querySelector('.text-sm').textContent = 
+                        'Lokaler Test-Modus (shows.json nicht gefunden)';
+                } else {
+                    showError('Keine Shows verfügbar (auch nicht im Fallback)');
+                }
             }
         }
 
