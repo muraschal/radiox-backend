@@ -28,13 +28,14 @@ class VoiceConfigService:
         self._cache_timestamp: Optional[float] = None
         self.cache_duration = 300  # 5 Minuten Cache
     
-    async def get_voice_config(self, speaker_name: str, language_override: Optional[str] = None) -> Optional[Dict[str, Any]]:
+    async def get_voice_config(self, speaker_name: str, language_override: Optional[str] = None, voice_quality: str = "mid") -> Optional[Dict[str, Any]]:
         """
-        Holt Voice-Konfiguration für einen Speaker
+        Holt Voice-Konfiguration für einen Speaker mit Qualitätsstufe
         
         Args:
             speaker_name: Name des Speakers (marcel, jarvis, etc.)
             language_override: Überschreibt die Datenbanksprache (für --lang Parameter)
+            voice_quality: Qualitätsstufe (low/mid/high), Default: mid
             
         Returns:
             Voice-Konfiguration oder None wenn nicht gefunden
@@ -51,9 +52,22 @@ class VoiceConfigService:
                 logger.warning(f"⚠️ Voice-Konfiguration für '{speaker_name}' nicht gefunden")
                 return None
             
+            # Kopie erstellen für Modifikationen
+            voice_config = dict(voice_config)
+            
+            # 🎛️ VOICE QUALITY: Wähle Modell basierend auf Qualitätsstufe
+            model_info = await self.get_model_for_quality(voice_quality)
+            if model_info:
+                voice_config['model_id'] = model_info['model_id']
+                voice_config['model'] = model_info['model_id']  # Legacy compatibility
+                
+                # Passe Settings basierend auf Qualitätsstufe an
+                voice_config = self._adjust_settings_for_quality(voice_config, voice_quality)
+                
+                logger.debug(f"🎛️ Voice Quality '{voice_quality}' → Modell: {model_info['model_id']}")
+            
             # 🌍 LANGUAGE OVERRIDE: Überschreibe Sprache wenn Parameter gesetzt
             if language_override:
-                voice_config = dict(voice_config)  # Kopie erstellen
                 voice_config['language'] = language_override
                 logger.debug(f"🌍 Language Override für {speaker_name}: {language_override}")
             
@@ -325,6 +339,66 @@ class VoiceConfigService:
             logger.error(f"❌ Fehler beim Laden der Voice-Statistiken: {e}")
             return {"error": str(e)}
     
+    async def get_model_for_quality(self, quality: str = "mid") -> Optional[Dict[str, Any]]:
+        """
+        Holt das passende ElevenLabs Modell für eine Qualitätsstufe
+        
+        Args:
+            quality: Qualitätsstufe (low/mid/high)
+            
+        Returns:
+            Modell-Information oder None
+        """
+        
+        try:
+            result = self.db.table("elevenlabs_models").select("*").eq("quality_tier", quality).eq("is_active", True).eq("supports_text_to_speech", True).execute()
+            
+            if result.data:
+                model = result.data[0]  # Nehme das erste aktive Modell für diese Qualitätsstufe
+                logger.debug(f"🎛️ Modell für Qualität '{quality}': {model['model_id']}")
+                return model
+            else:
+                logger.warning(f"⚠️ Kein Modell für Qualitätsstufe '{quality}' gefunden")
+                # Fallback zu mid quality
+                if quality != "mid":
+                    return await self.get_model_for_quality("mid")
+                return None
+                
+        except Exception as e:
+            logger.error(f"❌ Fehler beim Laden des Modells für Qualität '{quality}': {e}")
+            return None
+    
+    def _adjust_settings_for_quality(self, voice_config: Dict[str, Any], quality: str) -> Dict[str, Any]:
+        """
+        Passt Voice-Settings basierend auf Qualitätsstufe an
+        
+        Args:
+            voice_config: Basis Voice-Konfiguration
+            quality: Qualitätsstufe (low/mid/high)
+            
+        Returns:
+            Angepasste Voice-Konfiguration
+        """
+        
+        # Basis-Settings aus der Datenbank behalten, nur leichte Anpassungen
+        if quality == "low":
+            # Flash: Weniger Style für Stabilität, weniger Speaker Boost für Geschwindigkeit
+            voice_config["style"] = max(0.0, voice_config.get("style", 0.5) - 0.1)
+            voice_config["use_speaker_boost"] = False
+            voice_config["stability"] = min(1.0, voice_config.get("stability", 0.5) + 0.05)
+            
+        elif quality == "mid":
+            # Turbo: Leichte Anpassungen für Balance
+            voice_config["use_speaker_boost"] = False  # Turbo unterstützt kein Speaker Boost
+            voice_config["style"] = max(0.0, voice_config.get("style", 0.5) - 0.05)
+            
+        elif quality == "high":
+            # Multilingual v2: Maximale Qualität, alle Features nutzen
+            voice_config["use_speaker_boost"] = True
+            # Originale Settings aus DB behalten
+        
+        return voice_config
+
     async def test_voice_service(self) -> bool:
         """
         Testet den Voice Configuration Service

@@ -80,9 +80,15 @@ class BroadcastGenerationService:
             }
         }
         
-        # GPT-Konfiguration
+        # GPT-Konfiguration - dynamisch aus zentraler Config
+        try:
+            from config.api_config import get_gpt_model
+            model = get_gpt_model()
+        except ImportError:
+            model = "gpt-4o"  # Fallback
+        
         self.gpt_config = {
-            "model": "gpt-4o",
+            "model": model,
             "max_tokens": 4000,
             "temperature": 0.8,
             "timeout": 180

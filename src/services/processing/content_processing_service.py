@@ -41,11 +41,19 @@ from .show_service import ShowService, get_show_for_generation
 @dataclass(frozen=True)
 class ProcessingConfig:
     """Immutable processing configuration"""
-    gpt_model: str = "gpt-4"
     gpt_timeout: int = 180
     max_news_for_gpt: int = 10
     news_filter_hours: int = 48
     html_retention_count: int = 2
+    
+    @property
+    def gpt_model(self) -> str:
+        """Get GPT model from central configuration"""
+        try:
+            from config.api_config import get_gpt_model
+            return get_gpt_model()
+        except ImportError:
+            return "gpt-4"  # Fallback
 
 
 class ContentProcessingService:
@@ -85,9 +93,10 @@ class ContentProcessingService:
         logger.info("🤖 Starting two-stage radio show creation (Stage 2: Plain Text)...")
         
         try:
-            show_config = show_config or await self.get_show_configuration(preset_name or "zurich", language)
             if not show_config:
-                raise Exception(f"Show configuration for '{preset_name}' not found")
+                show_config = await self.get_show_configuration(preset_name or "zurich", language)
+                if not show_config:
+                    raise Exception(f"Show configuration for '{preset_name}' not found")
             
             # --- STAGE 1: Article Selection based on Titles (JSON based) ---
             logger.info("🔬 Stage 1: Selecting relevant article IDs and reasons...")
@@ -109,10 +118,14 @@ class ContentProcessingService:
             logger.info("✍️ Stage 2: Generating plain text script from full content of selected articles...")
             full_content_for_scripting = self._get_full_content_for_selected_articles(selected_ids, prepared_titles)
             
+            # Explicit data structure - Google Best Practice: "Obvious over clever"
             scripting_prompt_data = {
-                "news": full_content_for_scripting, "weather": raw_data.get("weather", {}),
-                "crypto": raw_data.get("crypto", {}), "show_config": show_config,
-                "target_news_count": len(full_content_for_scripting), "target_time": target_time,
+                "news": full_content_for_scripting,
+                "weather": raw_data.get("weather", {}),
+                "crypto": raw_data.get("crypto", {}), 
+                "show_config": show_config,
+                "target_news_count": len(full_content_for_scripting), 
+                "target_time": target_time,
                 "language": language
             }
             scripting_prompt = self._create_scripting_prompt(scripting_prompt_data)
@@ -133,10 +146,7 @@ class ContentProcessingService:
             
             result = self._create_processing_result(
                 radio_show, raw_data, show_config, 
-                {
-                    "stage1_selection_prompt": selection_prompt,  # Article selection (JSON)
-                    "stage2_scripting_prompt": scripting_prompt   # Script writing (Text)
-                },
+                f"Stage 1: {selection_prompt[:100]}... | Stage 2: {scripting_prompt[:100]}...",
                 scripting_prompt_data, target_news_count, target_time, preset_name
             )
             
@@ -224,6 +234,7 @@ class ContentProcessingService:
     
     async def test_processing(self) -> bool:
         """Test GPT processing functionality"""
+        # Explicit test data - Google Best Practice: "Obvious over clever"
         test_data = {
             "news": [{
                 "title": "Test News Zürich",
@@ -452,8 +463,11 @@ class ContentProcessingService:
         show_details = show_config.get("show", {})
         show_name = show_details.get("display_name", "RadioX")
         
-        primary_speaker_config = show_config.get("speaker", {"voice_name": "Marcel", "description": "Host"})
-        secondary_speaker_config = show_config.get("secondary_speaker", {"voice_name": "Jarvis", "description": "AI Assistant"})
+        # Use static fallback for now to avoid async issues
+        default_speaker = "host"
+        
+        primary_speaker_config = show_config.get("speaker", {"voice_name": default_speaker, "description": "Host"})
+        secondary_speaker_config = show_config.get("secondary_speaker", {"voice_name": "ai", "description": "AI Assistant"})
         
         all_speakers = self._get_dynamic_speakers(
             show_config, weather, primary_speaker_config, secondary_speaker_config
@@ -907,9 +921,11 @@ CRITICAL: This is a SOLO SHOW - avoid repetitive '{speaker_lower}:' tags. Let th
         # Build show style with full DB values
         show_style = f"Show: {show_name} | Focus: {city_focus}\nStyle: {show_description}"
         
-        # Get speaker descriptions 1:1 from database
-        primary_speaker_config = show_config.get("speaker", {"voice_name": "Marcel", "description": "Host"})
-        secondary_speaker_config = show_config.get("secondary_speaker", {"voice_name": "Jarvis", "description": "AI Assistant"})
+        # Get speaker descriptions 1:1 from database with static fallbacks  
+        default_speaker = "host"
+        
+        primary_speaker_config = show_config.get("speaker", {"voice_name": default_speaker, "description": "Host"})
+        secondary_speaker_config = show_config.get("secondary_speaker", {"voice_name": "ai", "description": "AI Assistant"})
         all_speakers = self._get_dynamic_speakers(show_config, {}, primary_speaker_config, secondary_speaker_config)
         
         # Build speaker descriptions with full DB values (no truncation)

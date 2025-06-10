@@ -31,7 +31,12 @@ class ImageGenerationService:
         # Load settings centrally
         self.settings = get_settings()
         self.openai_api_key = self.settings.openai_api_key
-        self.dall_e_base_url = "https://api.openai.com/v1/images/generations"
+        # API URL from central configuration
+        try:
+            from config.api_config import get_api_endpoints
+            self.dall_e_base_url = get_api_endpoints().openai_images
+        except ImportError:
+            self.dall_e_base_url = "https://api.openai.com/v1/images/generations"  # Fallback
         
         # Output-Verzeichnis - outplay für HTML Dashboard Zugriff
         self.output_dir = Path(__file__).parent.parent.parent.parent / "outplay"

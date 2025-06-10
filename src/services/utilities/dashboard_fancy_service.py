@@ -70,7 +70,8 @@ class DashboardFancyService:
             'radio_script': processed_data.get('radio_script', ''),
             'selected_news': processed_data.get('selected_news', []),
             'processing_info': processed_data.get('processing_info', {}),
-            'voice_config': processed_data.get('voice_config', {})
+            'voice_config': processed_data.get('voice_config', {}),
+            'cover_generation': processed_data.get('cover_generation', {})  # DALL-E Prompt hinzugefügt!
         }
     
     def _calculate_dashboard_stats(self, raw_data: Dict[str, Any], processed_info: Dict[str, Any]) -> Dict[str, Any]:
@@ -271,22 +272,22 @@ class DashboardFancyService:
         .header {{
             background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 50%, #1a1a1a 100%);
             border: 1px solid rgba(255,255,255,0.1);
-            padding: 4rem 2rem;
+            padding: 2rem 2rem;
             text-align: center;
             position: relative;
             z-index: 10;
         }}
         
         .logo-container {{
-            margin-bottom: 1rem;
+            margin-bottom: 0.5rem;
             position: relative;
             z-index: 2;
         }}
         
         .title {{
-            font-size: 6rem;
+            font-size: 3.5rem;
             font-weight: 900;
-            margin-bottom: 0.5rem;
+            margin-bottom: 0.3rem;
             letter-spacing: -0.05em;
             background: linear-gradient(135deg, #ffffff 0%, #c0c0c0 100%);
             -webkit-background-clip: text;
@@ -340,7 +341,7 @@ class DashboardFancyService:
         /* Glasmorph Audio Player - KOMPLETTE STYLES VON 0833.html */
         .audio-section {{
             background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 50%, #16213e 100%);
-            padding: 4rem 2rem;
+            padding: 5rem 2rem;
             position: relative;
             overflow: hidden;
         }}
@@ -430,7 +431,7 @@ class DashboardFancyService:
             backdrop-filter: blur(30px);
             border: 1px solid rgba(255, 255, 255, 0.1);
             border-radius: 24px;
-            padding: 2rem;
+            padding: 3rem;
             box-shadow: 0 25px 50px rgba(0, 0, 0, 0.25);
             position: relative;
             overflow: hidden;
@@ -458,8 +459,8 @@ class DashboardFancyService:
         }}
         
         .cover-image {{
-            width: 400px;
-            height: 400px;
+            width: 500px;
+            height: 500px;
             border-radius: 24px;
             box-shadow: 0 30px 60px rgba(0,0,0,0.6);
             transition: all 0.3s ease;
@@ -476,8 +477,8 @@ class DashboardFancyService:
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            width: 60px;
-            height: 60px;
+            width: 80px;
+            height: 80px;
             background: rgba(255, 255, 255, 0.9);
             border-radius: 50%;
             display: flex;
@@ -495,9 +496,9 @@ class DashboardFancyService:
         }}
         
         .play-icon {{
-            font-size: 1.4rem;
+            font-size: 1.8rem;
             color: #000;
-            margin-left: 3px;
+            margin-left: 4px;
         }}
         
         .audio-info {{
@@ -1867,7 +1868,27 @@ class DashboardFancyService:
         gpt_prompt = self._safe_text(processed_info.get('gpt_prompt', 'No GPT prompt available'), 800)
         radio_script = self._safe_text(processed_info.get('radio_script', 'No radio script available'), 800)
         
+        # DALLE Prompt extrahieren
+        dalle_prompt = self._extract_dalle_prompt(processed_info)
+        
         return f'''
+            <!-- DALL-E Cover Generation Section -->
+            <div class="dev-info-card">
+                <div class="dev-info-header" onclick="toggleDevSection('dalle-generation')">
+                    <h3 class="dev-info-card-title">🎨 DALL-E Cover Generation</h3>
+                    <span class="dev-info-toggle" id="toggle-dalle-generation">▼</span>
+                </div>
+                <div class="dev-info-content" id="content-dalle-generation">
+                    <div class="dev-info-preview">
+                        <strong>DALL-E Prompt:</strong> {dalle_prompt[:100]}...
+                    </div>
+                    <div class="dev-info-full">
+                        <h4 style="color: #ccc; margin-bottom: 1rem;">🎨 DALL-E Image Generation Prompt</h4>
+                        <pre class="dev-prompt">{dalle_prompt}</pre>
+                    </div>
+                </div>
+            </div>
+            
             <!-- GPT Processing Section -->
             <div class="dev-info-card">
                 <div class="dev-info-header" onclick="toggleDevSection('gpt-processing')">
@@ -1990,8 +2011,8 @@ class DashboardFancyService:
         </div>
         """
     
-    def _safe_text(self, text: str, max_length: int = 1000) -> str:
-        """Sichere Text-Verarbeitung"""
+    def _safe_text(self, text: str, max_length: int = 10000) -> str:
+        """Sichere Text-Verarbeitung - KEIN LIMIT FÜR RADIO SCRIPT"""
         if not text:
             return 'No data available'
         
@@ -1999,11 +2020,50 @@ class DashboardFancyService:
         import html
         escaped = html.escape(str(text))
         
-        # Truncate
+        # Für Radio Script: Kein Truncate!
+        # Nur für andere Texte beschränken
+        if 'MARCEL:' in escaped or 'JARVIS:' in escaped or 'LUCY:' in escaped:
+            return escaped  # Radio Script - VOLLSTÄNDIG anzeigen
+        
+        # Für andere Texte normal kürzen
         if len(escaped) > max_length:
             return escaped[:max_length] + '...'
         
         return escaped
+
+    def _extract_dalle_prompt(self, processed_info: Dict[str, Any]) -> str:
+        """Extract DALL-E Prompt from processed data"""
+        # Try cover_generation section (with nested structure)
+        cover_data = processed_info.get('cover_generation', {})
+        
+        # Handle nested structure: cover_generation -> cover_generation -> dalle_prompt
+        if isinstance(cover_data, dict):
+            # Try direct access
+            dalle_prompt = cover_data.get('dalle_prompt', '')
+            if dalle_prompt:
+                return dalle_prompt
+            
+            # Try nested access  
+            nested_cover = cover_data.get('cover_generation', {})
+            if isinstance(nested_cover, dict):
+                dalle_prompt = nested_cover.get('dalle_prompt', '')
+                if dalle_prompt:
+                    return dalle_prompt
+        
+        # Try direct access
+        dalle_prompt = processed_info.get('dalle_prompt', '')
+        if dalle_prompt:
+            return dalle_prompt
+        
+        # Search in nested structures
+        for key, value in processed_info.items():
+            if isinstance(value, dict):
+                if 'dalle_prompt' in value:
+                    return value['dalle_prompt']
+                if 'prompt' in value and 'image' in key.lower():
+                    return value['prompt']
+        
+        return "🎨 DALL-E Prompt wird während Cover-Generierung erstellt (läuft parallel zum Dashboard)."
 
 
 # Test function for standalone usage

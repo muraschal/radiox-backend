@@ -85,12 +85,22 @@ class RadioXMaster:
         # Minimal initialization message
         pass
     
+    def _get_current_gpt_model(self) -> str:
+        """Get current GPT model from central configuration"""
+        try:
+            from config.api_config import get_gpt_model
+            return get_gpt_model()
+        except ImportError:
+            return "gpt-4"  # Fallback
+    
     async def run_complete_workflow(
         self,
         preset_name: str = "zurich",
         target_news_count: int = 4,
         target_time: Optional[str] = None,
-        language: str = "en"
+        language: str = "en",
+        voice_quality: str = "mid",
+        dryrun: bool = False
     ) -> Dict[str, Any]:
         """Executes the complete, robust v3.2 workflow with corrected operational order."""
         
@@ -114,7 +124,9 @@ class RadioXMaster:
             print("🎨 Generating cover...")
             cover_data = {}
             if self._config.audio_enabled:
+                # FIXED: Generate cover auch im dryrun (User will das Cover sehen!)
                 initial_cover_data = await self._execute_cover_generation_standalone(processed_data["data"], target_time)
+                
                 cover_data = initial_cover_data
                 if initial_cover_data.get("success"):
                     print("✅ Cover generated")
@@ -127,7 +139,7 @@ class RadioXMaster:
             if self._config.audio_enabled:
                 print("🎵 Generating audio...")
                 audio_data = await self._execute_audio_generation(
-                    processed_data["data"], target_news_count, target_time, preset_name, show_config["data"]
+                    processed_data["data"], target_news_count, target_time, preset_name, show_config["data"], voice_quality
                 )
                 
                 if audio_data.get("success"):
@@ -151,7 +163,7 @@ class RadioXMaster:
             
             # --- STEP 6: Finalize Media Files (Move from temp to outplay, if any were generated) ---
             final_paths = await self._finalize_show_files(
-                audio_data.get("data", {}), 
+                audio_data if audio_data.get("success") else {}, 
                 cover_data.get("data", {})
             )
             
@@ -161,7 +173,7 @@ class RadioXMaster:
                 collected_data["data"], 
                 processed_data["data"], 
                 show_config["data"],
-                cover_data.get("data", {}) if cover_data.get("success") else {},  # Cover data
+                cover_data if cover_data.get("success") else {},  # Cover data - pass entire cover_data
                 audio_data.get("data", {}) if audio_data.get("success") else {},   # Audio data
                 final_paths.get("timestamp")  # Pass the final timestamp for consistent naming
             )
@@ -230,25 +242,58 @@ class RadioXMaster:
     
     async def _execute_audio_generation(
         self, processed_data: Dict[str, Any], target_news_count: int,
-        target_time: Optional[str], preset_name: str, show_config: Dict[str, Any]
+        target_time: Optional[str], preset_name: str, show_config: Dict[str, Any],
+        voice_quality: str = "mid"
     ) -> Dict[str, Any]:
-        """Execute audio generation step with better error handling."""
+        """Execute audio generation step with voice quality support"""
+        logger.info("🎙️ Executing audio generation...")
+        start_time = datetime.now()
+        
+        if not self._audio_generator:
+            return {"success": False, "error": "Audio generator not initialized"}
+        
         try:
-            result = await self.run_audio_generation(
-                processed_data, target_news_count, target_time, preset_name, show_config
+            result = await self._audio_generator.generate_audio_from_script(
+                processed_data, 
+                include_music=True, 
+                export_format="mp3", 
+                show_config=show_config,
+                voice_quality=voice_quality
             )
+            
+            # Debug: Log the actual result
+            logger.info(f"📤 Audio generation result: {result}")
+            
+            duration = (datetime.now() - start_time).total_seconds()
+            result["step_duration"] = duration
+            
             self._validate_step_result(result, "Audio generation")
+            logger.success(f"✅ Audio generation completed successfully in {duration:.2f}s")
             return result
+            
         except Exception as e:
             import traceback
             logger.error(f"❌ Audio Generation step failed critically: {e}")
-            logger.error(traceback.format_exc())
-            return {"success": False, "error": str(e)}
+            logger.error(f"Full traceback:\n{traceback.format_exc()}")
+            raise
     
     async def _execute_cover_generation(
-        self, processed_data: Dict[str, Any], audio_data: Dict[str, Any], target_time: Optional[str]
+        self, processed_data: Dict[str, Any], audio_data: Dict[str, Any], target_time: Optional[str],
+        dryrun: bool = False
     ) -> Dict[str, Any]:
-        """Execute cover image generation step"""
+        """Execute cover image generation step with dryrun support"""
+        if dryrun:
+            logger.info("🛠️ Dryrun mode: Using default cover (no DALL-E generation)")
+            return {
+                "success": True,
+                "data": {
+                    "cover_path": None,
+                    "cover_mode": "default",
+                    "dryrun": True
+                },
+                "timestamp": datetime.now().isoformat()
+            }
+        
         result = await self.run_cover_generation(processed_data, audio_data, target_time)
         self._validate_step_result(result, "Cover generation")
         return result
@@ -570,7 +615,7 @@ class RadioXMaster:
                     selected_articles=selected_news,
                     metadata={
                         "workflow": "main_workflow",
-                        "gpt_model": "gpt-4",
+                        "gpt_model": self._get_current_gpt_model(),
                         "selection_ratio": f"{len(selected_news)}/{len(all_news)}"
                     }
                 )
@@ -641,7 +686,13 @@ class RadioXMaster:
         # Include cover and audio data in processed_data if available
         processed_data = processed_data.copy()
         if cover_data:
-            processed_data['cover_generation'] = cover_data
+            # Extract the actual cover generation data from nested structure
+            if cover_data.get("data", {}).get("cover_generation"):
+                processed_data['cover_generation'] = cover_data["data"]["cover_generation"]
+            elif cover_data.get("cover_generation"):
+                processed_data['cover_generation'] = cover_data["cover_generation"]
+            else:
+                processed_data['cover_generation'] = cover_data
         if audio_data:
             processed_data['audio_generation'] = audio_data
 
@@ -769,40 +820,6 @@ class RadioXMaster:
             return {
                 "success": True,
                 "data": show_config,
-                "timestamp": datetime.now().isoformat()
-            }
-            
-        except Exception as e:
-            return {"success": False, "error": str(e), "timestamp": datetime.now().isoformat()}
-    
-    async def run_audio_generation(
-        self, processed_data: Dict[str, Any], target_news_count: int = 4,
-        target_time: Optional[str] = None, preset_name: Optional[str] = None,
-        show_config: Dict[str, Any] = None
-    ) -> Dict[str, Any]:
-        """Execute audio generation with performance optimization"""
-        if not self._audio_generator:
-            return {"success": False, "error": "Audio generation not enabled"}
-        
-        try:
-            start_time = datetime.now()
-            
-            audio_result = await self._audio_generator.generate_audio_from_processed_data(
-                processed_data=processed_data,
-                target_news_count=target_news_count,
-                target_time=target_time,
-                preset_name=preset_name,
-                show_config=show_config
-            )
-            
-            duration = (datetime.now() - start_time).total_seconds()
-            validation_result = self._validate_audio_data(audio_result)
-            
-            return {
-                "success": True,
-                "data": audio_result,
-                "validation": validation_result,
-                "performance": {"duration_seconds": duration},
                 "timestamp": datetime.now().isoformat()
             }
             
@@ -1133,6 +1150,65 @@ class RadioXMaster:
             "is_valid": quality_score >= self._config.quality_threshold
         }
 
+    async def dryrun_workflow(self, target_news_count: int, preset_name: str, 
+                            language: str, target_time: int = 5) -> Optional[str]:
+        """
+        🚀 OPTIMIZED Dryrun-Workflow mit Connection Pool Management
+        """
+        logger.info(f"🎯 DRYRUN-WORKFLOW gestartet")
+        logger.info(f"   📊 Target: {target_news_count} news, {target_time} min")
+        logger.info(f"   🌍 Language: {language}, Preset: {preset_name}")
+        
+        # 🚀 PERFORMANCE OPTIMIZATION: Preload critical data
+        logger.info("⚡ Preloading critical database resources...")
+        try:
+            from database.supabase_client import get_db
+            db = get_db()
+            
+            # Preload speakers to prevent connection pool exhaustion
+            if hasattr(db, 'preload_speakers'):
+                await db.preload_speakers()
+                logger.info("✅ Speakers preloaded successfully")
+            
+            # Add small delay to prevent connection race conditions
+            await asyncio.sleep(0.1)
+            
+        except Exception as e:
+            logger.warning(f"⚠️ Preload failed (continuing): {e}")
+
+        # Initialize services with error handling
+        try:
+            show_service = ShowService()
+            content_service = ContentProcessingService()
+            audio_service = AudioGenerationService()
+            
+            # Serialize critical database operations to prevent connection pool overflow
+            logger.info("🔄 Loading show configuration...")
+            show_config = await show_service.get_show_configuration(preset_name, language)
+            
+            if not show_config:
+                logger.error(f"❌ Show configuration für '{preset_name}' nicht gefunden")
+                return None
+
+            # Add delay between database operations
+            await asyncio.sleep(0.05)
+            
+            logger.info("🔄 Loading speaker configurations...")
+            primary_speaker_config = await show_service.get_speaker_configuration("marcel")
+            
+            await asyncio.sleep(0.05)
+            secondary_speaker_config = await show_service.get_speaker_configuration("jarvis")
+            
+            if not primary_speaker_config:
+                logger.error("❌ Primary speaker configuration missing for marcel")
+                return None
+
+            logger.info("✅ All configurations loaded successfully")
+
+        except Exception as e:
+            logger.error(f"❌ Service initialization failed: {e}")
+            return None
+
 
 async def main():
     """Main entry point with CLI argument parsing"""
@@ -1140,43 +1216,213 @@ async def main():
     logger.remove()
     logger.add(sys.stderr, level="INFO")
 
-    parser = argparse.ArgumentParser(description="RadioX Master Orchestrator")
-    parser.add_argument(
+    parser = argparse.ArgumentParser(
+        prog='RadioX Master Orchestrator',
+        description='''
+\033[1;36m🎙️ RadioX Master Orchestrator v3.0.0\033[0m
+\033[1;34m═══════════════════════════════════════════════════════════════════════════════════\033[0m
+\033[1;37mAutomatisierte Radio-Show-Generierung mit KI-gestütztem Content-Processing,
+Dynamic Speaker Management und professioneller Audio-Produktion.\033[0m
+
+\033[1;35m✨ Features:\033[0m
+  \033[0;32m• Dynamic Speaker Registry (Marcel, Jarvis, Brad, Lucy)\033[0m
+  \033[0;32m• Voice Quality Control (Low/Mid/High)\033[0m
+  \033[0;32m• Intelligente Content-Verarbeitung\033[0m
+  \033[0;32m• Show-Config-basierte Speaker-Zuweisung\033[0m
+  \033[0;32m• ElevenLabs Audio-Generierung\033[0m
+  \033[0;32m• Automated Cover & Dashboard-Erstellung\033[0m
+        ''',
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog='''
+\033[1;33m📋 Beispiele:\033[0m
+\033[0;36m╔═══════════════════════════════════════════════════════════════╦═══════════════════════════════════╗\033[0m
+\033[0;36m║\033[0m \033[1;37mCommand\033[0m                                                      \033[0;36m║\033[0m \033[1;37mBeschreibung\033[0m                      \033[0;36m║\033[0m
+\033[0;36m╠═══════════════════════════════════════════════════════════════╬═══════════════════════════════════╣\033[0m
+\033[0;36m║\033[0m \033[0;32m%(prog)s\033[0m                                         \033[0;36m║\033[0m Standard Show (Mid Quality)        \033[0;36m║\033[0m
+\033[0;36m║\033[0m \033[0;32m%(prog)s --dryrun\033[0m                                \033[0;36m║\033[0m \033[1;33mDev Test (1 News, DE, Low Quality)\033[0m \033[0;36m║\033[0m
+\033[0;36m║\033[0m \033[0;32m%(prog)s --voicequality high\033[0m                     \033[0;36m║\033[0m High Quality Production            \033[0;36m║\033[0m
+\033[0;36m║\033[0m \033[0;32m%(prog)s --voicequality low --test\033[0m               \033[0;36m║\033[0m Quick System Test                 \033[0;36m║\033[0m
+\033[0;36m║\033[0m \033[0;32m%(prog)s --lang de --news-count 2\033[0m                \033[0;36m║\033[0m Deutsche Show                     \033[0;36m║\033[0m
+\033[0;36m║\033[0m \033[0;32m%(prog)s --data-only\033[0m                             \033[0;36m║\033[0m Nur Datensammlung                \033[0;36m║\033[0m
+\033[0;36m╚═══════════════════════════════════════════════════════════════╩═══════════════════════════════════╝\033[0m
+
+\033[1;31m📊 Voice Quality Tiers:\033[0m
+\033[0;34m╔══════╦═════════════════╦═════════════╦═══════════════╦═══════════════════════════╗\033[0m
+\033[0;34m║\033[0m \033[1;37mTier\033[0m \033[0;34m║\033[0m \033[1;37mModel\033[0m           \033[0;34m║\033[0m \033[1;37mLatenz\033[0m      \033[0;34m║\033[0m \033[1;37mKosten\033[0m        \033[0;34m║\033[0m \033[1;37mVerwendung\033[0m             \033[0;34m║\033[0m
+\033[0;34m╠══════╬═════════════════╬═════════════╬═══════════════╬═══════════════════════════╣\033[0m
+\033[0;34m║\033[0m \033[1;32mlow\033[0m  \033[0;34m║\033[0m Flash Model     \033[0;34m║\033[0m \033[0;33m75ms\033[0m        \033[0;34m║\033[0m \033[0;32m50%% (-50%%)\033[0m   \033[0;34m║\033[0m Live Shows, Testing       \033[0;34m║\033[0m
+\033[0;34m║\033[0m \033[1;33mmid\033[0m  \033[0;34m║\033[0m Turbo Model     \033[0;34m║\033[0m \033[0;33m275ms\033[0m       \033[0;34m║\033[0m \033[0;32m50%% (-50%%)\033[0m   \033[0;34m║\033[0m Standard Production       \033[0;34m║\033[0m
+\033[0;34m║\033[0m \033[1;31mhigh\033[0m \033[0;34m║\033[0m Multilingual    \033[0;34m║\033[0m \033[0;33m800ms\033[0m       \033[0;34m║\033[0m \033[0;31m100%% (Base)\033[0m   \033[0;34m║\033[0m Best Quality, Podcasts   \033[0;34m║\033[0m
+\033[0;34m╚══════╩═════════════════╩═════════════╩═══════════════╩═══════════════════════════╝\033[0m
+
+\033[1;35m🎤 Available Speakers:\033[0m
+\033[0;35m╔════════╦═════════════════╦═══════════════════════════════════════════╗\033[0m
+\033[0;35m║\033[0m \033[1;37mSpeaker\033[0m \033[0;35m║\033[0m \033[1;37mRole\033[0m            \033[0;35m║\033[0m \033[1;37mCharacteristics\033[0m                        \033[0;35m║\033[0m
+\033[0;35m╠════════╬═════════════════╬═══════════════════════════════════════════╣\033[0m
+\033[0;35m║\033[0m \033[1;34mmarcel\033[0m  \033[0;35m║\033[0m Main Host       \033[0;35m║\033[0m \033[0;37mEnergetic and passionate presenter\033[0m      \033[0;35m║\033[0m
+\033[0;35m║\033[0m \033[1;36mjarvis\033[0m  \033[0;35m║\033[0m AI Assistant    \033[0;35m║\033[0m \033[0;37mAnalytical and precise communicator\033[0m    \033[0;35m║\033[0m
+\033[0;35m║\033[0m \033[1;32mbrad\033[0m    \033[0;35m║\033[0m News Anchor     \033[0;35m║\033[0m \033[0;37mProfessional and authoritative voice\033[0m   \033[0;35m║\033[0m
+\033[0;35m║\033[0m \033[1;35mlucy\033[0m    \033[0;35m║\033[0m Weather Reporter \033[0;35m║\033[0m \033[0;37mSultry and atmospheric delivery\033[0m       \033[0;35m║\033[0m
+\033[0;35m╚════════╩═════════════════╩═══════════════════════════════════════════╝\033[0m
+
+\033[1;36m🚀 Quick Start Guide:\033[0m
+\033[0;32m╔══════════════════════════════════════╦═══════════════════════════════════════════╗\033[0m
+\033[0;32m║\033[0m \033[1;37mUse Case\033[0m                          \033[0;32m║\033[0m \033[1;37mRecommended Command\033[0m                    \033[0;32m║\033[0m
+\033[0;32m╠══════════════════════════════════════╬═══════════════════════════════════════════╣\033[0m
+\033[0;32m║\033[0m \033[1;33m🧪 Development Testing\033[0m             \033[0;32m║\033[0m \033[0;36m%(prog)s --dryrun\033[0m           \033[0;32m║\033[0m
+\033[0;32m║\033[0m \033[0;37m📻 Standard Radio Show\033[0m             \033[0;32m║\033[0m \033[0;36m%(prog)s\033[0m                    \033[0;32m║\033[0m
+\033[0;32m║\033[0m \033[0;33m🎬 High Quality Production\033[0m         \033[0;32m║\033[0m \033[0;36m%(prog)s --voicequality high\033[0m    \033[0;32m║\033[0m
+\033[0;32m║\033[0m \033[0;35m⚡ Fast Testing\033[0m                   \033[0;32m║\033[0m \033[0;36m%(prog)s --voicequality low\033[0m     \033[0;32m║\033[0m
+\033[0;32m║\033[0m \033[0;31m🔧 System Testing\033[0m                 \033[0;32m║\033[0m \033[0;36m%(prog)s --test\033[0m                 \033[0;32m║\033[0m
+\033[0;32m║\033[0m \033[0;37m📊 Data Collection Only\033[0m           \033[0;32m║\033[0m \033[0;36m%(prog)s --data-only\033[0m            \033[0;32m║\033[0m
+\033[0;32m╚══════════════════════════════════════╩═══════════════════════════════════════════╝\033[0m
+
+\033[1;37m📞 Support: RadioX Development Team | \033[1;32mv3.0.0\033[1;37m | \033[1;34m© 2024\033[0m
+        '''
+    )
+
+    # ═══════════════════════════════════════════════════════════════════════
+    # WORKFLOW CONTROL
+    # ═══════════════════════════════════════════════════════════════════════
+    workflow_group = parser.add_argument_group(
+        '🔧 Workflow Control', 
+        'Control which parts of the RadioX pipeline to execute'
+    )
+    
+    workflow_group.add_argument(
         '--debug',
         action='store_true',
-        help='Enable debug logging for detailed output.'
+        help='🐛 Enable verbose debug logging for detailed system output'
     )
-    # Workflow control
-    parser.add_argument("--data-only", action="store_true", help="Nur Datensammlung ausführen")
-    parser.add_argument("--processing-only", action="store_true", help="Nur Verarbeitung ausführen")
-    parser.add_argument("--test", action="store_true", help="System Tests ausführen")
-    parser.add_argument("--no-audio", action="store_true", help="Generiere nur HTML Dashboard ohne Audio (spart ElevenLabs Kosten)")
     
-    # Configuration
-    parser.add_argument("--preset", default="zurich", help="Show Preset (default: zurich)")
-    parser.add_argument("--news-count", type=int, default=4, help="Anzahl News (default: 4)")
-    parser.add_argument("--target-time", help="Zielzeit für Show (HH:MM)")
-    parser.add_argument("--lang", default="en", choices=["en", "de"], help="Sprache für das Manuskript (default: en, de für Deutsch)")
+    workflow_group.add_argument(
+        '--test', 
+        action='store_true',
+        help='🧪 Run comprehensive system tests (all components)'
+    )
+    
+    workflow_group.add_argument(
+        '--dryrun',
+        action='store_true', 
+        help='🧪 Development mode: 1 news, DE, low quality, default cover (perfect for dev testing)'
+    )
+    
+    workflow_group.add_argument(
+        '--data-only', 
+        action='store_true',
+        help='📊 Execute only data collection phase (no processing/audio)'
+    )
+    
+    workflow_group.add_argument(
+        '--processing-only', 
+        action='store_true',
+        help='⚙️ Execute only content processing (uses latest collected data)'
+    )
+
+    # ═══════════════════════════════════════════════════════════════════════
+    # VOICE & QUALITY SETTINGS  
+    # ═══════════════════════════════════════════════════════════════════════
+    voice_group = parser.add_argument_group(
+        '🎙️ Voice & Quality Settings', 
+        'Configure audio quality and speaker behavior'
+    )
+    
+    voice_group.add_argument(
+        '--voicequality', 
+        choices=['low', 'mid', 'high'], 
+        default='mid',
+        metavar='TIER',
+        help='🎛️ Voice quality tier (default: mid)\n'
+             '  low  = Flash Model (75ms, fast, 50%% cost)\n'
+             '  mid  = Turbo Model (275ms, balanced, 50%% cost)\n' 
+             '  high = Multilingual (800ms, best quality, 100%% cost)'
+    )
+
+    # ═══════════════════════════════════════════════════════════════════════
+    # SHOW CONFIGURATION
+    # ═══════════════════════════════════════════════════════════════════════
+    show_group = parser.add_argument_group(
+        '📻 Show Configuration', 
+        'Configure show content and behavior'
+    )
+    
+    show_group.add_argument(
+        '--preset', 
+        default='zurich',
+        metavar='NAME',
+        help='🎭 Show preset configuration (default: zurich)'
+    )
+    
+    show_group.add_argument(
+        '--news-count', 
+        type=int, 
+        default=4,
+        metavar='N',
+        help='📰 Number of news articles to include (default: 4, max: 8)'
+    )
+    
+    show_group.add_argument(
+        '--target-time', 
+        metavar='HH:MM',
+        help='⏰ Target show duration (e.g., 05:30 for 5.5 minutes)'
+    )
+    
+    show_group.add_argument(
+        '--lang', 
+        choices=['en', 'de'], 
+        default='en',
+        metavar='LANG',
+        help='🌍 Script language (default: en)\n'
+             '  en = English content and narration\n'
+             '  de = German content and narration'
+    )
     
     args = parser.parse_args()
+
+    # ═══════════════════════════════════════════════════════════════════════
+    # DRYRUN MODE CONFIGURATION
+    # ═══════════════════════════════════════════════════════════════════════
+    if args.dryrun:
+        print("\n\033[1;33m🧪 DRYRUN MODE ACTIVATED\033[0m")
+        print("\033[0;36m╔══════════════════════════════════════════════════════════════╗\033[0m")
+        print("\033[0;36m║\033[0m \033[1;37mDevelopment Configuration:\033[0m                              \033[0;36m║\033[0m")
+        print("\033[0;36m╟──────────────────────────────────────────────────────────────╢\033[0m")
+        print("\033[0;36m║\033[0m \033[0;32m• News Count:\033[0m      1 (minimal for testing)            \033[0;36m║\033[0m")
+        print("\033[0;36m║\033[0m \033[0;32m• Preset:\033[0m          zurich                              \033[0;36m║\033[0m")
+        print("\033[0;36m║\033[0m \033[0;32m• Language:\033[0m        German (de)                         \033[0;36m║\033[0m")
+        print("\033[0;36m║\033[0m \033[0;32m• Voice Quality:\033[0m   Low (fast generation)               \033[0;36m║\033[0m")
+        print("\033[0;36m║\033[0m \033[0;32m• Cover Mode:\033[0m      Default (no DALL-E queries)         \033[0;36m║\033[0m")
+        print("\033[0;36m╚══════════════════════════════════════════════════════════════╝\033[0m")
+        
+        # Override settings for dryrun
+        args.news_count = 1
+        args.preset = 'zurich'
+        args.lang = 'de'
+        args.voicequality = 'low'
+        # Cover generation will be handled in the workflow
+        
+        print(f"\033[0;33m⚡ Starting development workflow...\033[0m\n")
 
     if args.debug:
         logger.remove()
         logger.add(sys.stderr, level="DEBUG")
 
-    # Initialize master with audio setting
-    master = RadioXMaster(audio_enabled=not args.no_audio)
+    # Initialize master with full audio enabled
+    master = RadioXMaster(audio_enabled=True)
     
     try:
         if args.test:
             result = await master.test_system()
+        elif args.dryrun:
+            # DRYRUN: Fast development workflow
+            result = await master.run_complete_workflow(args.preset, args.news_count, args.target_time, args.lang, voice_quality=args.voicequality, dryrun=True)
         elif args.data_only:
             result = await master.run_data_collection(args.preset)
         elif args.processing_only:
             # FIXED: Lade echte Daten aus JSON-File statt Mock-Daten
             result = await master.run_processing_only_with_real_data(args.news_count, args.target_time, args.preset)
         else:
-            result = await master.run_complete_workflow(args.preset, args.news_count, args.target_time, args.lang)
+            result = await master.run_complete_workflow(args.preset, args.news_count, args.target_time, args.lang, voice_quality=args.voicequality)
         
         # Exit with appropriate code
         sys.exit(0 if result.get("success") else 1)

@@ -340,9 +340,15 @@ EXAMPLES:
 
 Your answer in English:"""
 
-            # GPT call for Bitcoin summary  
+            # GPT call for Bitcoin summary - dynamic model
+            try:
+                from config.api_config import get_gpt_model
+                model = get_gpt_model()
+            except ImportError:
+                model = "gpt-4"  # Fallback
+                
             response = await client.chat.completions.create(
-                model="gpt-4",  # Fix: Hardcoded model
+                model=model,
                 messages=[{"role": "user", "content": bitcoin_prompt}],
                 max_tokens=150,
                 temperature=0.3

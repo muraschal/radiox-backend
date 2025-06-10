@@ -331,8 +331,8 @@ class DashboardService:
         </div>
         """
     
-    def _safe_text(self, text: str, max_length: int = 1000) -> str:
-        """Sichere Text-Verarbeitung"""
+    def _safe_text(self, text: str, max_length: int = 10000) -> str:
+        """Sichere Text-Verarbeitung - KEIN LIMIT FÜR RADIO SCRIPT"""
         if not text:
             return 'No data available'
         
@@ -340,7 +340,12 @@ class DashboardService:
         import html
         escaped = html.escape(str(text))
         
-        # Truncate
+        # Für Radio Script: Kein Truncate!
+        # Nur für andere Texte beschränken
+        if 'MARCEL:' in escaped or 'JARVIS:' in escaped or 'LUCY:' in escaped:
+            return escaped  # Radio Script - VOLLSTÄNDIG anzeigen
+        
+        # Für andere Texte normal kürzen
         if len(escaped) > max_length:
             return escaped[:max_length] + '...'
         

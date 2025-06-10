@@ -36,12 +36,23 @@ from ..infrastructure.voice_config_service import get_voice_config_service
 
 @dataclass(frozen=True)
 class AudioConfig:
-    """Immutable audio configuration"""
-    api_base_url: str = "https://api.elevenlabs.io/v1"
+    """Immutable audio configuration - NO hardcoded values"""
     max_parallel_segments: int = 5
     request_timeout: int = 30
     cleanup_days: int = 7
     supported_formats: tuple = ("mp3", "wav", "ogg")
+    
+    @property
+    def api_base_url(self) -> str:
+        """Get ElevenLabs API URL from central configuration"""
+        try:
+            import sys
+            sys.path.append(str(Path(__file__).parent.parent.parent.parent))
+            from config.api_config import get_elevenlabs_base_url
+            return get_elevenlabs_base_url()
+        except ImportError:
+            # Fallback if config not available
+            return "https://api.elevenlabs.io/v1"
 
 
 class AudioGenerationService:
@@ -54,7 +65,7 @@ class AudioGenerationService:
     - Error Handling (Graceful degradation)
     """
     
-    __slots__ = ('_settings', '_voice_service', '_image_service', '_config', '_output_dir', '_ffmpeg_path', '_current_show_config')
+    __slots__ = ('_settings', '_voice_service', '_image_service', '_config', '_output_dir', '_ffmpeg_path', '_current_show_config', '_current_voice_quality')
     
     def __init__(self):
         self._settings = get_settings()
@@ -101,7 +112,8 @@ class AudioGenerationService:
     
     async def generate_audio_from_script(
         self, script: Dict[str, Any], include_music: bool = False,
-        export_format: str = "mp3", show_config: Dict[str, Any] = None
+        export_format: str = "mp3", show_config: Dict[str, Any] = None,
+        voice_quality: str = "mid"
     ) -> Dict[str, Any]:
         """
         Main audio generation pipeline.
@@ -111,13 +123,42 @@ class AudioGenerationService:
         session_id = script.get("session_id", f"session_{datetime.now().strftime('%Y%m%d_%H%M%S')}")
         script_content = script.get("script_content", "")
         
+        # Check for 'radio_script' key (new format)
+        if not script_content:
+            script_content = script.get("radio_script", "")
+        
+        # Check for 'script' key as fallback
+        if not script_content:
+            script_content = script.get("script", "")
+        
+        # If still empty, check nested data structure
+        if not script_content and "data" in script:
+            script_content = script["data"].get("script_content", "")
+            if not script_content:
+                script_content = script["data"].get("script", "")
+            if not script_content:
+                script_content = script["data"].get("radio_script", "")
+        
+        # DEBUG: Log the full script structure for debugging
+        logger.info(f"🔍 Script keys: {list(script.keys())}")
+        if "data" in script:
+            logger.info(f"🔍 Script.data keys: {list(script['data'].keys())}")
+        
         if not self._settings.elevenlabs_api_key:
             return {"success": False, "error": "ElevenLabs API key missing."}
         
         # Store show config for use in parsing (if provided)
         self._current_show_config = show_config or {}
+        self._current_voice_quality = voice_quality
         
         segments = self._parse_script_into_segments(script_content)
+        
+        # DEBUG: Log script content and segments for debugging
+        logger.info(f"🔍 Script content ({len(script_content)} chars): {script_content[:200]}...")
+        logger.info(f"🔍 Parsed segments: {len(segments)} segments")
+        if segments:
+            logger.info(f"🔍 First segment: {segments[0]}")
+        
         if not segments:
             return {"success": False, "error": "No segments parsed from script."}
         
@@ -171,12 +212,12 @@ class AudioGenerationService:
             if not text:
                 return None
             
-            # Get voice configuration
+            # Get voice configuration with quality level
             voice_config = await self._get_voice_with_fallback(speaker)
             if not voice_config:
                 return None
             
-            # Prepare API request
+            # Prepare API request with dynamic URL
             voice_id = voice_config["voice_id"]
             url = f"{self._config.api_base_url}/text-to-speech/{voice_id}"
             
@@ -185,7 +226,7 @@ class AudioGenerationService:
             
             payload = {
                 "text": self._enhance_text_for_speech(text, speaker),
-                "model_id": voice_config.get("model_id", "eleven_turbo_v2"),
+                "model_id": voice_config.get("model_id", self._get_default_model()),
                 "voice_settings": {
                     "stability": voice_config.get("stability", 0.5),
                     "similarity_boost": voice_config.get("similarity_boost", 0.8),
@@ -219,12 +260,25 @@ class AudioGenerationService:
         except Exception as e:
             return None
     
+    def _get_default_model(self) -> str:
+        """Get default ElevenLabs model from central configuration"""
+        try:
+            import sys
+            sys.path.append(str(Path(__file__).parent.parent.parent.parent))
+            from config.api_config import get_default_elevenlabs_model
+            return get_default_elevenlabs_model()
+        except ImportError:
+            # Ultimate fallback
+            return "eleven_turbo_v2"
+    
     async def _get_voice_with_fallback(self, speaker_name: str) -> Optional[Dict[str, Any]]:
         """Get voice configuration with intelligent fallback"""
         
         try:
             # 🌍 LANGUAGE OVERRIDE: Extract language from show config
             language_override = None
+            voice_quality = getattr(self, '_current_voice_quality', 'mid')
+            
             if self._current_show_config:
                 # Check if speakers in show config have language override
                 primary_speaker = self._current_show_config.get("speaker", {})
@@ -240,7 +294,7 @@ class AudioGenerationService:
                     language_override = weather_speaker.get("language")
             
             # Try specific voice with language override
-            voice_config = await self._voice_service.get_voice_config(speaker_name, language_override)
+            voice_config = await self._voice_service.get_voice_config(speaker_name, language_override, voice_quality)
             if voice_config:
                 return voice_config
             
@@ -252,7 +306,7 @@ class AudioGenerationService:
             
             for key, fallback in fallback_map.items():
                 if key in speaker_name.lower():
-                    fallback_config = await self._voice_service.get_voice_config(fallback)
+                    fallback_config = await self._voice_service.get_voice_config(fallback, language_override, voice_quality)
                     if fallback_config:
                         return fallback_config
             
@@ -308,21 +362,14 @@ class AudioGenerationService:
                     })
             else:
                 # Default speaker for lines without speaker prefix
-                # 🌤️ Check if content is weather-related
-                if self._is_weather_content(line):
-                    segments.append({
-                        "speaker": "lucy",
-                        "text": line,
-                        "original_speaker": "auto-weather",
-                        "auto_assigned": True
-                    })
-                else:
-                    segments.append({
-                        "speaker": "marcel",
-                        "text": line,
-                        "original_speaker": "default",
-                        "auto_assigned": False
-                    })
+                # ENTFERNT: Automatische Weather-Speaker Zuweisung für maximale Flexibilität
+                # Verwende immer den Default-Speaker für untagged content
+                segments.append({
+                    "speaker": self._get_primary_speaker_from_config(),  # Dynamischer Default
+                    "text": line,
+                    "original_speaker": "default",
+                    "auto_assigned": False
+                })
         
         return segments
     
@@ -400,26 +447,81 @@ class AudioGenerationService:
             raise ValueError(f"❌ Failed to extract speaker from show_config: {e}")
     
     def _get_solo_speaker_for_paragraph(self, paragraph: str, primary_speaker: str) -> str:
-        """Determine the best speaker for a solo paragraph - fully generic!"""
+        """
+        Intelligente Speaker-Zuweisung für Solo-Shows basierend auf Show-Config
+        Verwendet dieselbe Logik wie Multi-Speaker-Shows
+        """
         
-        # 🎯 ONLY use weather speaker if show config explicitly defines one
-        if self._is_weather_content(paragraph) and self._current_show_config:
-            weather_speaker = self._current_show_config.get("weather_speaker", {}).get("speaker_name")
+        # 🎯 SHOW-CONFIG-BASIERTE WEATHER-ZUWEISUNG (gleiche Logik wie bei Multi-Speaker)
+        if self._should_use_weather_speaker_for_content(paragraph):
+            weather_speaker = self._get_configured_weather_speaker()
             if weather_speaker:
                 return weather_speaker
         
-        # For all other content, use the dynamic primary speaker
+        # Fallback: Primary Speaker für alle anderen Inhalte
         return primary_speaker
     
     def _get_speaker_for_content(self, speaker_raw: str, text: str) -> str:
-        """Determine the best speaker for given content - fully respects show config"""
+        """
+        Intelligente Speaker-Zuweisung basierend auf Show-Konfiguration
+        OHNE automatische Content-Detection - nur explizite Kategorien
+        """
         
-        # 🎯 NO AUTO-ASSIGNMENT: Use exact speaker normalization
-        # Weather speaker assignment should only happen through show config
+        # Standard Speaker-Normalisierung
         speaker_normalized = self._normalize_speaker_name(speaker_raw)
         
-        # Use the normalized speaker name without auto-weather logic
+        # 🎯 SHOW-CONFIG-BASIERTE WEATHER-ZUWEISUNG
+        # Nur wenn explizit in Show konfiguriert, nicht durch Content-Detection
+        if self._should_use_weather_speaker_for_content(text):
+            weather_speaker = self._get_configured_weather_speaker()
+            if weather_speaker:
+                return weather_speaker
+        
+        # Fallback: Normalisierter Speaker
         return speaker_normalized
+    
+    def _should_use_weather_speaker_for_content(self, text: str) -> bool:
+        """
+        Prüft ob Weather Speaker verwendet werden soll basierend auf Show-Config
+        NICHT auf automatischer Content-Erkennung
+        """
+        
+        if not self._current_show_config:
+            return False
+        
+        # 1. Prüfe ob weather als aktive Kategorie definiert ist (dynamic)
+        categories = self._current_show_config.get("categories", [])
+        weather_categories = ["weather", "wetter", "meteo", "clima"]
+        
+        # Check if any weather category is active
+        has_weather_category = any(cat in categories for cat in weather_categories)
+        if not has_weather_category:
+            return False  # Weather nicht als Kategorie aktiv
+        
+        # 2. Prüfe ob dedizierter Weather Speaker konfiguriert ist  
+        weather_speaker_config = self._current_show_config.get("weather_speaker")
+        if not weather_speaker_config:
+            return False  # Kein Weather Speaker definiert
+        
+        # 3. Nur explizite Weather-Markierung verwenden
+        # TODO: Künftig durch explizite Tags wie [weather] statt Content-Detection
+        return self._is_weather_content(text)  # Temporarily keep content detection
+    
+    def _get_configured_weather_speaker(self) -> Optional[str]:
+        """
+        Holt den explizit konfigurierten Weather Speaker aus Show-Config
+        """
+        
+        if not self._current_show_config:
+            return None
+        
+        weather_speaker_config = self._current_show_config.get("weather_speaker", {})
+        weather_speaker_name = weather_speaker_config.get("speaker_name")
+        
+        if weather_speaker_name:
+            return weather_speaker_name.lower()
+        
+        return None
     
     def _is_weather_content(self, text: str) -> bool:
         """Detect if content is weather-related for automatic Lucy assignment"""
@@ -472,39 +574,43 @@ class AudioGenerationService:
         return False
     
     def _is_valid_speaker_tag(self, speaker_tag: str) -> bool:
-        """Check if a string is a valid speaker tag (brad, BRAD, marcel, MARCEL, etc.)"""
+        """Check if a string is a valid speaker tag - fallback to conservative validation"""
         if not speaker_tag:
             return False
         
-        # Convert to lowercase for comparison
+        # Convert to lowercase for comparison  
         tag_lower = speaker_tag.lower()
         
-        # Valid speaker names (based on our voice mapping)
-        valid_speakers = ['brad', 'marcel', 'lucy']
+        # Conservative validation - allow common speaker types and aliases (dynamic)
+        # Note: Full dynamic validation requires async context in _normalize_speaker_name
+        common_speakers = ["host", "moderator", "presenter", "ai", "assistant", "computer", 
+                          "anchor", "reporter"]
         
-        return tag_lower in valid_speakers
+        # Add dynamic role categories
+        common_speakers.extend(["news", "nachrichten", "weather", "wetter", "sports", "sport"])
+        
+        # Allow any non-empty string as potential speaker (conservative approach)
+        # Full validation happens in async _normalize_speaker_name method
+        return len(tag_lower) > 0 and (tag_lower in common_speakers or tag_lower.isalpha())
     
     def _normalize_speaker_name(self, speaker_raw: str) -> str:
-        """Normalize speaker names - fully generic with show config fallback"""
+        """Normalize speaker names - simplified sync version for migration phase"""
         
         speaker_lower = speaker_raw.lower().strip()
         
-        # 🎯 GENERIC SPEAKER MAPPING - uses show config as source of truth
+        # MIGRATION PHASE: Simplified sync mapping until full async refactor
+        # Basic speaker mappings for common aliases
+        primary_speaker = self._get_primary_speaker_from_config()
         speaker_map = {
-            "marcel": "marcel",
-            "jarvis": "jarvis",
-            "lucy": "lucy", 
-            "brad": "brad",
-            "host": self._get_primary_speaker_from_config(),
-            "moderator": self._get_primary_speaker_from_config(),
-            "anchor": self._get_primary_speaker_from_config(),
-            "news": self._get_primary_speaker_from_config(),
-            "ai": "jarvis",
-            "assistant": "jarvis",
-            "computer": "jarvis"
+            "host": primary_speaker,
+            "moderator": primary_speaker, 
+            "presenter": primary_speaker,
+            "ai": primary_speaker,  # Generic AI fallback to primary
+            "assistant": primary_speaker,  # Generic assistant fallback to primary
+            "computer": primary_speaker,  # Generic computer fallback to primary
         }
         
-        # Check direct matches
+        # Check direct matches first
         if speaker_lower in speaker_map:
             return speaker_map[speaker_lower]
         
@@ -513,19 +619,31 @@ class AudioGenerationService:
             if key in speaker_lower:
                 return value
         
-        # Dynamic fallback to show config primary speaker
+        # For direct speaker names, return as-is (assuming they're valid)
+        # This allows dynamic speakers without hardcoding
+        if speaker_lower.isalpha() and len(speaker_lower) > 2:
+            return speaker_lower
+        
+        # Final fallback
         return self._get_primary_speaker_from_config()
     
     def _get_primary_speaker_from_config(self) -> str:
-        """Get primary speaker from current show config"""
+        """Get primary speaker from current show config with dynamic fallback"""
         if self._current_show_config:
             speaker_config = self._current_show_config.get("speaker", {})
             speaker_name = speaker_config.get("speaker_name", "").lower()
             if speaker_name:
                 return speaker_name
         
-        # Final fallback
-        return "marcel"
+        # Dynamic fallback - try to get first available speaker from voice service
+        try:
+            # Note: This is sync context, so we can't use async speaker registry
+            # For now, use conservative fallback
+            logger.warning("⚠️ Kein Speaker in show_config gefunden, verwende 'host' als Fallback")
+            return "host"  # Generic fallback that maps to primary via _normalize_speaker_name
+        except Exception as e:
+            logger.error(f"❌ Fallback-Speaker nicht verfügbar: {e}")
+            return "unknown"  # Ultimate fallback
     
     def _enhance_text_for_speech(self, text: str, speaker: str) -> str:
         """Enhance text with speech optimization tags including Lucy's sultry weather style"""
@@ -542,12 +660,18 @@ class AudioGenerationService:
         enhanced = enhanced.replace('? ', '?<break time="0.5s"/> ')
         enhanced = enhanced.replace(', ', ',<break time="0.2s"/> ')
         
-        # Speaker-specific enhancements
-        if speaker == "jarvis":
+        # Dynamic speaker-specific enhancements based on speaker characteristics
+        # Use speaker registry to detect speaker types instead of hardcoded names
+        speaker_lower = speaker.lower()
+        
+        # Check for AI/Assistant type speakers (based on generic categories)
+        if speaker_lower in ["ai", "assistant", "computer"] or "ai" in speaker_lower:
             # More technical, precise delivery
             enhanced = f'<prosody rate="medium" pitch="medium">{enhanced}</prosody>'
-        elif speaker == "lucy":
-            # 🌤️ LUCY'S SULTRY WEATHER STYLE: Warm, teasing, mysterious
+            
+        # Check for weather reporters (Lucy-style characteristics)
+        elif self._is_weather_speaker(speaker_lower):
+            # 🌤️ SULTRY WEATHER STYLE: Warm, teasing, mysterious
             # Add longer pauses for sultry effect
             enhanced = enhanced.replace('<break time="0.5s"/>', '<break time="0.8s"/>')
             enhanced = enhanced.replace('<break time="0.2s"/>', '<break time="0.4s"/>')
@@ -564,14 +688,47 @@ class AudioGenerationService:
             
             # Add breathing effects for mystique
             enhanced = f'<break time="0.3s"/>{enhanced}<break time="0.5s"/>'
-        elif speaker == "brad":
+            
+        # Check for news anchors (Brad-style characteristics)  
+        elif self._is_news_speaker(speaker_lower):
             # Professional news anchor delivery
             enhanced = f'<prosody rate="medium" pitch="medium" volume="+1dB">{enhanced}</prosody>'
+            
         else:
-            # Natural, conversational delivery (Marcel default)
+            # Natural, conversational delivery (standard host/presenter style)
             enhanced = f'<prosody rate="medium" pitch="medium">{enhanced}</prosody>'
         
         return enhanced
+    
+    def _is_weather_speaker(self, speaker_name: str) -> bool:
+        """Check if speaker is configured as weather reporter based on generic keywords"""
+        if not speaker_name:
+            return False
+        
+        # Check for weather-related keywords in speaker name (dynamic detection)
+        weather_keywords = ["weather", "wetter", "meteo", "clima"]
+        for keyword in weather_keywords:
+            if keyword in speaker_name.lower():
+                return True
+        
+        # TODO: In future, check speaker description from voice_configurations table
+        # for weather-related keywords like "weather", "atmospheric", "reporter"
+        return False
+    
+    def _is_news_speaker(self, speaker_name: str) -> bool:
+        """Check if speaker is configured as news anchor based on generic keywords"""
+        if not speaker_name:
+            return False
+        
+        # Check for news-related keywords in speaker name (dynamic detection)
+        news_keywords = ["news", "anchor", "nachrichten", "journa", "report"]
+        for keyword in news_keywords:
+            if keyword in speaker_name.lower():
+                return True
+        
+        # TODO: In future, check speaker description from voice_configurations table
+        # for news-related keywords like "news", "anchor", "professional", "authoritative"
+        return False
     
     async def _combine_audio_segments(
         self, audio_files: List[Path], session_id: str, export_format: str

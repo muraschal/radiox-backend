@@ -179,38 +179,38 @@ class ShowService:
             return []
     
     async def get_speaker_configuration(self, speaker_name: str) -> Optional[Dict[str, Any]]:
-        """Get speaker configuration with caching"""
+        """🚀 OPTIMIZED: Get speaker configuration with caching and connection pooling"""
         logger.info(f"🎤 Lade Sprecher-Konfiguration: {speaker_name}")
         
-        # Check cache first
+        # Check cache first - significantly reduces DB load
         if self._is_cache_valid() and speaker_name in self._speaker_cache:
             logger.debug(f"📋 Cache hit for speaker: {speaker_name}")
             return self._speaker_cache[speaker_name]
-        
+
+        # ⚡ CRITICAL FIX: Use optimized database client method
         try:
-            response = await asyncio.to_thread(
-                lambda: self.db.client.table("voice_configurations")
-                .select("*")
-                .eq("voice_name", speaker_name.title())
-                .eq("is_active", True)
-                .execute()
-            )
+            # Use optimized speaker config method from database client
+            speaker_config = await self.db.get_speaker_config_optimized(speaker_name)
             
-            if not response.data:
+            if not speaker_config:
                 logger.warning(f"⚠️ Sprecher '{speaker_name}' nicht gefunden")
                 return None
-            
-            speaker_config = response.data[0]
-            
+
             # Update cache
             self._speaker_cache[speaker_name] = speaker_config
             self._cache_timestamp = datetime.now()
-            
+
             logger.info(f"✅ Sprecher-Konfiguration geladen: {speaker_config['voice_name']}")
             return speaker_config
-            
+
         except Exception as e:
             logger.error(f"❌ Fehler beim Laden der Sprecher-Konfiguration '{speaker_name}': {e}")
+            
+            # 🛡️ FALLBACK: Try to return cached data even if expired
+            if speaker_name in self._speaker_cache:
+                logger.warning(f"🔄 Using stale cache for speaker: {speaker_name}")
+                return self._speaker_cache[speaker_name]
+            
             return None
     
     async def prepare_show_generation(self, preset_name: str, language: str = "en") -> Optional[Dict[str, Any]]:

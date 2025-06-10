@@ -259,9 +259,15 @@ EXAMPLE: "Currently 21°C and hazy in Zurich. The rest of the day remains mild a
 
 Your answer in English:"""
 
-            # Call GPT for weather summary
+            # Call GPT for weather summary - dynamic model
+            try:
+                from config.api_config import get_gpt_model
+                model = get_gpt_model()
+            except ImportError:
+                model = "gpt-4"  # Fallback
+                
             response = await client.chat.completions.create(
-                model="gpt-4",
+                model=model,
                 messages=[{"role": "user", "content": weather_prompt}],
                 max_tokens=150,
                 temperature=0.3
