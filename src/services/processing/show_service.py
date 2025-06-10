@@ -35,6 +35,7 @@ class ShowConfiguration:
     
     # Optional configuration
     secondary_speaker: Optional[str] = None
+    weather_speaker: Optional[str] = None
     rss_feed_filter: Dict[str, Any] = field(default_factory=dict)
     news_categories: List[str] = field(default_factory=list)
     exclude_categories: List[str] = field(default_factory=list)
@@ -232,14 +233,26 @@ class ShowService:
                     self.get_speaker_configuration(show_config.secondary_speaker)
                 )
             
+            if show_config.weather_speaker:
+                speaker_tasks.append(
+                    self.get_speaker_configuration(show_config.weather_speaker)
+                )
+            
             speaker_configs = await asyncio.gather(*speaker_tasks, return_exceptions=True)
             
             # Process speaker configurations
             primary_speaker = speaker_configs[0] if not isinstance(speaker_configs[0], Exception) else None
-            secondary_speaker = (
-                speaker_configs[1] if len(speaker_configs) > 1 and not isinstance(speaker_configs[1], Exception) 
-                else None
-            )
+            secondary_speaker = None
+            weather_speaker = None
+            
+            # Determine which configs correspond to which speakers
+            config_index = 1
+            if show_config.secondary_speaker and len(speaker_configs) > config_index:
+                secondary_speaker = speaker_configs[config_index] if not isinstance(speaker_configs[config_index], Exception) else None
+                config_index += 1
+            
+            if show_config.weather_speaker and len(speaker_configs) > config_index:
+                weather_speaker = speaker_configs[config_index] if not isinstance(speaker_configs[config_index], Exception) else None
             
             if not primary_speaker:
                 logger.error(f"❌ Primary speaker configuration missing for {show_config.primary_speaker}")
@@ -256,6 +269,7 @@ class ShowService:
                 },
                 "speaker": primary_speaker,
                 "secondary_speaker": secondary_speaker,
+                "weather_speaker": weather_speaker,
                 "content": {
                     "categories": show_config.news_categories,
                     "exclude_categories": show_config.exclude_categories,
@@ -271,6 +285,8 @@ class ShowService:
             logger.info(f"   🎤 Primary Sprecher: {primary_speaker['voice_name']} ({primary_speaker['language']})")
             if secondary_speaker:
                 logger.info(f"   🎤 Secondary Sprecher: {secondary_speaker['voice_name']} ({secondary_speaker['language']})")
+            if weather_speaker:
+                logger.info(f"   🌤️ Weather Sprecher: {weather_speaker['voice_name']} ({weather_speaker['language']})")
             logger.info(f"   🏙️ Stadt-Fokus: {show_config.city_focus}")
             logger.info(f"   📰 Kategorien: {', '.join(show_config.news_categories)}")
             
@@ -289,6 +305,7 @@ class ShowService:
             city_focus=preset_data.get("city_focus", ""),
             primary_speaker=preset_data.get("primary_speaker", "marcel"),
             secondary_speaker=preset_data.get("secondary_speaker"),
+            weather_speaker=preset_data.get("weather_speaker"),
 
             rss_feed_filter=preset_data.get("rss_feed_filter", {}),
             news_categories=preset_data.get("news_categories", []),

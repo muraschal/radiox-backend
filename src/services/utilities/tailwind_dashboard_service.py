@@ -1,7 +1,7 @@
 import json
 import os
 from datetime import datetime
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 from loguru import logger
 
 class TailwindDashboardService:
@@ -21,7 +21,8 @@ class TailwindDashboardService:
         self, 
         raw_data: Dict[str, Any], 
         processed_data: Dict[str, Any], 
-        show_config: Dict[str, Any]
+        show_config: Dict[str, Any],
+        timestamp: Optional[str] = None
     ) -> str:
         """Generiert das Show Notes Dashboard"""
         try:
@@ -49,8 +50,9 @@ class TailwindDashboardService:
             # Calculate stats
             stats = self._calculate_dashboard_stats(raw_data, processed_info)
             
-            # Generate timestamp (unified format)
-            timestamp = datetime.now().strftime('%y%m%d_%H%M')
+            # Use provided timestamp or generate a new one (unified format)
+            if timestamp is None:
+                timestamp = datetime.now().strftime('%y%m%d_%H%M')
             
             # Generate HTML
             html_content = self._generate_tailwind_html(
@@ -77,7 +79,7 @@ class TailwindDashboardService:
         if processed_data is None:
             processed_data = {}
         
-        return {
+        extracted = {
             'gpt_prompt': processed_data.get('gpt_prompt', ''),
             'radio_script': processed_data.get('radio_script', ''),
             'selected_news': processed_data.get('selected_news', []),
@@ -95,6 +97,13 @@ class TailwindDashboardService:
             'weather_data': processed_data.get('weather_data', {}),
             'crypto_data': processed_data.get('crypto_data', {})
         }
+        
+        # Extract ALL fields that might contain image/cover generation data
+        for key, value in processed_data.items():
+            if any(keyword in key.lower() for keyword in ['image', 'cover', 'dalle', 'generation']):
+                extracted[key] = value
+        
+        return extracted
     
     def _calculate_dashboard_stats(self, raw_data: Dict[str, Any], processed_info: Dict[str, Any]) -> Dict[str, Any]:
         """Berechnet Dashboard-Statistiken"""
@@ -188,6 +197,16 @@ class TailwindDashboardService:
         </div>
     </div>
 
+    <!-- GPT Selected Articles - PROMINENT HEADER SECTION -->
+    <div class="bg-green-600 text-white py-6">
+        <div class="max-w-7xl mx-auto px-4">
+            <h2 class="text-2xl font-bold mb-4">🤖 GPT Selected Articles ({len(processed_info.get('selected_news', []))} stories)</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                {self._generate_selected_news_header_cards(processed_info.get('selected_news', []))}
+            </div>
+        </div>
+    </div>
+
     <!-- Audio Player Section -->
     {self._generate_audio_player_html(timestamp)}
 
@@ -199,7 +218,8 @@ class TailwindDashboardService:
             <div class="col-span-8">
                 <div class="bg-white rounded-lg shadow-sm">
                     <div class="bg-blue-600 text-white px-6 py-4 rounded-t-lg">
-                        <h2 class="text-xl font-bold">📰 News Feed ({stats['total_news']} articles)</h2>
+                        <h2 class="text-xl font-bold">📰 All Available News ({stats['total_news']} articles)</h2>
+                        <p class="text-blue-200 text-sm mt-1">Complete news feed • Selected articles shown above</p>
                     </div>
                     
                     <!-- Filter Buttons -->
@@ -212,7 +232,7 @@ class TailwindDashboardService:
                         </div>
                     </div>
                     
-                    <!-- News List -->
+                    <!-- All News List -->
                     <div class="p-4 max-h-96 overflow-y-auto space-y-3" id="news-container">
                         {self._generate_news_html(news, rss_feeds_mapping)}
                     </div>
@@ -281,20 +301,76 @@ class TailwindDashboardService:
                 </div>
                 
                 <!-- Main GPT Content Grid -->
-                <div class="p-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    <div>
-                        <div class="flex justify-between items-center mb-3">
-                            <h3 class="font-medium text-gray-700">📤 Complete GPT Input Prompt</h3>
-                            <button onclick="copyToClipboard('gpt-prompt')" class="px-2 py-1 text-xs bg-blue-100 hover:bg-blue-200 text-blue-800 rounded">📋 Copy</button>
+                <div class="p-6">
+                    <h3 class="text-lg font-medium text-gray-800 mb-4">🤖 Complete GPT Workflow Debug</h3>
+                    
+                    <!-- 2x3 GPT WORKFLOW GRID: INPUT LEFT, OUTPUT RIGHT -->
+                    <div class="grid grid-cols-2 gap-6 mb-6">
+                        <!-- LEFT COLUMN: INPUTS -->
+                        <div class="space-y-6">
+                            <!-- Stage 1: Article Selection Prompt -->
+                            <div>
+                                <div class="flex justify-between items-center mb-3">
+                                    <h4 class="font-medium text-gray-700">📋 Stage 1: Article Selection Prompt</h4>
+                                    <button onclick="copyToClipboard('stage1-prompt')" class="px-2 py-1 text-xs bg-purple-100 hover:bg-purple-200 text-purple-800 rounded">📋 Copy</button>
+                                </div>
+                                <div class="text-xs text-gray-500 mb-2">INPUT: Expects JSON response with selected article IDs</div>
+                                <div id="stage1-prompt" class="bg-gray-900 text-purple-400 p-4 rounded text-sm font-mono max-h-80 overflow-y-auto whitespace-pre-wrap">{self._safe_text_full(self._get_stage1_prompt(processed_info))}</div>
+                            </div>
+                            
+                            <!-- Stage 2: Script Writing Prompt -->
+                            <div>
+                                <div class="flex justify-between items-center mb-3">
+                                    <h4 class="font-medium text-gray-700">📝 Stage 2: Script Writing Prompt</h4>
+                                    <button onclick="copyToClipboard('stage2-prompt')" class="px-2 py-1 text-xs bg-green-100 hover:bg-green-200 text-green-800 rounded">📋 Copy</button>
+                                </div>
+                                <div class="text-xs text-gray-500 mb-2">INPUT: Expects plain text radio script response</div>
+                                <div id="stage2-prompt" class="bg-gray-900 text-green-400 p-4 rounded text-sm font-mono max-h-80 overflow-y-auto whitespace-pre-wrap">{self._safe_text_full(self._get_stage2_prompt(processed_info))}</div>
+                            </div>
+                            
+                            <!-- Image Generation Prompt -->
+                            <div>
+                                <div class="flex justify-between items-center mb-3">
+                                    <h4 class="font-medium text-gray-700">🎨 Image Generation Prompt</h4>
+                                    <button onclick="copyToClipboard('image-prompt')" class="px-2 py-1 text-xs bg-pink-100 hover:bg-pink-200 text-pink-800 rounded">📋 Copy</button>
+                                </div>
+                                <div class="text-xs text-gray-500 mb-2">INPUT: DALL-E prompt for cover generation</div>
+                                <div id="image-prompt" class="bg-gray-900 text-pink-400 p-4 rounded text-sm font-mono max-h-80 overflow-y-auto whitespace-pre-wrap">{self._safe_text_full(self._get_image_prompt(processed_info))}</div>
+                            </div>
                         </div>
-                        <div id="gpt-prompt" class="bg-gray-900 text-green-400 p-4 rounded text-sm font-mono max-h-80 overflow-y-auto whitespace-pre-wrap">{self._safe_text_full(processed_info.get('gpt_prompt', 'No GPT input'))}</div>
-                    </div>
-                    <div>
-                        <div class="flex justify-between items-center mb-3">
-                            <h3 class="font-medium text-gray-700">📥 Generated Radio Script</h3>
-                            <button onclick="copyToClipboard('radio-script')" class="px-2 py-1 text-xs bg-blue-100 hover:bg-blue-200 text-blue-800 rounded">📋 Copy</button>
+                        
+                        <!-- RIGHT COLUMN: OUTPUTS -->
+                        <div class="space-y-6">
+                            <!-- Stage 1: GPT Response -->
+                            <div>
+                                <div class="flex justify-between items-center mb-3">
+                                    <h4 class="font-medium text-gray-700">🤖 Stage 1: GPT Response</h4>
+                                    <button onclick="copyToClipboard('stage1-response')" class="px-2 py-1 text-xs bg-cyan-100 hover:bg-cyan-200 text-cyan-800 rounded">📋 Copy</button>
+                                </div>
+                                <div class="text-xs text-gray-500 mb-2">OUTPUT: Selected articles + reasons</div>
+                                <div id="stage1-response" class="bg-gray-900 text-cyan-400 p-4 rounded text-sm font-mono max-h-80 overflow-y-auto whitespace-pre-wrap">{self._safe_text_full(self._get_stage1_response(processed_info))}</div>
+                            </div>
+                            
+                            <!-- Stage 2: Generated Radio Script -->
+                            <div>
+                                <div class="flex justify-between items-center mb-3">
+                                    <h4 class="font-medium text-gray-700">🎭 Stage 2: Generated Radio Script</h4>
+                                    <button onclick="copyToClipboard('radio-script')" class="px-2 py-1 text-xs bg-blue-100 hover:bg-blue-200 text-blue-800 rounded">📋 Copy</button>
+                                </div>
+                                <div class="text-xs text-gray-500 mb-2">OUTPUT: GPT's final radio script response</div>
+                                <div id="radio-script" class="bg-gray-900 text-blue-400 p-4 rounded text-sm font-mono max-h-80 overflow-y-auto whitespace-pre-wrap">{self._safe_text_full(processed_info.get('radio_script', 'No radio script'))}</div>
+                            </div>
+                            
+                            <!-- Returned Image Prompt -->
+                            <div>
+                                <div class="flex justify-between items-center mb-3">
+                                    <h4 class="font-medium text-gray-700">🖼️ Returned Image Prompt</h4>
+                                    <button onclick="copyToClipboard('returned-image-prompt')" class="px-2 py-1 text-xs bg-orange-100 hover:bg-orange-200 text-orange-800 rounded">📋 Copy</button>
+                                </div>
+                                <div class="text-xs text-gray-500 mb-2">OUTPUT: Final prompt used by DALL-E</div>
+                                <div id="returned-image-prompt" class="bg-gray-900 text-orange-400 p-4 rounded text-sm font-mono max-h-80 overflow-y-auto whitespace-pre-wrap">{self._safe_text_full(self._get_returned_image_prompt(processed_info))}</div>
+                            </div>
                         </div>
-                        <div id="radio-script" class="bg-gray-900 text-green-400 p-4 rounded text-sm font-mono max-h-80 overflow-y-auto whitespace-pre-wrap">{self._safe_text_full(processed_info.get('radio_script', 'No radio script'))}</div>
                     </div>
                 </div>
                 
@@ -515,6 +591,96 @@ class TailwindDashboardService:
             """
         return html
     
+    def _generate_selected_news_header_cards(self, selected_news: List[Dict[str, Any]]) -> str:
+        """Generates compact header cards for selected news"""
+        if not selected_news:
+            return '<div class="col-span-4 text-center text-green-200">No articles selected</div>'
+        
+        cards_html = ""
+        for i, news in enumerate(selected_news, 1):
+            title = news.get('title', 'No title')
+            source = news.get('source', 'Unknown').upper()
+            reason = news.get('relevance_reason', news.get('selection_reason', 'Selected by GPT'))
+            
+            # Truncate for header display
+            short_title = title[:60] + "..." if len(title) > 60 else title
+            short_reason = reason[:80] + "..." if len(reason) > 80 else reason
+            
+            cards_html += f"""
+            <div class="bg-green-700 rounded-lg p-4 border border-green-500">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="bg-green-800 text-green-100 px-2 py-1 rounded text-xs font-bold">#{i}</span>
+                    <span class="bg-white text-green-700 px-2 py-1 rounded text-xs font-bold">{source}</span>
+                </div>
+                <h3 class="text-white font-semibold text-sm mb-2 leading-tight">{short_title}</h3>
+                <p class="text-green-200 text-xs leading-relaxed">{short_reason}</p>
+            </div>
+            """
+        
+        return cards_html
+    
+    def _generate_selected_news_section(self, selected_news: List[Dict[str, Any]], rss_feeds_mapping: Dict[str, str] = None) -> str:
+        """Generiert prominente Sektion für GPT-selected News"""
+        if not selected_news:
+            return ""
+        
+        html = f"""
+                    <!-- GPT SELECTED NEWS - PROMINENT SECTION -->
+                    <div class="p-4 bg-green-50 border-b-2 border-green-200">
+                        <div class="flex items-center gap-2 mb-3">
+                            <span class="text-green-600 text-lg">🤖</span>
+                            <h3 class="font-bold text-green-800">GPT Selected News ({len(selected_news)} articles)</h3>
+                            <span class="px-2 py-1 text-xs bg-green-200 text-green-700 rounded-full">FEATURED</span>
+                        </div>
+                        <div class="space-y-3">
+        """
+        
+        for i, item in enumerate(selected_news, 1):
+            title = item.get('title', 'No title')
+            summary = item.get('summary', '')
+            source = item.get('source', 'Unknown')
+            category = item.get('category', 'general')
+            age = item.get('age_hours', 0)
+            url = item.get('link', item.get('url', '#'))
+            reason = item.get('relevance_reason', item.get('selection_reason', 'Selected by GPT'))
+            
+            # Clean summary
+            clean_summary = self._clean_summary_with_fixed_images(summary)
+            short_summary = clean_summary[:200] + '...' if len(clean_summary) > 200 else clean_summary
+            
+            # Generate RSS link
+            rss_link = self._generate_rss_link_sync(source, category, rss_feeds_mapping or {})
+            
+            html += f"""
+                            <div class="bg-white p-4 border-2 border-green-300 rounded-lg shadow-sm">
+                                <div class="flex items-start justify-between mb-2">
+                                    <div class="flex flex-wrap gap-2">
+                                        <span class="px-2 py-1 text-xs font-bold rounded bg-green-100 text-green-800">#{i}</span>
+                                        <span class="px-2 py-1 text-xs font-medium rounded bg-blue-100 text-blue-800">{source}</span>
+                                        <span class="px-2 py-1 text-xs rounded bg-gray-100 text-gray-700">{category}</span>
+                                        <span class="px-2 py-1 text-xs rounded bg-gray-100 text-gray-600">{age:.1f}h ago</span>
+                                    </div>
+                                </div>
+                                <h4 class="font-bold text-gray-900 mb-2 text-lg">{title}</h4>
+                                <p class="text-gray-600 text-sm mb-2">{short_summary}</p>
+                                <div class="bg-green-100 border border-green-300 p-2 rounded mb-3">
+                                    <span class="text-xs font-medium text-green-700">GPT Selection Reason:</span>
+                                    <p class="text-sm text-green-800 mt-1">{reason}</p>
+                                </div>
+                                <div class="flex gap-3">
+                                    <a href="{url}" target="_blank" class="text-blue-600 hover:text-blue-800 text-sm font-medium">🔗 Read article</a>
+                                    {f'<a href="{rss_link}" target="_blank" class="text-orange-600 hover:text-orange-800 text-sm">📡 RSS Feed</a>' if rss_link else ''}
+                                </div>
+                            </div>
+            """
+        
+        html += """
+                        </div>
+                    </div>
+        """
+        
+        return html
+    
     async def _get_rss_feeds_from_db(self) -> Dict[str, str]:
         """Lädt echte RSS Feed URLs aus der Supabase Datenbank"""
         if self._rss_feeds_cache is not None:
@@ -552,69 +718,41 @@ class TailwindDashboardService:
             return {}
 
     def _generate_rss_link_sync(self, source: str, category: str, feeds_mapping: Dict[str, str]) -> str:
-        """Generiert RSS-Links basierend auf echten DB-URLs mit korrekter source+category Zuordnung"""
-        source_lower = source.lower()
-        category_lower = category.lower()
+        """Sucht die passende RSS-Feed-URL aus dem Mapping."""
+        # Kombinierter Schlüssel für präzisere Übereinstimmung
+        combined_key = f"{source.lower()}+{category.lower()}"
         
-        # FIXED: Erst source+category Kombination versuchen
-        source_category_key = f"{source_lower}_{category_lower}"
-        if source_category_key in feeds_mapping:
-            logger.debug(f"✅ RSS Feed gefunden: {source}+{category} -> {source_category_key}")
-            return feeds_mapping[source_category_key]
-        
-        # Fallback: Nur Source (für single-feed Sources)
-        if source_lower in feeds_mapping:
-            logger.debug(f"⚠️ RSS Feed Fallback: {source} -> {source_lower} (category {category} ignoriert)")
-            return feeds_mapping[source_lower]
-        
-        # Partielle Übereinstimmung für zusammengesetzte Source-Namen
-        for feed_key, feed_url in feeds_mapping.items():
-            # Prüfe ob source in key enthalten ist
-            if source_lower in feed_key:
-                logger.debug(f"🔍 RSS Feed partielle Übereinstimmung: {source} -> {feed_key}")
-                return feed_url
-        
-        # Fallback: Zeige dass in DB nicht gefunden
-        logger.warning(f"❌ RSS Feed nicht gefunden: {source}+{category}")
-        return f"#db-not-found-{source_lower}-{category_lower}"
+        url = feeds_mapping.get(combined_key, "#")
+        # logger.debug(f"✅ RSS Feed gefunden: {source}+{category} -> {feeds_mapping.get(combined_key, 'Nicht gefunden')}")
+        return url
     
     def _generate_voice_html(self, show_config: Dict[str, Any]) -> str:
-        """Generiert Voice HTML mit vollständigen DB-Daten"""
-        primary = show_config.get('speaker', {})
-        secondary = show_config.get('secondary_speaker', {})
-        show_info = show_config.get('show', {})
+        """Generiert HTML für die Stimmen-Konfiguration mit korrekten Daten."""
+        # Correctly access speaker data from the show_config structure
+        primary_speaker = show_config.get('speaker', {})
+        secondary_speaker = show_config.get('secondary_speaker', {})
         
-        html = f"""
-        <!-- Show Info -->
-        <div class="bg-teal-50 p-3 rounded border-l-4 border-teal-500 mb-3">
-            <div class="font-medium text-teal-800">🎭 Show: {show_info.get('display_name', 'N/A')}</div>
-            <div class="text-xs text-teal-600 mt-1">Preset: {show_info.get('preset_name', 'N/A')} | City: {show_info.get('city_focus', 'N/A')}</div>
-        </div>
-        
-        <!-- ⭐ NEUER PROMINENTER SHOW-STIL BEREICH -->
-        <div class="bg-purple-50 p-3 rounded border-l-4 border-purple-500 mb-3">
-            <div class="font-medium text-purple-800">🎨 Show-Stil & Charakter:</div>
-            <div class="text-sm text-purple-700 mt-1 italic">"{show_info.get('description', 'Kein Stil definiert')}"</div>
-            <div class="text-xs text-purple-600 mt-1">💡 Dieser Stil wird an GPT weitergegeben für konsistente Shows</div>
-        </div>
-        
-        <!-- Primary Speaker -->
-        <div class="bg-gray-50 p-3 rounded border-l-4 border-teal-500 mb-2">
-            <div class="font-medium">🎤 Primary: {primary.get('voice_name', primary.get('speaker_name', 'N/A'))}</div>
-            <div class="text-xs text-gray-600 mt-1">Voice ID: {primary.get('voice_id', 'N/A')}</div>
-            <div class="text-xs text-gray-600">Language: {primary.get('language', 'N/A')} | Model: {primary.get('model', 'N/A')}</div>
-            <div class="text-xs text-gray-600">Stability: {primary.get('stability', 'N/A')} | Style: {primary.get('style', 'N/A')}</div>
-        </div>
-        
-        <!-- Secondary Speaker -->
-        <div class="bg-gray-50 p-3 rounded border-l-4 border-teal-500">
-            <div class="font-medium">🎤 Secondary: {secondary.get('voice_name', secondary.get('speaker_name', 'N/A'))}</div>
-            <div class="text-xs text-gray-600 mt-1">Voice ID: {secondary.get('voice_id', 'N/A')}</div>
-            <div class="text-xs text-gray-600">Language: {secondary.get('language', 'N/A')} | Model: {secondary.get('model', 'N/A')}</div>
-            <div class="text-xs text-gray-600">Stability: {secondary.get('stability', 'N/A')} | Style: {secondary.get('style', 'N/A')}</div>
-        </div>
-        """
-        
+        html = ""
+
+        def create_speaker_block(speaker_data, role):
+            if not speaker_data:
+                return ""
+            name = speaker_data.get('voice_name', 'N/A')
+            description = speaker_data.get('description', 'No description available.')
+            return f"""
+            <div>
+                <span class="font-semibold text-gray-700">{role}: {name}</span>
+                <p class="text-xs text-gray-500 mt-1">{description}</p>
+            </div>
+            """
+
+        html += create_speaker_block(primary_speaker, "Primary Host")
+        if secondary_speaker:
+            html += create_speaker_block(secondary_speaker, "Secondary Host")
+
+        if not html:
+            return "<p>Voice configuration not available.</p>"
+
         return html
     
     def _generate_alerts_html(self, crypto: Dict[str, Any], weather: Dict[str, Any]) -> str:
@@ -1038,25 +1176,35 @@ class TailwindDashboardService:
         
         # --- 2. Fallback-Logik (wenn exaktes Matching fehlschlägt) ---
         if audio_path is None or cover_path is None:
-            logger.warning(f"⚠️ Exact match for timestamp '{timestamp}' not found. Initiating fallback to newest file.")
+            missing_files = []
+            if audio_path is None:
+                missing_files.append("audio (.mp3)")
+            if cover_path is None:
+                missing_files.append("cover (.png)")
+            
+            logger.warning(f"⚠️ Missing {', '.join(missing_files)} for timestamp '{timestamp}'. Initiating fallback to newest files.")
             try:
                 files = os.listdir(self.output_dir)
                 
-                # Finde die neueste MP3-Datei
-                mp3_files = [f for f in files if f.startswith('radiox_') and f.endswith('.mp3')]
-                if mp3_files:
-                    latest_mp3 = max(mp3_files, key=lambda f: os.path.getmtime(os.path.join(self.output_dir, f)))
-                    if audio_path is None:
+                # Finde die neueste MP3-Datei (nur wenn Audio fehlt)
+                if audio_path is None:
+                    mp3_files = [f for f in files if f.startswith('radiox_') and f.endswith('.mp3')]
+                    if mp3_files:
+                        latest_mp3 = max(mp3_files, key=lambda f: os.path.getmtime(os.path.join(self.output_dir, f)))
                         audio_path = latest_mp3
                         logger.info(f"🔄 Fallback found newest audio: {audio_path}")
+                    else:
+                        logger.error(f"❌ No MP3 files found in {self.output_dir}")
 
-                # Finde die neueste PNG-Datei
-                png_files = [f for f in files if f.startswith('radiox_') and f.endswith('.png')]
-                if png_files:
-                    latest_png = max(png_files, key=lambda f: os.path.getmtime(os.path.join(self.output_dir, f)))
-                    if cover_path is None:
+                # Finde die neueste PNG-Datei (nur wenn Cover fehlt)
+                if cover_path is None:
+                    png_files = [f for f in files if f.startswith('radiox_') and f.endswith('.png')]
+                    if png_files:
+                        latest_png = max(png_files, key=lambda f: os.path.getmtime(os.path.join(self.output_dir, f)))
                         cover_path = latest_png
                         logger.info(f"🔄 Fallback found newest cover: {cover_path}")
+                    else:
+                        logger.error(f"❌ No PNG files found in {self.output_dir}")
             
             except Exception as e:
                 logger.error(f"❌ Error during fallback file search: {e}")
@@ -1067,18 +1215,21 @@ class TailwindDashboardService:
             <div class="bg-gray-800 text-white rounded-lg shadow-lg overflow-hidden">
                 <div class="md:flex">
                     <div class="md:flex-shrink-0">
-                        <img class="h-48 w-full object-cover md:w-48" src="{cover_path}" alt="RadioX Show Cover">
+                        <img class="h-32 w-full object-cover md:w-32" src="{cover_path}" alt="RadioX Show Cover">
                     </div>
-                    <div class="p-8 flex flex-col justify-between">
+                    <div class="p-6 flex flex-col justify-between flex-1">
                         <div>
                             <div class="uppercase tracking-wide text-sm text-indigo-400 font-semibold">RadioX Live</div>
                             <h2 class="block mt-1 text-lg leading-tight font-medium text-white">Latest Broadcast</h2>
                             <p class="mt-2 text-gray-400">Timestamp: {timestamp}</p>
                         </div>
-                        <audio controls class="w-full mt-4" src="{audio_path}">
-                            Your browser does not support the audio element.
-                        </audio>
                     </div>
+                </div>
+                <!-- Full-Width Audio Player with Large Timeline -->
+                <div class="bg-gray-900 p-6">
+                    <audio controls class="w-full" style="width: 100%; height: 80px; min-height: 80px;" src="{audio_path}">
+                        Your browser does not support the audio element.
+                    </audio>
                 </div>
             </div>"""
         else:
@@ -1132,3 +1283,130 @@ class TailwindDashboardService:
                 formatted.append(f"     Grund: {reason}")
             
         return "\n".join(formatted)
+
+    def _get_stage1_prompt(self, processed_info: Dict[str, Any]) -> str:
+        """Extract Stage 1 (Article Selection) prompt"""
+        gpt_prompt = processed_info.get('gpt_prompt', {})
+        
+        if isinstance(gpt_prompt, dict):
+            return gpt_prompt.get('stage1_selection_prompt', 'No Stage 1 prompt available')
+        else:
+            # Fallback for old single-prompt format
+            return 'Stage 1 prompt not available (old format)'
+
+    def _get_stage2_prompt(self, processed_info: Dict[str, Any]) -> str:
+        """Extract Stage 2 (Script Writing) prompt"""
+        gpt_prompt = processed_info.get('gpt_prompt', {})
+        
+        if isinstance(gpt_prompt, dict):
+            return gpt_prompt.get('stage2_scripting_prompt', 'No Stage 2 prompt available')
+        else:
+            # Fallback for old single-prompt format (probably the scripting prompt)
+            return str(gpt_prompt) if gpt_prompt else 'No Stage 2 prompt available'
+    
+    def _get_stage1_response(self, processed_info: Dict[str, Any]) -> str:
+        """Extract Stage 1 GPT Response as readable text"""
+        gpt_response = processed_info.get('gpt_response', {})
+        
+        if isinstance(gpt_response, dict):
+            stage1_response = gpt_response.get('stage1_selection_response', '')
+            if stage1_response:
+                return stage1_response
+        
+        # Try alternative locations
+        selection_data = processed_info.get('article_selection_data', {})
+        if selection_data:
+            return str(selection_data)
+        
+        # Try selected_news with reasons as fallback - format as readable text
+        selected_news = processed_info.get('selected_news', [])
+        if selected_news:
+            response_lines = ["SELECTED ARTICLES:"]
+            for i, news in enumerate(selected_news, 1):
+                title = news.get('title', 'No title')
+                reason = news.get('relevance_reason', news.get('selection_reason', 'No reason given'))
+                response_lines.append(f"{i}. {title}")
+                response_lines.append(f"   Reason: {reason}")
+                response_lines.append("")  # Empty line between articles
+            
+            return "\n".join(response_lines)
+        
+        return 'No Stage 1 GPT response available'
+    
+    def _get_image_prompt(self, processed_info: Dict[str, Any]) -> str:
+        """Extract Image Generation Prompt sent to DALL-E"""
+        
+        # NEW: Try cover_generation section first (now available!)
+        cover_data = processed_info.get('cover_generation', {})
+        if isinstance(cover_data, dict):
+            dalle_prompt = cover_data.get('dalle_prompt', '')
+            if dalle_prompt:
+                return dalle_prompt
+        
+        # Try image_generation section
+        image_data = processed_info.get('image_generation', {})
+        if isinstance(image_data, dict):
+            dalle_prompt = image_data.get('dalle_prompt', image_data.get('prompt', ''))
+            if dalle_prompt:
+                return dalle_prompt
+        
+        # Try direct dalle_prompt field
+        dalle_prompt = processed_info.get('dalle_prompt', '')
+        if dalle_prompt:
+            return dalle_prompt
+        
+        # Try in workflow results structure
+        workflow_result = processed_info.get('workflow_result', {})
+        if isinstance(workflow_result, dict):
+            cover_gen = workflow_result.get('cover_generation', {})
+            if isinstance(cover_gen, dict):
+                dalle_prompt = cover_gen.get('dalle_prompt', cover_gen.get('prompt', ''))
+                if dalle_prompt:
+                    return dalle_prompt
+        
+        # Try in any nested data structures
+        for key, value in processed_info.items():
+            if isinstance(value, dict):
+                if 'dalle_prompt' in value:
+                    return value['dalle_prompt']
+                if 'prompt' in value and 'dall' in key.lower():
+                    return value['prompt']
+                if 'image_prompt' in value:
+                    return value['image_prompt']
+        
+        # Search for any field containing "prompt" and "image" or "dall"
+        for key, value in processed_info.items():
+            if isinstance(value, str) and 'prompt' in key.lower():
+                if 'image' in key.lower() or 'dall' in key.lower() or 'cover' in key.lower():
+                    if len(value) > 50:  # Likely a real prompt, not just metadata
+                        return value
+        
+        # Return helpful message if no prompt found
+        return """🎨 DALL-E Prompt not available yet.
+
+Note: The DALL-E prompt is now passed to the dashboard, but this might be an older generation.
+The prompt should be visible in newer dashboard generations."""
+    
+    def _get_returned_image_prompt(self, processed_info: Dict[str, Any]) -> str:
+        """Extract the final/returned image prompt used by DALL-E"""
+        # This would be the prompt that DALL-E actually used (sometimes modified)
+        # In most cases this is the same as the sent prompt, but DALL-E might modify it
+        
+        image_data = processed_info.get('image_generation', {})
+        if isinstance(image_data, dict):
+            returned_prompt = image_data.get('final_prompt', image_data.get('used_prompt', ''))
+            if returned_prompt:
+                return returned_prompt
+        
+        cover_data = processed_info.get('cover_generation', {})
+        if isinstance(cover_data, dict):
+            returned_prompt = cover_data.get('final_prompt', cover_data.get('used_prompt', ''))
+            if returned_prompt:
+                return returned_prompt
+        
+        # Explain that this data isn't available at dashboard generation time
+        return """No returned image prompt available - Cover generation runs after dashboard.
+
+Note: Cover generation happens AFTER dashboard creation, so the DALL-E response prompt won't be available here.
+The returned prompt is typically the same as the sent prompt unless DALL-E modifies it.
+You can find both prompts in the console logs when cover generation runs."""

@@ -208,13 +208,17 @@ class ContentCombinerService:
                         description=f"RadioX Cover {size[0]}x{size[1]}"
                     )
                     
-                    # Vollständige Metadaten für Windows Media Player
+                    # Vollständige Metadaten für Windows Media Player im gewünschten Format
+                    current_time = datetime.now()
+                    hour_min = current_time.strftime('%H:%M')
+                    edition_name = self._get_edition_name_for_metadata(hour_min)
+                    
+                    audiofile.tag.title = f"RadioX - {edition_name} : {hour_min} Edition"
                     audiofile.tag.artist = "RadioX AI"
                     audiofile.tag.album = "RadioX News Broadcasts"
                     audiofile.tag.album_artist = "RadioX AI"
-                    audiofile.tag.title = f"RadioX Broadcast {datetime.now().strftime('%Y-%m-%d %H:%M')}"
-                    audiofile.tag.genre = "Podcast"  # Standardgenre statt "Talk/News"
-                    audiofile.tag.recording_date = datetime.now().year
+                    audiofile.tag.genre = "News/Talk"
+                    audiofile.tag.recording_date = current_time.year
                     
                     # Speichere mit verschiedenen ID3-Versionen
                     try:
@@ -330,8 +334,12 @@ class ContentCombinerService:
             audiofile.tag.genre = self.config["radiox_branding"]["genre"]
             audiofile.tag.recording_date = datetime.now().year
             
-            # Zusätzliche Tags für bessere Erkennung
-            audiofile.tag.title = f"RadioX Broadcast {datetime.now().strftime('%Y-%m-%d %H:%M')}"
+            # Zusätzliche Tags für bessere Erkennung im gewünschten Format
+            current_time = datetime.now()
+            hour_min = current_time.strftime('%H:%M')
+            edition_name = self._get_edition_name_for_metadata(hour_min)
+            
+            audiofile.tag.title = f"RadioX - {edition_name} : {hour_min} Edition"
             audiofile.tag.album_artist = self.config["radiox_branding"]["artist"]
             
             # Speichere mit ID3v2.4 für beste Kompatibilität
@@ -380,4 +388,21 @@ class ContentCombinerService:
                 "quality_score": 0,
                 "quality_rating": "Failed",
                 "error": str(e)
-            } 
+            }
+    
+    def _get_edition_name_for_metadata(self, time_str: str) -> str:
+        """Generate edition name for MP3 metadata based on time"""
+        try:
+            hour = int(time_str.split(":")[0])
+        except:
+            hour = datetime.now().hour
+        
+        # Generate time-appropriate edition names for metadata
+        if 6 <= hour <= 11:
+            return "Morning News"
+        elif 12 <= hour <= 17:
+            return "Afternoon Brief"
+        elif 18 <= hour <= 22:
+            return "Evening Report"
+        else:
+            return "Late Night Update" 

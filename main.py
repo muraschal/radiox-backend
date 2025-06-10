@@ -31,6 +31,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Dict, Any, Optional, Tuple
 from dataclasses import dataclass
+from loguru import logger
 
 # Add src to path for clean imports
 sys.path.append(str(Path(__file__).parent / "src"))
@@ -81,7 +82,8 @@ class RadioXMaster:
     
     def _log_initialization(self) -> None:
         """Log initialization with compact format"""
-        print(f"🚀 RadioX v{self._config.version} | Audio: {'ON' if self._config.audio_enabled else 'OFF'}")
+        # Minimal initialization message
+        pass
     
     async def run_complete_workflow(
         self,
@@ -89,113 +91,206 @@ class RadioXMaster:
         target_news_count: int = 4,
         target_time: Optional[str] = None
     ) -> Dict[str, Any]:
-        """Execute complete workflow with fail-fast pattern"""
+        """Executes the complete, robust v3.2 workflow with corrected operational order."""
         
         workflow_id = f"wf_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-        
-        print(f"🎙️ WORKFLOW {workflow_id} | Preset: {preset_name} | News: {target_news_count}")
-        print("=" * 60)
-        
+        print(f"📻 RadioX • {preset_name.title()} • {target_news_count} stories")
+        print("")
+
         try:
-            # Pipeline execution with early validation
+            
+            # --- STEP 1 & 2: Data Collection & Processing ---
+            print("⚡ Collecting data...")
             show_config = await self._execute_show_configuration(preset_name)
             collected_data = await self._execute_data_collection(preset_name)
+            
+            print("🤖 Processing with GPT...")
             processed_data = await self._execute_data_processing(
                 collected_data["data"], target_news_count, target_time, preset_name, show_config["data"]
             )
-            audio_data = await self._execute_audio_generation(
-                processed_data["data"], target_news_count, target_time, preset_name, show_config["data"]
-            ) if self._config.audio_enabled else self._create_skipped_audio_result()
+
+            # --- STEP 3: Generate Cover First (for Dashboard integration) ---
+            print("🎨 Generating cover...")
+            cover_data = {}
+            if self._config.audio_enabled:
+                initial_cover_data = await self._execute_cover_generation_standalone(processed_data["data"], target_time)
+                cover_data = initial_cover_data
+                if initial_cover_data.get("success"):
+                    print("✅ Cover generated")
+            else:
+                initial_cover_data = self._create_skipped_cover_result()
+                cover_data = initial_cover_data
+
+            # --- STEP 4: Generate Audio First ---
+            audio_data = {}
+            if self._config.audio_enabled:
+                print("🎵 Generating audio...")
+                audio_data = await self._execute_audio_generation(
+                    processed_data["data"], target_news_count, target_time, preset_name, show_config["data"]
+                )
+                
+                if audio_data.get("success"):
+                    print("✅ Audio generated")
+                
+            else:
+                # Skip audio if disabled
+                audio_data = self._create_skipped_audio_result()
+
+            # --- STEP 5: Cover Embedding FIRST (while audio is still in temp/) ---
+            if audio_data.get("success") and cover_data.get("success"):
+                cover_data = await self._execute_cover_embedding(
+                    cover_data["data"], audio_data.get("data", {}), target_time
+                )
+                print("✅ Audio with cover embedded")
             
-            # **NEW: Archive old shows before generating new ones**
-            await self._archive_old_shows()
-            
-            # **NEW: Generate Cover Art & Embed in MP3**
-            cover_data = await self._execute_cover_generation(
-                processed_data["data"], audio_data["data"] if audio_data.get("success") else {}, target_time
-            ) if self._config.audio_enabled and audio_data.get("success") else self._create_skipped_cover_result()
-            
-            # **NEW: Generate Show Notes Dashboard**
-            await self.generate_shownotes_dashboard(
-                collected_data["data"], processed_data["data"], show_config["data"]
+            # --- STEP 6: Finalize Media Files (Move from temp to outplay, if any were generated) ---
+            final_paths = await self._finalize_show_files(
+                audio_data.get("data", {}), 
+                cover_data.get("data", {})
             )
             
-            # **NEW: Integrate processing data into comprehensive dashboard**
-            await self.integrate_processing_data_into_dashboard(
-                collected_data["data"], processed_data["data"], show_config["data"]
+            # --- STEP 7: Generate Dashboard AFTER files are finalized (with correct filenames) ---
+            print("📊 Generating dashboard...")
+            dashboard_result = await self._execute_dashboard_generation(
+                collected_data["data"], 
+                processed_data["data"], 
+                show_config["data"],
+                cover_data.get("data", {}) if cover_data.get("success") else {},  # Cover data
+                audio_data.get("data", {}) if audio_data.get("success") else {},   # Audio data
+                final_paths.get("timestamp")  # Pass the final timestamp for consistent naming
             )
             
-            # **NEW: Copy MP3 from temp to outplay before cleanup**
-            await self._copy_audio_to_outplay(audio_data["data"] if audio_data.get("success") else {})
-            
-            # **NEW: Cleanup temp directory after successful workflow**
+            if dashboard_result.get("success"):
+                filepath = dashboard_result.get('filepath', '').split('/')[-1]  # Just filename
+                print(f"✅ Dashboard: {filepath}")
+
+            # --- STEP 6: Cleanup ---
             await self._cleanup_temp_directory()
             
+            # --- FINAL STEP: Create Result ---
             return self._create_workflow_result(
                 workflow_id, preset_name, target_news_count, target_time,
                 show_config, collected_data, processed_data, audio_data, cover_data
             )
             
         except Exception as e:
+            # Add more context to the error log
+            import traceback
+            logger.error(f"❌ Workflow {workflow_id} failed with exception: {e}")
+            logger.error(traceback.format_exc())
             return self._create_error_result(workflow_id, str(e))
     
     async def _execute_show_configuration(self, preset_name: str) -> Dict[str, Any]:
         """Execute show configuration step"""
-        print("🎭 SHOW CONFIGURATION")
         result = await self.run_show_configuration(preset_name)
         self._validate_step_result(result, "Show configuration")
-        print("✅ Show Configuration completed")
         return result
     
     async def _execute_data_collection(self, preset_name: str) -> Dict[str, Any]:
         """Execute data collection step"""
-        print("📊 DATA COLLECTION")
         result = await self.run_data_collection(preset_name)
         self._validate_step_result(result, "Data collection")
-        print("✅ Data Collection completed")
         return result
     
     async def _execute_data_processing(
         self, raw_data: Dict[str, Any], target_news_count: int, 
         target_time: Optional[str], preset_name: str, show_config: Dict[str, Any]
     ) -> Dict[str, Any]:
-        """Execute data processing step"""
-        print("🔄 DATA PROCESSING")
+        """Execute data processing step with proactive duplicate filtering."""
         
-        # **NEW: Get last show context from Supabase for GPT**
+        # Get context AND a list of already used article titles for proactive filtering
         last_show_context = await self._get_last_show_context()
+        used_article_titles = await self._get_used_article_titles()
         
         result = await self.run_data_processing(
-            raw_data, target_news_count, target_time, preset_name, show_config, last_show_context
+            raw_data=raw_data,
+            target_news_count=target_news_count,
+            target_time=target_time,
+            preset_name=preset_name,
+            show_config=show_config,
+            last_show_context=last_show_context,
+            used_article_titles=used_article_titles # Pass the set of used titles
         )
         self._validate_step_result(result, "Data processing")
         
-        # **NEW: Log GPT-selected articles**
+        # Log the newly selected articles for the next run
         await self._log_gpt_selected_articles(result["data"], raw_data)
         
-        print("✅ Data Processing completed")
         return result
     
     async def _execute_audio_generation(
         self, processed_data: Dict[str, Any], target_news_count: int,
         target_time: Optional[str], preset_name: str, show_config: Dict[str, Any]
     ) -> Dict[str, Any]:
-        """Execute audio generation step"""
-        print("🎤 AUDIO GENERATION")
-        result = await self.run_audio_generation(processed_data, target_news_count, target_time, preset_name, show_config)
-        self._validate_step_result(result, "Audio generation")
-        print("✅ Audio Generation completed")
-        return result
+        """Execute audio generation step with better error handling."""
+        try:
+            result = await self.run_audio_generation(
+                processed_data, target_news_count, target_time, preset_name, show_config
+            )
+            self._validate_step_result(result, "Audio generation")
+            return result
+        except Exception as e:
+            import traceback
+            logger.error(f"❌ Audio Generation step failed critically: {e}")
+            logger.error(traceback.format_exc())
+            return {"success": False, "error": str(e)}
     
     async def _execute_cover_generation(
         self, processed_data: Dict[str, Any], audio_data: Dict[str, Any], target_time: Optional[str]
     ) -> Dict[str, Any]:
         """Execute cover image generation step"""
-        print("🎨 COVER GENERATION")
         result = await self.run_cover_generation(processed_data, audio_data, target_time)
         self._validate_step_result(result, "Cover generation")
-        print("✅ Cover Generation completed")
         return result
+    
+    async def _execute_cover_generation_standalone(
+        self, processed_data: Dict[str, Any], target_time: Optional[str]
+    ) -> Dict[str, Any]:
+        """Execute standalone cover generation (parallel to audio) - no MP3 embedding yet"""
+        try:
+            result = await self.run_cover_generation_standalone(processed_data, target_time)
+            self._validate_step_result(result, "Standalone cover generation")
+            return result
+        except Exception as e:
+            import traceback
+            logger.error(f"❌ Standalone Cover Generation failed: {e}")
+            logger.error(traceback.format_exc())
+            return {"success": False, "error": str(e)}
+    
+    async def _execute_cover_embedding(
+        self, cover_data: Dict[str, Any], audio_data: Dict[str, Any], target_time: Optional[str]
+    ) -> Dict[str, Any]:
+        """Execute cover embedding into MP3 file"""
+        try:
+            result = await self.run_cover_embedding(cover_data, audio_data, target_time)
+            self._validate_step_result(result, "Cover embedding")
+            return result
+        except Exception as e:
+            import traceback
+            logger.error(f"❌ Cover Embedding failed: {e}")
+            logger.error(traceback.format_exc())
+            return {"success": False, "error": str(e)}
+    
+    async def _execute_dashboard_generation(
+        self, raw_data: Dict[str, Any], processed_data: Dict[str, Any], show_config: Dict[str, Any], 
+        cover_data: Dict[str, Any] = None, audio_data: Dict[str, Any] = None, timestamp: str = None
+    ) -> Dict[str, Any]:
+        """Execute dashboard generation with error handling"""
+        try:
+            filepath = await self.generate_shownotes_dashboard(
+                raw_data=raw_data, 
+                processed_data=processed_data, 
+                show_config=show_config,
+                timestamp=timestamp,
+                cover_data=cover_data,
+                audio_data=audio_data
+            )
+            return {"success": True, "filepath": filepath}
+        except Exception as e:
+            import traceback
+            logger.error(f"❌ Dashboard Generation failed: {e}")
+            logger.error(traceback.format_exc())
+            return {"success": False, "error": str(e)}
     
     def _validate_step_result(self, result: Dict[str, Any], step_name: str) -> None:
         """Validate step result with fail-fast pattern"""
@@ -204,14 +299,10 @@ class RadioXMaster:
     
     def _create_skipped_audio_result(self) -> Dict[str, Any]:
         """Create result for skipped audio generation"""
-        print("🔇 AUDIO GENERATION SKIPPED")
-        print("✅ Audio skipped (--no-audio mode)")
         return {"success": True, "skipped": True, "reason": "Audio disabled"}
     
     def _create_skipped_cover_result(self) -> Dict[str, Any]:
         """Create result for skipped cover generation"""
-        print("🎨 COVER GENERATION SKIPPED")
-        print("✅ Cover skipped (audio disabled or audio failed)")
         return {"success": True, "skipped": True, "reason": "Audio disabled or failed"}
     
     def _create_workflow_result(
@@ -222,11 +313,19 @@ class RadioXMaster:
         """Create comprehensive workflow result"""
         quality_metrics = self._calculate_workflow_quality(collected_data, processed_data)
         
-        print("🎯 WORKFLOW COMPLETED SUCCESSFULLY")
-        print(f"📊 Quality Score: {quality_metrics['overall_score']:.2f}")
-        print(f"📰 News Processed: {quality_metrics['news_count']}")
-        print(f"🎵 Audio: {'Generated' if not audio_data.get('skipped') else 'Skipped'}")
-        print(f"🎨 Cover: {'Generated' if not cover_data.get('skipped') else 'Skipped'}")
+        print("")
+        print(f"✨ Complete • Quality: {quality_metrics['overall_score']:.1f}")
+        
+        # Show generated files in a clean way
+        files_generated = []
+        if not audio_data.get('skipped'):
+            files_generated.append("🎵 Audio")
+        if not cover_data.get('skipped'):
+            files_generated.append("🎨 Cover") 
+        files_generated.append("📊 Dashboard")
+        
+        if files_generated:
+            print(f"📁 Generated: {' • '.join(files_generated)}")
         
         return {
                 "success": True,
@@ -243,7 +342,7 @@ class RadioXMaster:
     
     def _create_error_result(self, workflow_id: str, error_message: str) -> Dict[str, Any]:
         """Create error result"""
-        print(f"❌ WORKFLOW FAILED: {error_message}")
+        print(f"❌ Failed: {error_message}")
         return {
             "success": False,
             "workflow_id": workflow_id,
@@ -251,70 +350,43 @@ class RadioXMaster:
             "error": error_message
         }
     
-    async def _archive_old_shows(self) -> None:
-        """Archive old show files before creating new ones"""
-        try:
-            import shutil
-            from pathlib import Path
-            
-            outplay_dir = Path(__file__).parent / "outplay"
-            archive_dir = outplay_dir / "archive"
-            
-            # Create archive directory if it doesn't exist
-            archive_dir.mkdir(parents=True, exist_ok=True)
-            
-            # Find all radiox files in outplay (not in archive subdirectory)
-            radiox_files = []
-            for pattern in ["radiox_*.mp3", "radiox_*.html", "radiox_*.png"]:
-                radiox_files.extend([f for f in outplay_dir.glob(pattern) if f.parent == outplay_dir])
-            
-            if radiox_files:
-                # Create timestamped archive subdirectory
-                archive_timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-                session_archive_dir = archive_dir / f"show_{archive_timestamp}"
-                session_archive_dir.mkdir(exist_ok=True)
-                
-                archived_count = 0
-                for file in radiox_files:
-                    try:
-                        shutil.move(str(file), str(session_archive_dir / file.name))
-                        archived_count += 1
-                    except Exception as e:
-                        print(f"⚠️ Failed to archive {file.name}: {e}")
-                
-                print(f"📦 Archived {archived_count} old files to: archive/show_{archive_timestamp}/")
-            
-        except Exception as e:
-            print(f"⚠️ Archive warning: {e}")
-            # Don't fail the workflow if archiving fails
+    async def _finalize_show_files(self, audio_data: Dict[str, Any], cover_data: Dict[str, Any]) -> Dict[str, Optional[Path]]:
+        """
+        Moves generated media from a temporary directory to the final 'outplay' directory
+        with the unified naming scheme. This is a critical step to ensure files
+        are in their final location before the dashboard is generated.
+        """
+        import shutil
+        outplay_dir = Path(__file__).parent / "outplay"
+        outplay_dir.mkdir(parents=True, exist_ok=True)
+        
+        timestamp = datetime.now().strftime('%y%m%d_%H%M')
+        final_paths = {"timestamp": timestamp}
+
+        # Finalize Audio File
+        temp_audio_path_str = audio_data.get("audio_file")
+        if temp_audio_path_str:
+            temp_audio_path = Path(temp_audio_path_str)
+            if temp_audio_path.exists():
+                final_audio_path = outplay_dir / f"radiox_{timestamp}.mp3"
+                shutil.move(str(temp_audio_path), str(final_audio_path))
+                final_paths["audio"] = final_audio_path
+
+        # Finalize Cover File
+        cover_generation = cover_data.get("cover_generation", {})
+        temp_cover_path_str = cover_generation.get("cover_path")
+        if temp_cover_path_str:
+            temp_cover_path = Path(temp_cover_path_str)
+            if temp_cover_path.exists():
+                final_cover_path = outplay_dir / f"radiox_{timestamp}.png"
+                shutil.move(str(temp_cover_path), str(final_cover_path))
+                final_paths["cover"] = final_cover_path
+        
+        return final_paths
 
     async def _copy_audio_to_outplay(self, audio_data: Dict[str, Any]) -> None:
-        """Copy MP3 from temp to outplay before cleanup"""
-        try:
-            import shutil
-            from pathlib import Path
-            
-            if not audio_data.get("audio_file"):
-                return
-            
-            temp_audio = Path(audio_data["audio_file"])
-            if not temp_audio.exists():
-                return
-            
-            # Create outplay directory if it doesn't exist
-            outplay_dir = Path(__file__).parent / "outplay"
-            outplay_dir.mkdir(parents=True, exist_ok=True)
-            
-            # Copy MP3 to outplay with unified naming
-            timestamp = datetime.now().strftime('%y%m%d_%H%M')
-            final_audio = outplay_dir / f"radiox_{timestamp}.mp3"
-            
-            shutil.copy2(temp_audio, final_audio)
-            print(f"🎵 Audio copied to: {final_audio.name}")
-            
-        except Exception as e:
-            print(f"⚠️ Audio copy warning: {e}")
-            # Don't fail the workflow if copy fails
+        """DEPRECATED - Replaced by _finalize_show_files"""
+        pass
 
     async def _cleanup_temp_directory(self) -> None:
         """Cleanup temp directory after successful workflow"""
@@ -329,11 +401,9 @@ class RadioXMaster:
                         item.unlink()
                     elif item.is_dir():
                         shutil.rmtree(item)
-                
-                print("🧹 Temp directory cleaned up")
             
         except Exception as e:
-            print(f"⚠️ Temp cleanup warning: {e}")
+            logger.warning(f"⚠️ Temp cleanup warning: {e}")
             # Don't fail the workflow if cleanup fails
 
     async def _get_last_show_context(self) -> Optional[Dict[str, Any]]:
@@ -347,25 +417,26 @@ class RadioXMaster:
             last_show = await self._content_logger.get_last_show_context()
             
             if last_show:
-                # Extract key information for GPT
-                context = {
-                    "last_show_timestamp": last_show.get("created_at"),
-                    "last_selected_news": last_show.get("selected_news", []),
-                    "last_news_titles": [news.get("title", "") for news in last_show.get("selected_news", [])],
-                    "last_news_sources": list(set([news.get("source", "") for news in last_show.get("selected_news", [])])),
-                    "last_news_categories": list(set([news.get("category", "") for news in last_show.get("selected_news", [])])),
-                    "show_count": last_show.get("show_count", 1)
-                }
-                
-                print(f"📚 Last Show Context: {len(context['last_news_titles'])} news from {', '.join(context['last_news_sources'][:3])}")
-                return context
+                # Return context directly from new DB structure
+                return last_show
             else:
-                print("📚 No previous show found - first show generation")
                 return None
                 
         except Exception as e:
-            print(f"⚠️ Last show context warning: {e}")
+            logger.warning(f"⚠️ Last show context warning: {e}")
             return None
+
+    async def _get_used_article_titles(self, days: int = 2) -> set:
+        """Get a set of recently used article titles to avoid duplicates."""
+        try:
+            if not hasattr(self, '_content_logger') or self._content_logger is None:
+                from src.services.utilities.content_logging_service import ContentLoggingService
+                self._content_logger = ContentLoggingService()
+            
+            return await self._content_logger.get_used_article_titles(days=days)
+        except Exception as e:
+            logger.warning(f"⚠️ Could not get used article titles: {e}")
+            return set()
 
     async def _log_gpt_selected_articles(self, processed_data: Dict[str, Any], raw_data: Dict[str, Any]) -> None:
         """Log GPT-selected articles and save to Supabase"""
@@ -374,19 +445,11 @@ class RadioXMaster:
             all_news = raw_data.get("news", [])
             
             if not selected_news:
-                print("📰 GPT: Keine Artikel ausgewählt")
                 return
             
-            # **COMMUNICATE GPT SELECTIONS IN LOG**
-            print(f"🤖 GPT ARTICLE SELECTION: {len(selected_news)}/{len(all_news)} ausgewählt")
-            print("=" * 50)
-            for i, article in enumerate(selected_news, 1):
-                title = article.get("title", "No title")[:80]
-                source = article.get("source", "Unknown").upper()
-                relevance = article.get("relevance_reason", "No reason")[:100]
-                print(f"{i:2d}. [{source}] {title}")
-                print(f"    📝 {relevance}")
-            print("=" * 50)
+            # Show selected articles in clean format
+            selected_titles = [article.get("title", "No title")[:60] for article in selected_news]
+            print(f"✅ Selected {len(selected_news)} articles")
             
             # **SAVE TO SUPABASE** (lazy loading to avoid import issues)
             try:
@@ -394,25 +457,25 @@ class RadioXMaster:
                     from src.services.utilities.content_logging_service import ContentLoggingService
                     self._content_logger = ContentLoggingService()
                 
-                session_id = f"workflow_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-                await self._content_logger.log_collected_news(
-                    session_id=session_id,
-                    collected_news=all_news,
-                    selected_news=selected_news,
-                    collection_metadata={
+                # Generate pragmatic show title: "Radio X Zurich 2330"
+                show_title = f"Radio X Zurich {datetime.now().strftime('%H%M')}"
+                
+                await self._content_logger.log_show_broadcast(
+                    show_title=show_title,
+                    selected_articles=selected_news,
+                    metadata={
                         "workflow": "main_workflow",
                         "gpt_model": "gpt-4",
                         "selection_ratio": f"{len(selected_news)}/{len(all_news)}"
                     }
                 )
-                print(f"💾 GPT selections saved to Supabase: {session_id}")
                 
             except Exception as e:
-                print(f"⚠️ Supabase logging warning: {e}")
+                logger.warning(f"⚠️ Supabase logging warning: {e}")
                 # Don't fail workflow if logging fails
                 
         except Exception as e:
-            print(f"⚠️ GPT article logging warning: {e}")
+            logger.warning(f"⚠️ GPT article logging warning: {e}")
             # Don't fail workflow if logging fails
     
     async def run_data_collection(self, preset_name: Optional[str] = None) -> Dict[str, Any]:
@@ -460,22 +523,35 @@ class RadioXMaster:
     
     async def generate_shownotes_dashboard(
         self, raw_data: Dict[str, Any], processed_data: Dict[str, Any], 
-        show_config: Dict[str, Any]
+        show_config: Dict[str, Any], timestamp: Optional[str] = None, 
+        cover_data: Dict[str, Any] = None, audio_data: Dict[str, Any] = None
     ) -> str:
         """Generate the new Show Notes Dashboard"""
-        
-        # Generate Show Notes Dashboard with DashboardService
+
+        # If no specific timestamp is provided, generate a new one.
+        if timestamp is None:
+            timestamp = datetime.now().strftime('%y%m%d_%H%M')
+            logger.warning(f"No timestamp provided for dashboard, generated a new one: {timestamp}")
+
+        # Include cover and audio data in processed_data if available
+        processed_data = processed_data.copy()
+        if cover_data:
+            processed_data['cover_generation'] = cover_data
+        if audio_data:
+            processed_data['audio_generation'] = audio_data
+
+        # Generate Show Notes Dashboard with DashboardService using the final timestamp
         filepath = await self._dashboard_service.generate_shownotes_dashboard(
-            raw_data, processed_data, show_config
+            raw_data, processed_data, show_config, timestamp=timestamp
         )
         
-        print(f"📊 Show Notes Dashboard: {filepath}")
         return filepath
     
     async def run_data_processing(
         self, raw_data: Dict[str, Any], target_news_count: int = 4,
         target_time: Optional[str] = None, preset_name: Optional[str] = None,
-        show_config: Dict[str, Any] = None, last_show_context: Optional[Dict[str, Any]] = None
+        show_config: Dict[str, Any] = None, last_show_context: Optional[Dict[str, Any]] = None,
+        used_article_titles: Optional[set] = None
     ) -> Dict[str, Any]:
         """Execute data processing with performance optimization"""
         try:
@@ -487,7 +563,8 @@ class RadioXMaster:
                 target_time=target_time,
                 preset_name=preset_name,
                 show_config=show_config,
-                last_show_context=last_show_context
+                last_show_context=last_show_context,
+                used_article_titles=used_article_titles # Pass down to the service
             )
             
             duration = (datetime.now() - start_time).total_seconds()
@@ -531,7 +608,7 @@ class RadioXMaster:
             last_show_context = await self._get_last_show_context()
             
             # Führe Processing mit echten Daten aus
-            return await self.run_data_processing(
+            result = await self.run_data_processing(
                 raw_data=real_data,
                 target_news_count=target_news_count,
                 target_time=target_time,
@@ -539,6 +616,16 @@ class RadioXMaster:
                 show_config=show_config,
                 last_show_context=last_show_context
             )
+            
+            # Generate dashboard with processed data (no cover data in processing-only mode)
+            await self.generate_shownotes_dashboard(
+                real_data, result["data"], show_config
+            )
+            
+            # Cleanup temp directory
+            await self._cleanup_temp_directory()
+            
+            return result
             
         except Exception as e:
             return {"success": False, "error": str(e), "timestamp": datetime.now().isoformat()}
@@ -679,6 +766,101 @@ class RadioXMaster:
                 "success": True,
                 "data": result,
                 "validation": validation_result,
+                "performance": {"duration_seconds": duration},
+                "timestamp": datetime.now().isoformat()
+            }
+            
+        except Exception as e:
+            return {"success": False, "error": str(e), "timestamp": datetime.now().isoformat()}
+    
+    async def run_cover_generation_standalone(
+        self, processed_data: Dict[str, Any], target_time: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """Execute standalone cover generation (no MP3 embedding) - PARALLEL OPTIMIZATION"""
+        if not self._image_generator:
+            return {"success": False, "error": "Cover generation not enabled"}
+        
+        try:
+            start_time = datetime.now()
+            
+            # Generate session ID
+            session_id = f"cover_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+            
+            # Extract broadcast content for cover generation
+            broadcast_content = {
+                "radio_script": processed_data.get("radio_script", ""),
+                "selected_news": processed_data.get("selected_news", []),
+                "segments": processed_data.get("segments", [])
+            }
+            
+            # Generate cover art (NO EMBEDDING YET)
+            cover_result = await self._image_generator.generate_cover_art(
+                session_id=session_id,
+                broadcast_content=broadcast_content,
+                target_time=target_time
+            )
+            
+            duration = (datetime.now() - start_time).total_seconds()
+            
+            result = {
+                "cover_generation": cover_result,
+                "session_id": session_id
+            }
+            
+            validation_result = self._validate_cover_data(result)
+            
+            return {
+                "success": True,
+                "data": result,
+                "validation": validation_result,
+                "performance": {"duration_seconds": duration},
+                "timestamp": datetime.now().isoformat()
+            }
+            
+        except Exception as e:
+            return {"success": False, "error": str(e), "timestamp": datetime.now().isoformat()}
+    
+    async def run_cover_embedding(
+        self, cover_data: Dict[str, Any], audio_data: Dict[str, Any], target_time: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """Execute cover embedding into MP3 after both cover and audio are ready"""
+        if not self._image_generator:
+            return {"success": False, "error": "Cover generation not enabled"}
+        
+        try:
+            start_time = datetime.now()
+            
+            # Embed cover in MP3
+            embedded_cover = False
+            cover_path = cover_data.get("cover_generation", {}).get("cover_path")
+            audio_file = audio_data.get("audio_file")
+            
+            if cover_path and audio_file:
+                from pathlib import Path
+                audio_path = Path(audio_file)
+                cover_file = Path(cover_path)
+                
+                if audio_path.exists() and cover_file.exists():
+                    # Embed cover in MP3
+                    embedded_cover = await self._image_generator.embed_cover_in_mp3(
+                        audio_file=audio_path,
+                        cover_file=cover_file,
+                        metadata={
+                            "title": f"RadioX Broadcast {datetime.now().strftime('%Y-%m-%d %H:%M')}",
+                            "artist": "RadioX AI",
+                            "album": "RadioX News Broadcasts"
+                        }
+                    )
+            
+            duration = (datetime.now() - start_time).total_seconds()
+            
+            # Update cover data with embedding info
+            enhanced_cover_data = cover_data.copy()
+            enhanced_cover_data["cover_embedded"] = embedded_cover
+            
+            return {
+                "success": True,
+                "data": enhanced_cover_data,
                 "performance": {"duration_seconds": duration},
                 "timestamp": datetime.now().isoformat()
             }
@@ -847,20 +1029,17 @@ class RadioXMaster:
 
 
 async def main():
-    """High-performance main function with argument parsing"""
-    parser = argparse.ArgumentParser(
-        description="RadioX Master - High Performance Radio Show Generator",
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog="""
-Examples:
-  python main.py                           # Full workflow with audio
-  python main.py --no-audio               # HTML dashboard only
-  python main.py --data-only              # Data collection only
-  python main.py --processing-only        # Processing only
-  python main.py --test                   # System tests
-        """
+    """Main entry point with CLI argument parsing"""
+    # Setup logger to only show INFO and above by default
+    logger.remove()
+    logger.add(sys.stderr, level="INFO")
+
+    parser = argparse.ArgumentParser(description="RadioX Master Orchestrator")
+    parser.add_argument(
+        '--debug',
+        action='store_true',
+        help='Enable debug logging for detailed output.'
     )
-    
     # Workflow control
     parser.add_argument("--data-only", action="store_true", help="Nur Datensammlung ausführen")
     parser.add_argument("--processing-only", action="store_true", help="Nur Verarbeitung ausführen")
@@ -873,7 +1052,11 @@ Examples:
     parser.add_argument("--target-time", help="Zielzeit für Show (HH:MM)")
     
     args = parser.parse_args()
-    
+
+    if args.debug:
+        logger.remove()
+        logger.add(sys.stderr, level="DEBUG")
+
     # Initialize master with audio setting
     master = RadioXMaster(audio_enabled=not args.no_audio)
     

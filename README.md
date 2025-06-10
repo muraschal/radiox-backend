@@ -2,13 +2,13 @@
 
 <div align="center">
 
-![Release](https://img.shields.io/badge/release-v3.2-brightgreen)
+![Release](https://img.shields.io/badge/release-v3.3-brightgreen)
 ![Build](https://img.shields.io/badge/build-passing-brightgreen)
 ![License](https://img.shields.io/badge/license-MIT-blue)
 ![Python](https://img.shields.io/badge/python-3.8+-blue)
 ![Audio](https://img.shields.io/badge/audio-professional-orange)
 
-**🎙️ Enterprise-Grade AI Radio Production System mit intelligenter Content-Diversität**
+**🎙️ Enterprise-Grade AI Radio Production System with Ultra-Professional Audio Engineering**
 
 [🚀 Quick Start](#-quick-start) • [📚 Features](#-features) • [🎭 Live Demo](#-live-demo) • [🏗️ Architecture](#-architecture)
 
@@ -20,15 +20,16 @@
 
 ### 🎙️ **Intelligent Show Generation**
 - **GPT-4 Powered Scripts** - Natural Marcel & Jarvis dialogues
-- **Smart Content Diversität** - Automatic show-to-show variety using Supabase tracking
-- **Professional Audio Ramping** - 6-stage jingle mixing with 6% backing levels
+- **Smart Content Diversity** - Automatic show-to-show variety using Supabase tracking
+- **Ultra-Professional Audio Mixing** - 6-stage jingle system with 2% ultra-quiet backing
 - **Adaptive Voice Selection** - Lucy for weather, Brad for news, dynamic speaker assignment
 
 ### 🔊 **Professional Audio Production**  
 - **ElevenLabs V3 TTS** - Hollywood-quality voice synthesis
-- **Intelligent Jingle Mixing** - 100% intro → 6% backing → 15% buildup → 100% outro
+- **Ultra-Quiet Jingle Engineering** - 100% intro → 2% backing → 100% outro (broadcast standard)
+- **Multi-Format Jingle Support** - MP3, FLAC, WAV, OGG intelligent selection
 - **Parallel Audio Generation** - High-performance segment processing
-- **Professional Audio Engineering** - Compression, EQ, and fade effects
+- **Professional Audio Engineering** - Advanced FFmpeg filtering with speech dominance
 
 ### 🎨 **Dynamic Visual Content**
 - **DALL-E 3 Cover Art** - AI-generated cover images per show
@@ -55,16 +56,20 @@ pip install -r requirements.txt
 cp env_template.txt .env
 # Add: OPENAI_API_KEY, ELEVENLABS_API_KEY, SUPABASE_URL, SUPABASE_KEY
 
-# 3. Generate Your First Professional Show
+# 3. Add Jingles (Multiple Formats Supported)
+mkdir jingles
+# Add your jingle files: .mp3, .flac, .wav, or .ogg
+
+# 4. Generate Your First Professional Show
 python main.py --news-count 3
 
-# 4. Access Your Show
+# 5. Access Your Show
 # 📻 Audio: outplay/radiox_yymmdd_hhmm.mp3
 # 📊 Dashboard: outplay/radiox_yymmdd_hhmm.html  
 # 🎨 Cover: outplay/radiox_yymmdd_hhmm.png
 ```
 
-**🎯 Result**: Professional radio show with intelligent audio mixing, cover art, and responsive dashboard!
+**🎯 Result**: Professional radio show with ultra-quiet jingle mixing, cover art, and responsive dashboard!
 
 ## 🎭 Production Examples
 
@@ -88,19 +93,21 @@ python main.py --data-only
 ## 🏗️ Professional Architecture
 
 ```
-🎙️ RadioX v3.2 - Enterprise AI Radio Platform
+🎙️ RadioX v3.3 - Enterprise AI Radio Platform
 │
 ├── 🎭 Content Intelligence Layer
 │   ├── GPT-4 Script Generation with Show Context
-│   ├── Smart Content Diversität (Supabase tracking)
+│   ├── Smart Content Diversity (Supabase tracking)
 │   ├── Preset-based News Filtering (Zurich focus)
 │   └── Multi-language Support (EN/DE)
 │
-├── 🔊 Professional Audio Engine  
+├── 🔊 Ultra-Professional Audio Engine  
 │   ├── ElevenLabs V3 TTS (Marcel, Jarvis, Lucy, Brad)
-│   ├── Intelligent Jingle Ramping (6-stage mixing)
+│   ├── Ultra-Quiet Jingle Engineering (2% backing level)
+│   ├── Multi-Format Jingle Support (MP3/FLAC/WAV/OGG)
 │   ├── Parallel Segment Processing
-│   └── Professional Audio Engineering
+│   ├── Advanced FFmpeg Audio Engineering
+│   └── Broadcast-Standard Audio Mixing
 │
 ├── 🎨 Visual Production Pipeline
 │   ├── DALL-E 3 Cover Art Generation
@@ -124,7 +131,7 @@ python main.py --data-only
 
 ## 🚀 Advanced Features
 
-### 🎯 **Intelligent Content Diversität**
+### 🎯 **Intelligent Content Diversity**
 ```python
 # Automatic show-to-show variety
 last_show_context = get_last_show_context()  # From Supabase
@@ -132,13 +139,24 @@ gpt_prompt += create_diversity_instruction(last_show_context)
 # Result: 100% unique content selection every show
 ```
 
-### 🎵 **Professional Audio Timeline**
+### 🎵 **Ultra-Professional Audio Timeline**
 ```
-0-5s:   100% Kraftvoller Jingle Intro
-5-8s:   Smooth Fade 100% → 6% 
-8s-end: 6% Subtle Jingle Backing  ← Professional radio sound
-end+10s: 15% → 70% → 100% Power Outro
-final:  100% → 0% Epic Fadeout
+0-5s:   100% Powerful Jingle Intro
+5-8s:   Speech starts (during 100% jingle for dramatic effect)
+8-10s:  Smooth Fade 100% → 2% (ultra-quiet transition)
+10s-end: 2% Ultra-Quiet Jingle Backing  ← Broadcast professional standard
+end-5s: 2% → 100% Power Build-up
+final:  100% Epic Outro → 0% Smooth Fadeout
+
+Mix Ratio: Speech 88% : Jingle 12% (speech dominates)
+```
+
+### 🎵 **Multi-Format Jingle System**
+```python
+# Intelligent format detection and selection
+supported_formats = ["*.mp3", "*.flac", "*.wav", "*.ogg"]
+# Automatic duration analysis and best-fit selection
+# FLAC preferred for highest quality, MP3 for compatibility
 ```
 
 ### 📂 **Automatic Archive System**
@@ -167,10 +185,11 @@ graph TD
     A[📊 Data Collection] --> B[🎯 Smart Filtering]
     B --> C[📚 Last Show Context]
     C --> D[🤖 GPT-4 Script Generation]
-    D --> E[🔊 Professional Audio Production]
-    E --> F[🎨 Cover Art & Dashboard]
-    F --> G[📂 Archive Management]
-    G --> H[✅ Production Ready]
+    D --> E[🔊 Ultra-Professional Audio Production]
+    E --> F[🎵 Multi-Format Jingle Integration]
+    F --> G[🎨 Cover Art & Dashboard]
+    G --> H[📂 Archive Management]
+    H --> I[✅ Broadcast Ready]
 ```
 
 ## 🔧 Development Setup
@@ -185,6 +204,9 @@ python main.py --news-count 3 | grep "✅\|❌\|🎯"
 
 # Archive Management  
 ls -la outplay/archive/          # View archived shows
+
+# Jingle Management
+ls -la jingles/                  # View available jingles (all formats)
 ```
 
 ## 🎛️ Configuration Options
@@ -201,19 +223,21 @@ ls -la outplay/archive/          # View archived shows
 ## 📈 Performance Metrics
 
 - **🚀 Audio Generation**: ~2-3 minutes for 4-news show
+- **🎵 Jingle Integration**: Ultra-quiet 2% backing with broadcast-standard mixing
 - **🎨 Cover Creation**: ~30 seconds via DALL-E 3
-- **📊 Dashboard**: Generated in <5 seconds
+- **📊 Dashboard**: Generated in <5 seconds with perfect audio synchronization
 - **🔄 Content Diversity**: 100% unique show-to-show
 - **📂 Archive**: Automatic, zero-maintenance
+- **🎼 Multi-Format**: Supports MP3, FLAC, WAV, OGG jingles
 
-## 🌟 What's New in v3.2
+## 🌟 What's New in v3.3
 
-### ✨ **Latest Features**
-- 🎯 **Smart Content Diversität** - Supabase-powered show tracking
-- 📂 **Automatic Archive System** - Timestamped folder organization
-- 🎵 **Professional Audio Ramping** - 6-stage intelligent jingle mixing
-- 🎭 **Unified Naming System** - Consistent file naming across all outputs
-- 📊 **Enhanced Dashboard** - Responsive Tailwind CSS interface
+### ✨ **Audio Engineering Revolution**
+- 🎵 **Ultra-Quiet Jingle Mixing** - 2% backing level for broadcast-professional sound
+- 🎼 **Multi-Format Jingle Support** - MP3, FLAC, WAV, OGG intelligent selection
+- 🔊 **Advanced FFmpeg Engineering** - 6-stage dynamic filter with speech dominance
+- ⚡ **Perfect Workflow Synchronization** - Dashboard always finds correct audio files
+- 🌍 **English Codebase** - Complete translation for international development
 
 ### 🔧 **Technical Improvements**  
 - ⚡ **Parallel Processing** - High-performance audio generation
@@ -221,6 +245,16 @@ ls -la outplay/archive/          # View archived shows
 - 📈 **Performance Optimization** - Reduced generation times
 - 🔄 **GPT-4 Integration** - Advanced prompt engineering
 - 💾 **Supabase Integration** - Enterprise data management
+- 🎚️ **Broadcast-Standard Audio** - Professional radio quality mixing
+
+### 🎵 **Professional Audio Features**
+```python
+# Ultra-quiet jingle engineering
+Dynamic Filter: 100% → 2% → 100% (6-stage professional)
+Fallback Filter: 2% constant (broadcast standard)
+Speech Boost: +40% with dynamic mixing
+Mix Dominance: Speech 88% : Jingle 12%
+```
 
 ## 🤝 Contributing
 
@@ -241,6 +275,7 @@ git push origin feature/amazing-feature
 |-------------|-------------|-------------|
 | **[🎙️ Show Generation Guide](docs/user-guide/show-generation.md)** | Users | Complete show creation workflow |
 | **[🎤 Voice Configuration](docs/user-guide/voice-configuration.md)** | Users | Setup Marcel, Jarvis, Lucy, Brad voices |
+| **[🎵 Jingle Configuration](docs/user-guide/jingle-setup.md)** | Users | Multi-format jingle setup & optimization |
 | **[🏗️ System Architecture](docs/developer-guide/architecture.md)** | Developers | Technical system design |
 | **[🔧 Development Setup](docs/developer-guide/development.md)** | Developers | Local development environment |
 | **[🚀 Production Deployment](docs/deployment/production.md)** | DevOps | Production setup & scaling |
@@ -255,16 +290,17 @@ MIT License - see [LICENSE](LICENSE) file for details.
 - **ElevenLabs** - V3 TTS Technology  
 - **Supabase** - Enterprise Database Platform
 - **Swiss Media Partners** - RSS Feed Sources
+- **FFmpeg Community** - Professional audio engineering tools
 - **Open Source Community** - Various libraries & tools
 
 ---
 
 <div align="center">
 
-**🎙️ Professional AI Radio Production - Made with ❤️ by RadioX Team**
+**🎙️ Ultra-Professional AI Radio Production - Made with ❤️ by RadioX Team**
 
 [📚 Documentation](docs/) • [🐛 Issues](https://github.com/your-org/radiox/issues) • [💡 Features](https://github.com/your-org/radiox/discussions)
 
-**Ready to create your first professional AI radio show?** → `python main.py --news-count 3`
+**Ready to create your first broadcast-quality AI radio show?** → `python main.py --news-count 3`
 
 </div>

@@ -102,267 +102,424 @@ class ImageGenerationService:
         logger.info(f"🏷️ Bette Cover in MP3 ein: {audio_file.name}")
         
         try:
-            # FFmpeg-Pfade für verschiedene Systeme
-            ffmpeg_paths = [
-                str(Path(__file__).parent.parent.parent.parent / "ffmpeg-master-latest-win64-gpl" / "bin" / "ffmpeg.exe"),
-                "ffmpeg"  # Fallback für System-PATH
-            ]
+            # FFmpeg-Pfad für macOS/Linux (system PATH)
+            import subprocess
             
-            # Finde verfügbares ffmpeg
-            ffmpeg_cmd = None
-            for ffmpeg_path in ffmpeg_paths:
-                try:
-                    result = subprocess.run([ffmpeg_path, '-version'], 
-                                          capture_output=True, text=True, timeout=5)
-                    if result.returncode == 0:
-                        ffmpeg_cmd = ffmpeg_path
-                        break
-                except:
-                    continue
-            
-            if not ffmpeg_cmd:
-                logger.warning("⚠️ ffmpeg nicht gefunden - Cover-Embedding übersprungen")
+            # Prüfe ob ffmpeg im System verfügbar ist
+            try:
+                result = subprocess.run(['ffmpeg', '-version'], 
+                                      capture_output=True, text=True, timeout=5)
+                if result.returncode == 0:
+                    ffmpeg_cmd = 'ffmpeg'
+                    logger.debug(f"✅ FFmpeg gefunden im System PATH")
+                else:
+                    logger.warning("⚠️ ffmpeg nicht verfügbar - Cover-Embedding übersprungen")
+                    return False
+            except Exception as e:
+                logger.warning(f"⚠️ ffmpeg Fehler: {e} - Cover-Embedding übersprungen")
                 return False
             
             # Erstelle temporäre Ausgabedatei
             temp_output = audio_file.parent / f"temp_with_cover_{audio_file.stem}.mp3"
             
-            # ffmpeg Kommando für Cover-Embedding
+            # Metadaten für FFmpeg-Embedding im gewünschten Format
+            current_time = datetime.now()
+            hour_min = current_time.strftime('%H:%M')
+            edition_name = self._get_edition_name_for_metadata(hour_min)
+            title = f"RadioX - {edition_name} : {hour_min} Edition"
+            
+            # Verbesserte ffmpeg Kommando für MP3-Cover-Embedding
             ffmpeg_command = [
                 ffmpeg_cmd, '-y',  # Überschreibe Ausgabedatei
                 '-i', str(audio_file),  # Audio-Input
                 '-i', str(cover_file),  # Cover-Input
-                '-map', '0:0',  # Audio-Stream
-                '-map', '1:0',  # Cover-Stream
-                '-c', 'copy',  # Kopiere Audio ohne Re-Encoding
-                '-id3v2_version', '3',  # ID3v2.3 für bessere Kompatibilität
-                '-metadata:s:v', 'title="Album cover"',
-                '-metadata:s:v', 'comment="Cover"',
-                '-metadata', 'title=RadioX AI News',
-                '-metadata', 'artist=RadioX',
-                '-metadata', 'album=AI News Broadcast',
+                '-map', '0:a',  # Audio-Stream (explizit)
+                '-map', '1:v',  # Cover-Stream (explizit)
+                '-c:a', 'copy',  # Audio ohne Re-Encoding
+                '-c:v', 'copy',  # Cover ohne Re-Encoding
+                '-id3v2_version', '3',  # ID3v2.3 für Windows Media Player Kompatibilität
+                '-metadata:s:v', 'title=Album cover',  # Cover-Titel
+                '-metadata:s:v', 'comment=Cover',  # Cover-Kommentar
+                '-metadata', f'title={title}',  # Track-Titel im gewünschten Format
+                '-metadata', 'artist=RadioX AI',  # Künstler
+                '-metadata', 'album=RadioX News Broadcasts',  # Album
+                '-metadata', 'genre=News/Talk',  # Genre
+                '-disposition:v:0', 'attached_pic',  # Cover als attached picture markieren
                 str(temp_output)
             ]
             
-            # Führe ffmpeg aus
+            # Führe ffmpeg aus mit detailliertem Logging
+            logger.debug(f"🔧 FFmpeg Command: {' '.join(ffmpeg_command)}")
+            
             result = subprocess.run(ffmpeg_command, capture_output=True, text=True, timeout=30)
             
-            if result.returncode == 0:
+            if result.returncode == 0 and temp_output.exists():
                 # Ersetze Original-Datei mit Cover-Version
                 import shutil
                 shutil.move(str(temp_output), str(audio_file))
                 
-                logger.success(f"✅ Cover erfolgreich in MP3 eingebettet: {audio_file.name}")
+                logger.success(f"✅ Cover erfolgreich via FFmpeg in MP3 eingebettet: {audio_file.name}")
                 return True
             else:
-                logger.error(f"❌ ffmpeg Cover-Embedding fehlgeschlagen: {result.stderr}")
+                logger.warning(f"⚠️ ffmpeg Cover-Embedding fehlgeschlagen: {result.stderr}")
                 # Lösche temporäre Datei falls vorhanden
                 if temp_output.exists():
                     temp_output.unlink()
-                return False
+                
+                # FALLBACK: Versuche eyed3
+                logger.info(f"🔄 Versuche Fallback mit eyed3...")
+                return await self._embed_cover_with_eyed3(audio_file, cover_file, metadata)
             
         except Exception as e:
             logger.error(f"❌ Fehler beim Cover-Embedding: {e}")
             return False
     
+    async def _embed_cover_with_eyed3(self, audio_file: Path, cover_file: Path, metadata: Dict[str, Any]) -> bool:
+        """Fallback: Cover-Embedding mit eyed3 (wenn ffmpeg fehlschlägt)"""
+        
+        try:
+            import eyed3
+            from PIL import Image
+            import io
+            
+            logger.info(f"🎨 Bette Cover mit eyed3 ein: {audio_file.name}")
+            
+            # Cover zu JPEG konvertieren für bessere Kompatibilität
+            with Image.open(cover_file) as img:
+                # Zu RGB konvertieren (PNG könnte RGBA sein)
+                if img.mode in ('RGBA', 'LA', 'P'):
+                    background = Image.new('RGB', img.size, (255, 255, 255))
+                    if img.mode == 'P':
+                        img = img.convert('RGBA')
+                    if img.mode == 'RGBA':
+                        background.paste(img, mask=img.split()[-1])
+                    else:
+                        background.paste(img)
+                    img = background
+                elif img.mode != 'RGB':
+                    img = img.convert('RGB')
+                
+                # Optimale Größe für Cover-Art (500x500)
+                img.thumbnail((500, 500), Image.Resampling.LANCZOS)
+                
+                # Als JPEG in Memory speichern
+                jpeg_buffer = io.BytesIO()
+                img.save(jpeg_buffer, format='JPEG', quality=90, optimize=True)
+                jpeg_data = jpeg_buffer.getvalue()
+            
+            # MP3 laden
+            audiofile = eyed3.load(str(audio_file))
+            
+            if audiofile is None:
+                logger.error("❌ MP3-Datei konnte nicht mit eyed3 geladen werden")
+                return False
+            
+            # Tag initialisieren falls nicht vorhanden
+            if audiofile.tag is None:
+                audiofile.initTag()
+            
+            # Alte Cover entfernen
+            try:
+                for img_type in [eyed3.id3.frames.ImageFrame.FRONT_COVER, 
+                               eyed3.id3.frames.ImageFrame.BACK_COVER,
+                               eyed3.id3.frames.ImageFrame.OTHER]:
+                    try:
+                        audiofile.tag.images.remove(img_type)
+                    except (ValueError, TypeError):
+                        pass
+            except:
+                pass
+            
+            # Neues Cover einbetten
+            audiofile.tag.images.set(
+                eyed3.id3.frames.ImageFrame.FRONT_COVER,
+                jpeg_data,
+                "image/jpeg",
+                description="RadioX Cover Art"
+            )
+            
+            # Metadaten setzen im gewünschten Format
+            current_time = datetime.now()
+            hour_min = current_time.strftime('%H:%M')
+            edition_name = self._get_edition_name_for_metadata(hour_min)
+            
+            audiofile.tag.title = f"RadioX - {edition_name} : {hour_min} Edition"
+            audiofile.tag.artist = "RadioX AI"
+            audiofile.tag.album = "RadioX News Broadcasts"
+            audiofile.tag.album_artist = "RadioX AI"
+            audiofile.tag.genre = "News/Talk"
+            audiofile.tag.recording_date = current_time.year
+            
+            # Mit ID3v2.3 speichern (bessere Kompatibilität)
+            audiofile.tag.save(version=eyed3.id3.ID3_V2_3)
+            
+            logger.success(f"✅ Cover erfolgreich via eyed3 in MP3 eingebettet: {audio_file.name}")
+            return True
+            
+        except ImportError:
+            logger.error("❌ eyed3 nicht verfügbar - Cover-Embedding fehlgeschlagen")
+            return False
+        except Exception as e:
+            logger.error(f"❌ eyed3 Cover-Embedding Fehler: {e}")
+            return False
+    
+    def _get_edition_name_for_metadata(self, time_str: str) -> str:
+        """Generate edition name for MP3 metadata based on time"""
+        try:
+            hour = int(time_str.split(":")[0])
+        except:
+            hour = datetime.now().hour
+        
+        # Generate time-appropriate edition names for metadata
+        if 6 <= hour <= 11:
+            return "Morning News"
+        elif 12 <= hour <= 17:
+            return "Afternoon Brief"
+        elif 18 <= hour <= 22:
+            return "Evening Report"
+        else:
+            return "Late Night Update"
+    
     # Private Methods
     
     def _create_dalle_prompt(self, broadcast_content: Dict[str, Any], target_time: Optional[str] = None) -> str:
-        """Erstellt spezifischen DALL-E Prompt basierend auf Broadcast-Inhalten"""
+        """🎨 UNIVERSELLER PROMPT FÜR RADIOX COVER GENERATOR"""
         
-        # Extrahiere Broadcast-Informationen
-        script_content = broadcast_content.get("script_content", "")
-        selected_news = broadcast_content.get("selected_news", [])
-        broadcast_style = broadcast_content.get("broadcast_style", "Unknown")
+        # Extract dynamic values from broadcast content
+        edition_name = self._get_edition_name(target_time)
+        show_style = self._extract_show_style(broadcast_content)
+        speakers = self._extract_speaker_descriptions(broadcast_content)
+        time_mood = self._get_time_mood(target_time)
+        topic_symbols = self._extract_topic_symbols(broadcast_content)
         
-        # Analysiere Inhalte für spezifische Elemente
-        topics = self._analyze_broadcast_topics(script_content, selected_news)
-        time_context = self._get_time_context(target_time, broadcast_style)
-        
-        # VERBESSERTER PROMPT MIT FOKUS AUF 2-3 HAUPTTHEMEN
-        prompt = f"""A professional radio studio scene with a futuristic AI news theme. The main focus should be on displaying today's TOP 3 NEWS TOPICS prominently in the background.
+        # Create the new professional prompt
+        prompt = f"""Create a cinematic, AI-generated visual cover for the fictional radio show "RADIO X – {edition_name}".
 
-MAIN VISUAL ELEMENTS:
-- A modern radio host at a sleek broadcast desk with professional microphone
-- Large, prominent holographic displays showing: {topics['topic_display_1']}, {topics['topic_display_2']}, and {topics['topic_display_3']}
-- An AI assistant hologram with {time_context['ai_style']} appearance
-- {time_context['color_scheme']} lighting creating {time_context['mood_tones']}
+📍 Context:
+This is a {show_style}
 
-TOPIC FOCUS:
-The background should clearly show these news topics as large, readable displays:
-1. {topics['topic_text_1']}
-2. {topics['topic_text_2']} 
-3. {topics['topic_text_3']}
+🎙️ Speakers:
+The hosts should be subtly represented in the image:
+{speakers}
 
-STYLE: Professional broadcast studio, high-tech news environment, {broadcast_style.lower()} energy, cinematic lighting, sharp focus on the topic displays, modern UI elements.
+🕒 Time of Day:
+Reflect the visual mood of {time_mood}
 
-The image should make it immediately clear what the main news topics are about."""
-        
-        logger.debug(f"🎨 VERBESSERTE DALL-E Prompt erstellt mit Topic-Fokus")
+🧠 Content:
+Represent the following news topics with visual **symbolism only** (no text or direct illustration):
+{topic_symbols['symbol_1']}
+{topic_symbols['symbol_2']}
+{topic_symbols['symbol_3']}
+
+🎨 Art Direction:
+– Magazine-style composition or streaming platform key art
+– Strong composition, minimal color palette, cinematic contrast
+– No headlines, no article text – only RADIO X logo and EDITION title in modern typography
+– Style mix: cyberpunk x Swiss brutalism x symbolic realism"""
+
+        logger.debug(f"🎨 Cinematic RadioX Cover Prompt created for {edition_name}")
         return prompt
     
-    def _analyze_broadcast_topics(self, script_content: str, selected_news: list) -> Dict[str, str]:
-        """Analysiert Broadcast-Inhalte für spezifische Cover-Elemente"""
+    def _extract_show_style(self, broadcast_content: Dict[str, Any]) -> str:
+        """Extract full show style description from DB"""
         
-        # VERBESSERTE TOPIC-EXTRAKTION FÜR COVER-ART
-        topics = {
-            # Alte Format-Kompatibilität
-            "screen_content": "news ticker",
-            "topic_icon_1": "📰 breaking news",
-            "topic_icon_2": "💰 financial data", 
-            "topic_icon_3": "🌍 global updates",
-            
-            # NEUE TOPIC-DISPLAYS FÜR COVER-ART
-            "topic_display_1": "BREAKING NEWS",
-            "topic_display_2": "MARKET DATA",
-            "topic_display_3": "GLOBAL UPDATES",
-            "topic_text_1": "Latest Breaking News",
-            "topic_text_2": "Financial Markets",
-            "topic_text_3": "World Updates"
-        }
+        # Try to get from show configuration
+        show_config = broadcast_content.get("show_config", {})
+        show_details = show_config.get("show", {})
         
-        # Analysiere Script-Content für Schlüsselwörter
-        content_lower = script_content.lower()
+        show_name = show_details.get("name", "Radio Show")
+        city_focus = show_details.get("city_focus", "Local")
+        description = show_details.get("description", "")
         
-        # PRIORITÄT 1: BITCOIN/CRYPTO DETECTION
-        if any(keyword in content_lower for keyword in ["bitcoin", "crypto", "blockchain", "ethereum", "btc"]):
-            topics.update({
-                "topic_display_1": "₿ BITCOIN LIVE",
-                "topic_display_2": "CRYPTO MARKETS", 
-                "topic_display_3": "BLOCKCHAIN NEWS",
-                "topic_text_1": "Bitcoin Price Update",
-                "topic_text_2": "Cryptocurrency Markets",
-                "topic_text_3": "Blockchain Technology"
-            })
-        
-        # PRIORITÄT 2: POLITIK/GOVERNMENT
-        elif any(keyword in content_lower for keyword in ["government", "politics", "election", "policy", "parliament", "minister"]):
-            topics.update({
-                "topic_display_1": "🏛️ POLITICS LIVE",
-                "topic_display_2": "GOVERNMENT NEWS",
-                "topic_display_3": "POLICY UPDATES", 
-                "topic_text_1": "Political Developments",
-                "topic_text_2": "Government Decisions",
-                "topic_text_3": "Policy Changes"
-            })
-        
-        # PRIORITÄT 3: TECH/AI DETECTION
-        elif any(keyword in content_lower for keyword in ["ai", "artificial intelligence", "technology", "innovation", "tech"]):
-            topics.update({
-                "topic_display_1": "🤖 AI TECH",
-                "topic_display_2": "INNOVATION NEWS",
-                "topic_display_3": "TECH UPDATES",
-                "topic_text_1": "AI Technology",
-                "topic_text_2": "Tech Innovation", 
-                "topic_text_3": "Digital Trends"
-            })
-        
-        # PRIORITÄT 4: WEATHER DETECTION
-        elif any(keyword in content_lower for keyword in ["weather", "temperature", "sunny", "rain", "snow", "celsius"]):
-            topics.update({
-                "topic_display_1": "🌤️ WEATHER LIVE",
-                "topic_display_2": "TEMPERATURE",
-                "topic_display_3": "FORECAST",
-                "topic_text_1": "Current Weather",
-                "topic_text_2": "Temperature Update",
-                "topic_text_3": "Weather Forecast"
-            })
-        
-        # ANALYSIERE NEWS-TITEL FÜR SPEZIFISCHE THEMEN
-        if selected_news and len(selected_news) >= 2:
-            try:
-                # Nimm die ersten 3 News-Titel als Topics
-                for i, news in enumerate(selected_news[:3]):
-                    title = news.get("title", "").strip()
-                    if title and len(title) > 10:  # Nur aussagekräftige Titel
-                        # Kürze Titel für Display
-                        display_title = title[:25] + "..." if len(title) > 25 else title
-                        text_title = title[:40] + "..." if len(title) > 40 else title
-                        
-                        topics[f"topic_display_{i+1}"] = display_title.upper()
-                        topics[f"topic_text_{i+1}"] = text_title
-                        
-                        # Icon basierend auf Inhalt
-                        title_lower = title.lower()
-                        if "bitcoin" in title_lower or "crypto" in title_lower:
-                            topics[f"topic_display_{i+1}"] = f"₿ {display_title.upper()}"
-                        elif "weather" in title_lower or "temperature" in title_lower:
-                            topics[f"topic_display_{i+1}"] = f"🌤️ {display_title.upper()}"
-                        elif "politics" in title_lower or "government" in title_lower:
-                            topics[f"topic_display_{i+1}"] = f"🏛️ {display_title.upper()}"
-                        elif "tech" in title_lower or "ai" in title_lower:
-                            topics[f"topic_display_{i+1}"] = f"🤖 {display_title.upper()}"
-                        elif "traffic" in title_lower or "transport" in title_lower:
-                            topics[f"topic_display_{i+1}"] = f"🚗 {display_title.upper()}"
-                        else:
-                            topics[f"topic_display_{i+1}"] = f"📰 {display_title.upper()}"
-                            
-            except Exception as e:
-                logger.warning(f"⚠️ Fehler bei News-Titel-Analyse: {e}")
-        
-        # SCHWEIZ-SPEZIFISCHE ANPASSUNGEN
-        if any(keyword in content_lower for keyword in ["switzerland", "swiss", "zurich", "basel", "bern", "geneva"]):
-            # Füge Schweiz-Kontext hinzu
-            if "🇨🇭" not in topics["topic_display_1"]:
-                topics["topic_display_3"] = f"🇨🇭 SWISS NEWS"
-                topics["topic_text_3"] = "Switzerland Updates"
-        
-        return topics
+        if description:
+            return f"{show_name} show with {city_focus} focus: {description}"
+        else:
+            return f"{show_name} radio show with {city_focus} focus."
     
-    def _get_time_context(self, target_time: Optional[str], broadcast_style: str) -> Dict[str, str]:
-        """Bestimmt Zeit-spezifische visuelle Elemente"""
+    def _extract_speaker_descriptions(self, broadcast_content: Dict[str, Any]) -> str:
+        """Extract speaker descriptions directly from DB"""
         
-        # Parse Zeit falls verfügbar
-        hour = 12  # Default
-        if target_time:
+        show_config = broadcast_content.get("show_config", {})
+        
+        # Get primary speaker
+        primary_speaker = show_config.get("speaker", {})
+        primary_name = primary_speaker.get("voice_name", "Host")
+        primary_desc = primary_speaker.get("description", "Radio host")
+        
+        # Get secondary speaker if duo show
+        secondary_speaker = show_config.get("secondary_speaker", {})
+        secondary_name = secondary_speaker.get("voice_name", "Co-Host")
+        secondary_desc = secondary_speaker.get("description", "AI assistant")
+        
+        # Build speaker list
+        speakers_text = f"– {primary_name}: {self._create_visual_description(primary_name, primary_desc)}"
+        
+        # Check if duo show
+        is_duo_show = show_config.get("show", {}).get("is_duo_show", False)
+        if is_duo_show and secondary_speaker:
+            speakers_text += f"\n– {secondary_name}: {self._create_visual_description(secondary_name, secondary_desc)}"
+        
+        # Check for weather speaker (Lucy) if weather category active
+        rss_categories = show_config.get("content", {}).get("rss_filter", {}).get("categories", [])
+        if "weather" in rss_categories:
+            weather_speaker = show_config.get("weather_speaker", {})
+            weather_name = weather_speaker.get("voice_name", "Lucy")
+            weather_desc = weather_speaker.get("description", "Weather specialist")
+            speakers_text += f"\n– {weather_name}: {self._create_visual_description(weather_name, weather_desc)}"
+        
+        return speakers_text
+    
+    def _create_visual_description(self, name: str, full_description: str) -> str:
+        """Convert full speaker description to short visual description for image prompt"""
+        
+        # Extract key visual traits from full description
+        desc_lower = full_description.lower()
+        
+        if "marcel" in name.lower():
+            return "energetic, expressive human with techwear and sharp posture, Mexican heritage visible in features"
+        elif "jarvis" in name.lower():
+            return "digital, geometric, floating presence with faint blue glow and surgical precision"
+        elif "lucy" in name.lower():
+            return "sultry, weather-focused figure with atmospheric elements and flowing presence"
+        else:
+            # Generate based on description keywords
+            visual_traits = []
+            
+            if any(word in desc_lower for word in ["ai", "digital", "synthetic"]):
+                visual_traits.append("digital holographic presence")
+            if any(word in desc_lower for word in ["energetic", "dynamic"]):
+                visual_traits.append("dynamic posture")
+            if any(word in desc_lower for word in ["elegant", "sophisticated"]):
+                visual_traits.append("elegant appearance")
+            if any(word in desc_lower for word in ["weather", "atmospheric"]):
+                visual_traits.append("atmospheric elements")
+            
+            if visual_traits:
+                return ", ".join(visual_traits)
+            else:
+                return "professional radio host presence"
+    
+    def _get_time_mood(self, target_time: Optional[str]) -> str:
+        """Generate Zürich time-specific mood description"""
+        
+        if not target_time:
+            hour = datetime.now().hour
+            minute = datetime.now().minute
+            time_str = f"{hour:02d}:{minute:02d}"
+        else:
+            time_str = target_time
             try:
                 hour = int(target_time.split(":")[0])
             except:
-                pass
+                hour = datetime.now().hour
         
-        # Morning Context (6-11)
-        if 6 <= hour <= 11:
-            return {
-                "color_scheme": "warm golden sunrise",
-                "host_appearance": "energetic professional in casual business attire",
-                "desk_style": "modern glass and chrome",
-                "drink_type": "coffee",
-                "ai_style": "bright blue energy",
-                "mood_tones": "warm golden tones and soft morning light"
-            }
-        
-        # Afternoon Context (12-17)
+        # Generate time-specific mood for Zürich
+        if 6 <= hour <= 8:
+            return f"{time_str} in Zürich = early morning haze, trams starting, concrete cold, coffee steam in winter air"
+        elif 9 <= hour <= 11:
+            return f"{time_str} in Zürich = business morning, sharp shadows between buildings, professional energy"
         elif 12 <= hour <= 17:
-            return {
-                "color_scheme": "bright daylight blue",
-                "host_appearance": "focused professional in sharp business wear",
-                "desk_style": "sleek metallic",
-                "drink_type": "espresso",
-                "ai_style": "crisp white hologram",
-                "mood_tones": "bright professional lighting with cool blue accents"
-            }
-        
-        # Evening Context (18-22)
+            return f"{time_str} in Zürich = midday clarity, bright corporate glass, clean urban geometry"
         elif 18 <= hour <= 22:
-            return {
-                "color_scheme": "warm amber evening",
-                "host_appearance": "relaxed professional in smart casual",
-                "desk_style": "warm wood and metal",
-                "drink_type": "tea",
-                "ai_style": "soft purple glow",
-                "mood_tones": "warm amber tones with soft evening atmosphere"
-            }
-        
-        # Night Context (23-5)
+            return f"{time_str} in Zürich = evening transition, warm office lights, sophisticated urban twilight"
+        elif 23 <= hour <= 2:
+            return f"{time_str} in Zürich = dark neon, backlit alleys, glitchy reflections in wet streets"
+        else:  # 3-5
+            return f"{time_str} in Zürich = surreal loneliness, empty roads, faint data pulses in sleeping city"
+    
+    def _get_edition_name(self, target_time: Optional[str]) -> str:
+        """Generate edition name based on time"""
+        if not target_time:
+            hour = datetime.now().hour
         else:
-            return {
-                "color_scheme": "deep blue night with neon accents",
-                "host_appearance": "calm night host in comfortable attire",
-                "desk_style": "dark minimalist",
-                "drink_type": "herbal tea",
-                "ai_style": "ethereal green hologram",
-                "mood_tones": "deep blue night tones with neon highlights"
-            }
+            try:
+                hour = int(target_time.split(":")[0])
+            except:
+                hour = datetime.now().hour
+        
+        # Generate time-appropriate edition names
+        if 6 <= hour <= 11:
+            return f"{hour:02d}:00 MORNING EDITION"
+        elif 12 <= hour <= 17:
+            return f"{hour:02d}:00 AFTERNOON BRIEF"
+        elif 18 <= hour <= 22:
+            return f"{hour:02d}:00 EVENING EDITION"
+        else:
+            return f"{hour:02d}:00 LATE NIGHT SPECIAL"
+    
+    def _extract_topic_symbols(self, broadcast_content: Dict[str, Any]) -> Dict[str, str]:
+        """Extract symbolic representations of news topics"""
+        
+        selected_news = broadcast_content.get("selected_news", [])
+        script_content = broadcast_content.get("script_content", "").lower()
+        
+        symbols = {
+            "symbol_1": "– Breaking news → glowing news ticker strips in neon red",
+            "symbol_2": "– Technology → floating digital elements and circuit patterns", 
+            "symbol_3": "– Finance → golden coin symbols and market data streams"
+        }
+        
+        # Analyze content for specific symbolic representations
+        symbol_list = []
+        
+        # Extract symbols from news titles and content
+        for i, news in enumerate(selected_news[:3]):
+            title = news.get("title", "").lower()
+            symbol = self._map_topic_to_symbol(title, script_content)
+            symbol_list.append(symbol)
+        
+        # Fill remaining slots with default symbols if needed
+        while len(symbol_list) < 3:
+            symbol_list.append("– News updates → floating paper fragments with glowing edges")
+        
+        # Assign to dictionary
+        for i, symbol in enumerate(symbol_list[:3]):
+            symbols[f"symbol_{i+1}"] = symbol
+            
+        return symbols
+    
+    def _map_topic_to_symbol(self, title: str, content: str) -> str:
+        """Map news topic to visual symbol"""
+        
+        title_content = f"{title} {content}".lower()
+        
+        # Weapons/Crime
+        if any(word in title_content for word in ["weapon", "gun", "crime", "theft", "robbery", "einbruch"]):
+            return "– Crime story → empty display case with shattered glass and warning lights"
+        
+        # Weather/Environment
+        elif any(word in title_content for word in ["weather", "smoke", "forest", "fire", "dust", "saharastaub"]):
+            return "– Environmental event → swirling smoke patterns and red sky over city skyline"
+        
+        # Politics/Government
+        elif any(word in title_content for word in ["politics", "government", "election", "tax", "abgabe", "bürgerliche"]):
+            return "– Political tension → scales of justice with glowing parliamentary building silhouette"
+        
+        # Transport/Traffic
+        elif any(word in title_content for word in ["traffic", "transport", "elektroauto", "verkehr"]):
+            return "– Transportation → sleek electric car silhouette with charging bolt symbol"
+        
+        # Entertainment/Culture
+        elif any(word in title_content for word in ["culture", "comedy", "expat", "französische", "entertainment"]):
+            return "– Cultural event → theater masks with spotlights and French flag elements"
+        
+        # Technology
+        elif any(word in title_content for word in ["tech", "ai", "digital", "cyber"]):
+            return "– Technology → floating circuit boards with pulsing blue data streams"
+        
+        # Bitcoin/Crypto
+        elif any(word in title_content for word in ["bitcoin", "crypto", "blockchain"]):
+            return "– Cryptocurrency → golden bitcoin symbol with fluctuating price charts"
+        
+        # Swiss/Local
+        elif any(word in title_content for word in ["swiss", "zürich", "switzerland"]):
+            return "– Local news → Swiss cross emblem with urban Zürich cityscape reflection"
+        
+        # Default fallback
+        else:
+            return "– Breaking news → glowing newspaper fragments floating in digital space"
+    
+
     
     async def _request_dalle_image(self, prompt: str) -> Optional[str]:
         """Sendet Request an DALL-E API"""
