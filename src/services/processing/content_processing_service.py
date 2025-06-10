@@ -495,7 +495,7 @@ Write the entire dialogue in ENGLISH. All speaker dialogue must be in English la
 Current time guidance: {greeting_guidance}
 
 📋 FORMAT:
-{self._get_format_instructions(is_duo_show)}
+{self._get_format_instructions(is_duo_show, primary_speaker_config.get("voice_name", "speaker"))}
 
 No explanations. No narrative text. No names in dialogue unless naturally occurring.
 
@@ -672,12 +672,15 @@ Only the dialogue text - directly usable as radio script."""
         if is_duo_show and secondary_speaker:
             speakers.append(secondary_speaker)
         
-        # Weather Specialist only if "weather" is defined in RSS filter categories
-        rss_categories = show_config.get("content", {}).get("rss_filter", {}).get("categories", [])
-        has_weather_category = "weather" in [cat.lower() for cat in rss_categories]
+        # **SIMPLE RULE**: Weather Speaker nur wenn "weather" in RSS-Kategorien
+        rss_filter = show_config.get("content", {}).get("rss_filter", "")
+        if isinstance(rss_filter, str):
+            rss_categories = [cat.strip().lower() for cat in rss_filter.split(",") if cat.strip()]
+        else:
+            rss_categories = rss_filter.get("categories", []) if isinstance(rss_filter, dict) else []
+        has_weather_category = "weather" in rss_categories
         
         if has_weather_category:
-            # Weather speaker from show configuration (flexible per show)
             weather_speaker_config = show_config.get("weather_speaker")
             if weather_speaker_config:
                 speakers.append(weather_speaker_config)
@@ -731,8 +734,12 @@ Only the dialogue text - directly usable as radio script."""
             primary_speaker = speaker_names[0] if speaker_names else "Marcel"
             
             # Check if we have weather categories to include weather content
-            rss_categories = show_config.get("content", {}).get("rss_filter", {}).get("categories", [])
-            has_weather_category = "weather" in [cat.lower() for cat in rss_categories]
+            rss_filter = show_config.get("content", {}).get("rss_filter", "")
+            if isinstance(rss_filter, str):
+                rss_categories = [cat.strip().lower() for cat in rss_filter.split(",") if cat.strip()]
+            else:
+                rss_categories = rss_filter.get("categories", []) if isinstance(rss_filter, dict) else []
+            has_weather_category = "weather" in rss_categories
             
             # Start building example
             example_lines = ["Example:"]
@@ -841,22 +848,23 @@ Only the dialogue text - directly usable as radio script."""
             logger.error(f"Failed to create content blocks: {e}")
             return "Content blocks unavailable"
 
-    def _get_format_instructions(self, is_duo_show: bool) -> str:
-        """Returns format instructions based on whether it's a solo or duo show"""
+    def _get_format_instructions(self, is_duo_show: bool, primary_speaker_name: str = "speaker") -> str:
+        """Returns format instructions based on whether it's a solo or duo show - FULLY GENERIC"""
         if is_duo_show:
             # Traditional dialogue format for duo shows
             return """Output only the speakable text in this format:
 SPEAKER: ...
 SPEAKER2: ..."""
         else:
-            # Natural monologue format for solo shows
-            return """Output only the speakable text as a natural monologue with paragraph breaks:
+            # **NATURAL SOLO SHOW:** Continuous monologue with minimal speaker tags
+            speaker_lower = primary_speaker_name.lower()
+            return f"""Output only the speakable text as a natural continuous monologue:
 
-First paragraph about the topic...
+{speaker_lower}: Introduction with self-identification and welcome...
 
-Second paragraph transitioning to next topic...
+Continue with flowing paragraphs without repeating the speaker name. Only use '{speaker_lower}:' again if there's a natural break or topic change that would require a pause in real radio.
 
-Third paragraph with conclusion or weather/crypto update..."""
+CRITICAL: This is a SOLO SHOW - avoid repetitive '{speaker_lower}:' tags. Let the content flow naturally as one person speaking."""
     
 
     
@@ -1020,13 +1028,19 @@ REASON: One-sentence reason focused on why the story fits the show – tone-awar
         fresh_news = [item for item in all_news if item.get("title") not in used_titles]
         logger.info(f"📰 Proactive Filter: Removed {len(all_news) - len(fresh_news)} already used articles. {len(fresh_news)} remain.")
 
-        # 2. Preset-based filtering (re-using logic from old _prepare_data_for_gpt)
-        rss_filter = show_config.get("content", {}).get("rss_filter", {})
+        # 2. Preset-based filtering - now supports TEXT format RSS filter
+        rss_filter = show_config.get("content", {}).get("rss_filter", "")
         if not rss_filter:
             logger.warning("⚠️ No RSS filter in show_config, using all fresh news.")
             preset_filtered_news = fresh_news
         else:
-            allowed_categories = rss_filter.get("categories", [])
+            # Parse text-based RSS filter (e.g., "news, international, wirtschaft")
+            if isinstance(rss_filter, str):
+                allowed_categories = [cat.strip().lower() for cat in rss_filter.split(",") if cat.strip()]
+            else:
+                # Fallback for old JSON format 
+                allowed_categories = rss_filter.get("categories", []) if isinstance(rss_filter, dict) else []
+            
             preset_filtered_news = [
                 item for item in fresh_news 
                 if item.get("category", "").lower() in allowed_categories

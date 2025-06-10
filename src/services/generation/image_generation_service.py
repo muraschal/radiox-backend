@@ -62,15 +62,8 @@ class ImageGenerationService:
             # 1. DALL-E Prompt erstellen
             prompt = self._create_dalle_prompt(broadcast_content, target_time)
             
-            # 2. DALL-E API Request mit Retry
-            cover_url = None
-            for attempt in range(2):  # 2 Versuche
-                cover_url = await self._request_dalle_image(prompt)
-                if cover_url:
-                    break
-                if attempt == 0:
-                    logger.info("🔄 DALL-E Retry nach 2 Sekunden...")
-                    await asyncio.sleep(2)
+            # 2. DALL-E API Request
+            cover_url = await self._request_dalle_image(prompt)
             
             if not cover_url:
                 logger.info("📋 Verwende Fallback Cover nach DALL-E Fehlschlag")

@@ -255,7 +255,8 @@ class AudioGenerationService:
             return []
         
         # Check if this is a solo show (no speaker tags)
-        has_speaker_tags = any(':' in line and line.split(':', 1)[0].strip().isupper() 
+        # Support both UPPERCASE and lowercase speaker tags (brad: or BRAD:)
+        has_speaker_tags = any(':' in line and self._is_valid_speaker_tag(line.split(':', 1)[0].strip())
                               for line in script_content.split('\n') if line.strip())
         
         if not has_speaker_tags:
@@ -450,6 +451,19 @@ class AudioGenerationService:
                         return True
         
         return False
+    
+    def _is_valid_speaker_tag(self, speaker_tag: str) -> bool:
+        """Check if a string is a valid speaker tag (brad, BRAD, marcel, MARCEL, etc.)"""
+        if not speaker_tag:
+            return False
+        
+        # Convert to lowercase for comparison
+        tag_lower = speaker_tag.lower()
+        
+        # Valid speaker names (based on our voice mapping)
+        valid_speakers = ['brad', 'marcel', 'lucy']
+        
+        return tag_lower in valid_speakers
     
     def _normalize_speaker_name(self, speaker_raw: str) -> str:
         """Normalize speaker names - fully generic with show config fallback"""
@@ -827,39 +841,34 @@ class AudioGenerationService:
         return {"cleaned_files": cleaned_count}
     
     async def _set_radiox_metadata(self, audio_file: Path) -> bool:
-        """Set correct RadioX metadata on final audio file"""
+        """Set correct RadioX metadata on final audio file with robust error handling"""
         try:
-            import eyed3
+            import eyed3  # type: ignore
             
-            # Load audio file
-            audiofile = eyed3.load(str(audio_file))
-            if audiofile is None:
-                return False
+            audiofile = eyed3.load(str(audio_file))  # type: ignore
+            if audiofile and audiofile.tag:
+                if audiofile.tag is None:
+                    audiofile.initTag()  # type: ignore
+                
+                current_time = datetime.now()
+                hour_min = current_time.strftime('%H:%M')
+                edition_name = self._get_edition_name_for_metadata(hour_min)
+                
+                audiofile.tag.title = f"RadioX - {edition_name} : {hour_min} Edition"  # type: ignore
+                audiofile.tag.artist = "RadioX AI"  # type: ignore
+                audiofile.tag.album = "RadioX News Broadcasts"  # type: ignore
+                audiofile.tag.album_artist = "RadioX AI"  # type: ignore
+                
+                audiofile.tag.save()  # type: ignore
+                logger.debug(f"✅ MP3 Metadaten erfolgreich gesetzt")
+                return True
+            return False
             
-            # Initialize tag if not exists
-            if audiofile.tag is None:
-                audiofile.initTag()
-            
-            # Generate edition name based on current time
-            current_time = datetime.now()
-            hour_min = current_time.strftime('%H:%M')
-            edition_name = self._get_edition_name_for_metadata(hour_min)
-            
-            # Set RadioX metadata in correct format
-            audiofile.tag.title = f"RadioX - {edition_name} : {hour_min} Edition"
-            audiofile.tag.artist = "RadioX AI"
-            audiofile.tag.album = "RadioX News Broadcasts"
-            audiofile.tag.album_artist = "RadioX AI"
-            audiofile.tag.genre = "News/Talk"
-            audiofile.tag.recording_date = current_time.year
-            
-            # Save metadata
-            audiofile.tag.save(version=eyed3.id3.ID3_V2_3)
-            
-            return True
-            
+        except ImportError:
+            logger.info("📋 eyed3 nicht verfügbar - MP3 Metadaten werden übersprungen")
+            return False
         except Exception as e:
-            logger.warning(f"⚠️ Konnte Metadaten nicht setzen: {e}")
+            logger.warning(f"⚠️ Fehler beim Setzen der Metadaten: {e}")
             return False
     
     def _get_edition_name_for_metadata(self, time_str: str) -> str:

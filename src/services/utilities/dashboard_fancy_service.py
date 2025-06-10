@@ -74,22 +74,58 @@ class DashboardFancyService:
         }
     
     def _calculate_dashboard_stats(self, raw_data: Dict[str, Any], processed_info: Dict[str, Any]) -> Dict[str, Any]:
-        """Berechnet Dashboard-Statistiken"""
+        """Berechnet Dashboard-Statistiken mit intelligenten GPT-Summaries"""
         news = raw_data.get('news', [])
         weather = raw_data.get('weather', {})
         crypto = raw_data.get('crypto', {})
+        
+        # INTELLIGENT Weather & Bitcoin Summaries verwenden!
+        weather_summary = weather.get('current_summary', weather.get('description', 'Weather intelligence not available'))
+        bitcoin_summary = crypto.get('bitcoin_summary', 'Bitcoin intelligence not available')
+        
+        # Temperatur aus Weather Summary extrahieren (da temperature Key nicht existiert)
+        weather_temp = self._extract_temperature_from_summary(weather_summary)
         
         return {
             'total_news': len(news),
             'selected_news': len(processed_info.get('selected_news', [])),
             'total_sources': len(set(item.get('source', 'unknown') for item in news)),
             'gpt_words': len(processed_info.get('radio_script', '').split()),
-            'weather_temp': weather.get('temperature', 'N/A'),
+            'weather_temp': weather_temp,
             'bitcoin_price': crypto.get('bitcoin', {}).get('price_usd', 0),
             'bitcoin_change': crypto.get('bitcoin', {}).get('change_24h', 0),
             'weather_desc': weather.get('description', 'No data'),
+            # NEUE: Intelligente Summaries für das Dashboard
+            'weather_summary': weather_summary,
+            'bitcoin_summary': bitcoin_summary,
+            'weather_location': weather.get('location', 'Zürich'),
             'sources': self._group_by_source(news)
         }
+    
+    def _extract_temperature_from_summary(self, weather_summary: str) -> str:
+        """Extrahiert Temperatur aus Weather Summary Text"""
+        if not weather_summary:
+            return 'N/A'
+        
+        import re
+        # Suche nach vollständigen Temperatur-Angaben zuerst
+        celsius_match = re.search(r'(\d+\.?\d*)\s?°C', weather_summary, re.IGNORECASE)
+        if celsius_match:
+            return f"{celsius_match.group(1)}°C"
+        
+        # Falls keine °C gefunden, suche nach anderen Mustern
+        other_patterns = [
+            r'(\d+\.?\d*)\s?degrees',  # 24.3 degrees
+            r'(\d+\.?\d*)\s?celsius',  # 24.3 celsius
+        ]
+        
+        for pattern in other_patterns:
+            match = re.search(pattern, weather_summary, re.IGNORECASE)
+            if match:
+                temp_value = match.group(1)
+                return f"{temp_value}°C"
+        
+        return 'N/A'
     
     def _group_by_source(self, news: List[Dict[str, Any]]) -> Dict[str, int]:
         """Gruppiert News nach Quellen"""
@@ -130,20 +166,28 @@ class DashboardFancyService:
         
         # Generate sections
         stats_cards = self._generate_complete_stats_cards(stats)
+        intelligence_section = self._generate_intelligence_section(stats)
         featured_articles = self._generate_complete_articles(processed_info.get('selected_news', []))
         dev_sections = self._generate_complete_dev_sections(processed_info, raw_data)
+        speaker_display = self._generate_speaker_info(show_config)
         
-        # Extract ECHTE Show-Daten (nicht Dashboard)
+        # Extract ECHTE Show-Daten aus der Datenbank-Konfiguration
         news = raw_data.get('news', [])
         weather = raw_data.get('weather', {})
         crypto = raw_data.get('crypto', {})
-        show_name = show_config.get('show_name', 'RadioX AI')
-        city = show_config.get('focus_city', 'Zürich')
-        selected_articles = processed_info.get('selected_news', [])
         
-        # Echte Show-Daten für Original Template
-        show_title = f"{city} Lokal | {timestamp} Edition"
-        show_description = f'🎙️ "{city} Lokal" is what happens when a city built on perfection starts glitching – and the voice on the radio doesn\'t fix it, but laughs. Not a clown laugh. A smart, bitter, beautifully timed laugh.'
+        # ECHTE Show-Titel und Description aus der DB verwenden!
+        show_display_name = show_config.get('show', {}).get('display_name', 'RadioX AI')
+        show_description_db = show_config.get('show', {}).get('description', '')
+        
+        # Zeit-Format zu HH:MM vereinfachen (aus 250610_1345 wird 13:45)
+        time_part = timestamp.split('_')[1] if '_' in timestamp else timestamp[-4:]
+        formatted_time = f"{time_part[:2]}:{time_part[2:]}"
+        show_title = f"{show_display_name} | {formatted_time} Edition"
+        
+        # Show-Beschreibung mit subtilen Speaker-Infos erweitern
+        base_description = show_description_db if show_description_db else '🎙️ AI-generierte Radio-Show basierend auf aktuellen Nachrichten und Ereignissen'
+        show_description = f"{base_description} {speaker_display}"
         
         # Cover filename based on timestamp 
         cover_filename = f"radiox_{timestamp}.png"
@@ -199,6 +243,30 @@ class DashboardFancyService:
             z-index: -1;
         }}
         
+        /* MVP Banner - Perfect Corner */
+        .mvp-banner {{
+            position: fixed;
+            top: 0;
+            right: 0;
+            background: #ff4444;
+            color: white;
+            font-weight: 700;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            transform: rotate(45deg);
+            transform-origin: 50% 50%;
+            z-index: 1000;
+            box-shadow: 0 4px 12px rgba(255, 68, 68, 0.4);
+            width: 150px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-top: 15px;
+            margin-right: -37px;
+        }}
+
         /* Header - Vercel Style */
         .header {{
             background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 50%, #1a1a1a 100%);
@@ -460,6 +528,53 @@ class DashboardFancyService:
             flex-direction: column;
             gap: 1.5rem;
         }}
+
+        /* Navigation Controls */
+        .navigation-controls {{
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 0.5rem;
+            gap: 1rem;
+        }}
+
+        .nav-button {{
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            color: #ffffff;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.85rem;
+            font-weight: 500;
+            font-family: 'Inter', sans-serif;
+        }}
+
+        .nav-button:hover {{
+            background: rgba(102, 126, 234, 0.2);
+            border-color: rgba(102, 126, 234, 0.4);
+            transform: translateY(-1px);
+        }}
+
+        .nav-button:disabled {{
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }}
+
+        .nav-icon {{
+            font-size: 1.2rem;
+            font-weight: bold;
+        }}
+
+        .nav-label {{
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }}
         
         .progress-container {{
             display: flex;
@@ -662,10 +777,29 @@ class DashboardFancyService:
                 grid-template-columns: repeat(3, 1fr);
             }}
         }}
+
+        /* Dashboard Development Content */
+        .dev-info-section {{
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 1rem;
+        }}
+        
+        .dev-info-container {{
+            width: 100%;
+        }}
+        
+        .dashboard-dev-content {{
+            width: 100%;
+        }}
         
         @media (max-width: 768px) {{
             .stats-container {{
                 grid-template-columns: repeat(2, 1fr);
+            }}
+            
+            .subtitle {{
+                display: none;
             }}
         }}
         
@@ -744,13 +878,74 @@ class DashboardFancyService:
         }}
         
         .article-card {{
-            background: #111111;
-            border: 1px solid #333;
-            border-radius: 8px;
+            background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 12px;
             padding: 1.5rem;
-            transition: all 0.2s ease;
+            transition: all 0.3s ease;
+            cursor: pointer;
             position: relative;
             overflow: hidden;
+        }}
+
+        .article-card:hover {{
+            transform: translateY(-2px);
+            border-color: rgba(102, 126, 234, 0.3);
+            box-shadow: 0 8px 32px rgba(102, 126, 234, 0.1);
+        }}
+
+        .article-card::before {{
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.05) 100%);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }}
+
+        .article-card:hover::before {{
+            opacity: 1;
+        }}
+        
+        .speaker-info {{
+            margin-top: 0.75rem;
+            margin-bottom: 0.75rem;
+            padding: 0.5rem 0.75rem;
+            background: rgba(255,255,255,0.05);
+            border-radius: 8px;
+            border-left: 3px solid #667eea;
+        }}
+        
+        .speaker-name {{
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: #667eea;
+            margin-bottom: 0.25rem;
+        }}
+        
+        .speaker-description {{
+            font-size: 0.8rem;
+            color: #aaa;
+            line-height: 1.3;
+        }}
+        
+        /* Themed Text Colors */
+        .red-highlight {{
+            color: #ff4444 !important;
+            font-weight: 600;
+        }}
+        
+        .yellow-highlight {{
+            color: #ffd700 !important;
+            font-weight: 600;
+        }}
+        
+        .orange-highlight {{
+            color: #ff8c00 !important;
+            font-weight: 600;
         }}
         
         .article-meta {{
@@ -888,6 +1083,19 @@ class DashboardFancyService:
              color: #667eea;
          }}
         
+        /* Tablet Optimierung */
+        @media (max-width: 1024px) {{
+            .header {{
+                padding: 3rem 1rem;
+            }}
+            .title {{
+                font-size: 5rem;
+            }}
+            .subtitle {{
+                font-size: 1.1rem;
+            }}
+        }}
+        
         /* Mobile Responsive */
         @media (max-width: 768px) {{
             .player-content {{
@@ -900,6 +1108,15 @@ class DashboardFancyService:
                 width: 280px;
                 height: 280px;
                 margin: 0 auto;
+            }}
+            
+            .play-overlay {{
+                width: 50px;
+                height: 50px;
+            }}
+            
+            .play-icon {{
+                font-size: 1.2rem;
             }}
             
             .audio-info {{
@@ -916,8 +1133,16 @@ class DashboardFancyService:
             .articles-grid {{
                 grid-template-columns: 1fr;
             }}
+            
+            .header {{
+                padding: 2rem 1rem;
+            }}
             .title {{
-                font-size: 4rem;
+                font-size: 3.5rem;
+            }}
+            .subtitle {{
+                font-size: 1rem;
+                line-height: 1.4;
             }}
         }}
         
@@ -927,25 +1152,102 @@ class DashboardFancyService:
                 height: 240px;
             }}
             
+            .play-overlay {{
+                width: 45px;
+                height: 45px;
+            }}
+            
+            .play-icon {{
+                font-size: 1rem;
+                margin-left: 2px;
+            }}
+            
             .glasmorph-player {{
                 padding: 1rem;
             }}
             
+            .header {{
+                padding: 1.5rem 0.5rem;
+            }}
             .title {{
-                font-size: 3rem;
+                font-size: 2.5rem;
+                letter-spacing: -0.03em;
+                line-height: 1.1;
+            }}
+            .subtitle {{
+                font-size: 0.9rem;
+                line-height: 1.4;
+                padding: 0 0.5rem;
             }}
             
             .audio-title {{
                 font-size: 1.4rem;
             }}
+            
+            .stats-container {{
+                grid-template-columns: 1fr;
+                gap: 0.5rem;
+            }}
+            
+            .speaker-info {{
+                margin: 0.5rem 0;
+                padding: 0.4rem 0.6rem;
+            }}
+            
+            .speaker-name {{
+                font-size: 0.8rem;
+            }}
+            
+            .speaker-description {{
+                font-size: 0.75rem;
+            }}
+        }}
+        
+        /* Extra Small Mobile */
+        @media (max-width: 360px) {{
+            .header {{
+                padding: 1rem 0.5rem;
+            }}
+            .title {{
+                font-size: 2rem;
+                line-height: 1;
+            }}
+            .subtitle {{
+                font-size: 0.8rem;
+                padding: 0 1rem;
+            }}
+            
+            .audio-title {{
+                font-size: 1.2rem;
+            }}
+            
+            .cover-image {{
+                width: 200px;
+                height: 200px;
+            }}
+            
+            .play-overlay {{
+                width: 40px;
+                height: 40px;
+            }}
+            
+            .play-icon {{
+                font-size: 0.9rem;
+                margin-left: 2px;
+            }}
         }}
     </style>
 </head>
 <body>
+    <!-- MVP Banner -->
+    <div class="mvp-banner">MVP</div>
+    
     <!-- Header -->
     <header class="header">
         <div class="logo-container">
-            <h1 class="title">RADIO<span class="red-x">X</span><sup class="ai-sup">AI</sup></h1>
+            <a href="index.html" style="text-decoration: none; color: inherit;">
+                <h1 class="title">RADIO<span class="red-x">X</span><sup class="ai-sup">AI</sup></h1>
+            </a>
             <p class="subtitle">AI-generated. Enterprise quality. Zero compromise. It's the future, and it's loud.</p>
         </div>
     </header>
@@ -968,6 +1270,16 @@ class DashboardFancyService:
                             {show_description}
                         </div>
                         <div class="custom-controls">
+                            <div class="navigation-controls">
+                                <button class="nav-button" id="prevShow" title="Previous Show">
+                                    <span class="nav-icon">‹</span>
+                                    <span class="nav-label">Previous</span>
+                                </button>
+                                <button class="nav-button" id="nextShow" title="Next Show">
+                                    <span class="nav-label">Next</span>
+                                    <span class="nav-icon">›</span>
+                                </button>
+                            </div>
                             <div class="progress-container">
                                 <span class="time-display" id="currentTime">0:00</span>
                                 <div class="progress-bar" id="progressBar">
@@ -1004,10 +1316,17 @@ class DashboardFancyService:
             </div>
         </div>
 
+        <!-- Intelligence Section -->
+        <div class="intelligence-section" style="background: transparent; padding: 2rem;">
+            <div style="max-width: 1200px; margin: 0 auto; display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
+                {intelligence_section}
+            </div>
+        </div>
+
         <!-- Selected Articles -->
         <div class="content-section">
             <div class="content-container">
-                <h2 class="section-title">🤖 Featured Stories for the '{city} Lokal' radio show</h2>
+                <h2 class="section-title">🤖 Featured Stories for the '<span class="red-highlight">{show_display_name}</span>' radio show</h2>
                 <div class="articles-grid">
                     {featured_articles}
                 </div>
@@ -1024,7 +1343,9 @@ class DashboardFancyService:
     <section class="dev-info-section">
         <div class="dev-info-container">
             <h2 style="color: #667eea; text-align: center; margin-bottom: 2rem;">🛠️ Dashboard Development Info</h2>
-            {dev_sections}
+            <div class="dashboard-dev-content">
+                {dev_sections}
+            </div>
         </div>
     </section>
 
@@ -1113,6 +1434,93 @@ class DashboardFancyService:
 
         // Event listeners
         if (playButton) playButton.addEventListener('click', togglePlayPause);
+
+        // Show Navigation System
+        class ShowNavigator {{
+            constructor() {{
+                this.currentTimestamp = '{timestamp}';
+                this.availableShows = this.getAvailableShows();
+                this.currentIndex = this.getCurrentIndex();
+                this.initNavigation();
+            }}
+
+            getAvailableShows() {{
+                // Get all dashboard files from localStorage or scan for pattern
+                const shows = [];
+                // Scan current directory for files matching pattern radiox_dashboard_fancy_*.html
+                
+                // For now, we'll populate this with some sample timestamps
+                // In production, this could be fetched from server or localStorage
+                const now = new Date();
+                const today = now.getDate().toString().padStart(2, '0') + 
+                            (now.getMonth() + 1).toString().padStart(2, '0').slice(-2);
+                
+                // Generate potential show times for today
+                for (let hour = 6; hour < 22; hour++) {{
+                    for (let min of ['00', '30']) {{
+                        const timeStr = hour.toString().padStart(2, '0') + min;
+                        const timestamp = `2506${{today}}_${{timeStr}}`;
+                        shows.push(timestamp);
+                    }}
+                }}
+                
+                return shows.sort();
+            }}
+
+            getCurrentIndex() {{
+                return this.availableShows.indexOf(this.currentTimestamp);
+            }}
+
+            initNavigation() {{
+                const prevButton = document.getElementById('prevShow');
+                const nextButton = document.getElementById('nextShow');
+
+                if (prevButton) {{
+                    prevButton.addEventListener('click', () => this.goToPrevious());
+                    prevButton.disabled = this.currentIndex <= 0;
+                }}
+
+                if (nextButton) {{
+                    nextButton.addEventListener('click', () => this.goToNext());
+                    nextButton.disabled = this.currentIndex >= this.availableShows.length - 1;
+                }}
+            }}
+
+            goToPrevious() {{
+                if (this.currentIndex > 0) {{
+                    const prevTimestamp = this.availableShows[this.currentIndex - 1];
+                    this.navigateToShow(prevTimestamp);
+                }}
+            }}
+
+            goToNext() {{
+                if (this.currentIndex < this.availableShows.length - 1) {{
+                    const nextTimestamp = this.availableShows[this.currentIndex + 1];
+                    this.navigateToShow(nextTimestamp);
+                }}
+            }}
+
+            navigateToShow(timestamp) {{
+                const newUrl = `radiox_dashboard_fancy_${{timestamp}}.html`;
+                
+                // Check if file exists before navigating
+                fetch(newUrl, {{ method: 'HEAD' }})
+                    .then(response => {{
+                        if (response.ok) {{
+                            window.location.href = newUrl;
+                        }} else {{
+                            console.log(`Show ${{timestamp}} not available yet`);
+                            // Optionally show a toast message
+                        }}
+                    }})
+                    .catch(error => {{
+                        console.log(`Cannot load show ${{timestamp}}: ${{error.message}}`);
+                    }});
+            }}
+        }}
+
+        // Initialize navigation system
+        const navigator = new ShowNavigator();
 
         // Progress bar click and scrubbing
         if (progressBar) {{
@@ -1226,6 +1634,45 @@ class DashboardFancyService:
 </body>
 </html>'''
 
+    def _generate_intelligence_section(self, stats: Dict[str, Any]) -> str:
+        """Generiert die Intelligence Sektion mit Weather & Bitcoin GPT-Summaries"""
+        weather_summary = stats.get('weather_summary', 'Weather intelligence not available')
+        bitcoin_summary = stats.get('bitcoin_summary', 'Bitcoin intelligence not available')
+        weather_location = stats.get('weather_location', 'Zürich')
+        
+        return f'''
+            <!-- Weather Card - INTELLIGENT GPT SUMMARY -->
+            <div class="bg-white rounded-lg shadow-sm">
+                <div class="bg-orange-500 text-white px-4 py-3 rounded-t-lg">
+                    <h3 class="font-bold">🌤️ <span class="yellow-highlight">Weather</span> Intelligence</h3>
+                </div>
+                <div class="p-4">
+                    <div class="bg-orange-50 border border-orange-200 p-3 rounded">
+                        <div class="text-sm text-orange-800 leading-relaxed">
+                            {weather_summary}
+                        </div>
+                    </div>
+                    <div class="mt-3 text-xs text-gray-600">
+                        <span>{weather_location}</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Bitcoin Card - INTELLIGENT GPT SUMMARY -->
+            <div class="bg-white rounded-lg shadow-sm">
+                <div class="bg-yellow-500 text-white px-4 py-3 rounded-t-lg">
+                    <h3 class="font-bold">₿ <span class="orange-highlight">Bitcoin</span> Intelligence</h3>
+                </div>
+                <div class="p-4">
+                    <div class="bg-yellow-50 border border-yellow-200 p-3 rounded">
+                        <div class="text-sm text-yellow-800 leading-relaxed">
+                            {bitcoin_summary}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        '''
+
     def _generate_complete_stats_cards(self, stats: Dict[str, Any]) -> str:
         """Generiert die kompletten Stats Cards wie im Original Template"""
         
@@ -1268,7 +1715,7 @@ class DashboardFancyService:
                 </div>
                 <div class="stat-card">
                     <div class="stat-icon">🌡️</div>
-                    <div class="stat-value">{stats['weather_temp']}°C</div>
+                                            <div class="stat-value">{stats['weather_temp']}</div>
                     <div class="stat-label">Temperature</div>
                     <div class="stat-trend trend-neutral">{weather_trend}</div>
                 </div>
@@ -1464,6 +1911,29 @@ class DashboardFancyService:
             """
         return html
     
+    def _generate_speaker_info(self, show_config: Dict[str, Any]) -> str:
+        """Generiert Speaker-Informationen als subtilen Text"""
+        primary = show_config.get('speaker', {})
+        secondary = show_config.get('secondary_speaker', {})
+        weather_speaker = show_config.get('weather_speaker', {})
+        
+        # Primary Speaker (immer vorhanden)
+        primary_name = primary.get('voice_name', 'Host')
+        speakers_text = f"mit {primary_name}"
+        
+        # Secondary Speaker (wenn vorhanden)
+        is_duo_show = show_config.get('show', {}).get('is_duo_show', False)
+        if is_duo_show and secondary:
+            secondary_name = secondary.get('voice_name', 'Co-Host')
+            speakers_text += f" und {secondary_name}"
+        
+        # Weather Speaker (wenn unterschiedlich)
+        if weather_speaker and weather_speaker.get('speaker_name') != primary_name:
+            weather_name = weather_speaker.get('speaker_name', 'Weather Host')
+            speakers_text += f" • Wetter: {weather_name}"
+        
+        return speakers_text
+
     def _generate_voice_config_html(self, show_config: Dict[str, Any]) -> str:
         """Generiert Voice Configuration HTML"""
         primary = show_config.get('speaker', {})
