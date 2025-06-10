@@ -213,7 +213,7 @@ class ShowService:
             logger.error(f"❌ Fehler beim Laden der Sprecher-Konfiguration '{speaker_name}': {e}")
             return None
     
-    async def prepare_show_generation(self, preset_name: str) -> Optional[Dict[str, Any]]:
+    async def prepare_show_generation(self, preset_name: str, language: str = "en") -> Optional[Dict[str, Any]]:
         """Prepare complete show generation configuration"""
         logger.info(f"🎬 Bereite Show-Generierung vor: {preset_name}")
         
@@ -257,6 +257,21 @@ class ShowService:
             if not primary_speaker:
                 logger.error(f"❌ Primary speaker configuration missing for {show_config.primary_speaker}")
                 return None
+            
+            # 🌍 MULTILINGUAL VOICE SUPPORT: Override language from --lang parameter
+            # ElevenLabs V3 voices are multilingual, so we use the same voice IDs for all languages
+            # We ignore the database language setting and use the parameter language instead
+            if primary_speaker and isinstance(primary_speaker, dict):
+                primary_speaker = dict(primary_speaker)
+                primary_speaker['language'] = language  # Override with parameter language
+            
+            if secondary_speaker and isinstance(secondary_speaker, dict):
+                secondary_speaker = dict(secondary_speaker)  
+                secondary_speaker['language'] = language  # Override with parameter language
+                
+            if weather_speaker and isinstance(weather_speaker, dict):
+                weather_speaker = dict(weather_speaker)
+                weather_speaker['language'] = language  # Override with parameter language
             
             # Create comprehensive show generation config
             generation_config = {
@@ -361,10 +376,10 @@ async def get_show_service() -> ShowService:
         _show_service_instance = ShowService()
     return _show_service_instance
 
-async def get_show_for_generation(preset_name: str) -> Optional[Dict[str, Any]]:
+async def get_show_for_generation(preset_name: str, language: str = "en") -> Optional[Dict[str, Any]]:
     """Convenience function for show generation"""
     service = await get_show_service()
-    return await service.prepare_show_generation(preset_name)
+    return await service.prepare_show_generation(preset_name, language)
 
 async def test_show_service() -> bool:
     """Test show service functionality"""

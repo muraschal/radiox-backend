@@ -85,7 +85,7 @@ class ContentProcessingService:
         logger.info("🤖 Starting two-stage radio show creation (Stage 2: Plain Text)...")
         
         try:
-            show_config = show_config or await self.get_show_configuration(preset_name or "zurich")
+            show_config = show_config or await self.get_show_configuration(preset_name or "zurich", language)
             if not show_config:
                 raise Exception(f"Show configuration for '{preset_name}' not found")
             
@@ -209,12 +209,12 @@ class ContentProcessingService:
             "timestamp": datetime.now().isoformat()
         }
     
-    async def get_show_configuration(self, preset_name: str) -> Optional[Dict[str, Any]]:
+    async def get_show_configuration(self, preset_name: str, language: str = "en") -> Optional[Dict[str, Any]]:
         """Load show configuration with caching"""
         logger.info(f"🎭 Lade Show-Konfiguration für: {preset_name}")
         
         try:
-            show_config = await get_show_for_generation(preset_name)
+            show_config = await get_show_for_generation(preset_name, language)
             if show_config:
                 logger.info(f"✅ Show-Konfiguration geladen: {show_config['show']['display_name']}")
             return show_config

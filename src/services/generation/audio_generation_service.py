@@ -115,7 +115,7 @@ class AudioGenerationService:
             return {"success": False, "error": "ElevenLabs API key missing."}
         
         # Store show config for use in parsing (if provided)
-        self._current_show_config = show_config
+        self._current_show_config = show_config or {}
         
         segments = self._parse_script_into_segments(script_content)
         if not segments:
@@ -220,8 +220,24 @@ class AudioGenerationService:
         """Get voice configuration with intelligent fallback"""
         
         try:
-            # Try specific voice
-            voice_config = await self._voice_service.get_voice_config(speaker_name)
+            # 🌍 LANGUAGE OVERRIDE: Extract language from show config
+            language_override = None
+            if self._current_show_config:
+                # Check if speakers in show config have language override
+                primary_speaker = self._current_show_config.get("speaker", {})
+                secondary_speaker = self._current_show_config.get("secondary_speaker", {})
+                weather_speaker = self._current_show_config.get("weather_speaker", {})
+                
+                # Find language override from the relevant speaker
+                if primary_speaker.get("voice_name", "").lower() == speaker_name.lower():
+                    language_override = primary_speaker.get("language")
+                elif secondary_speaker.get("voice_name", "").lower() == speaker_name.lower():
+                    language_override = secondary_speaker.get("language")
+                elif weather_speaker.get("voice_name", "").lower() == speaker_name.lower():
+                    language_override = weather_speaker.get("language")
+            
+            # Try specific voice with language override
+            voice_config = await self._voice_service.get_voice_config(speaker_name, language_override)
             if voice_config:
                 return voice_config
             

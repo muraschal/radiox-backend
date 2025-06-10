@@ -28,12 +28,13 @@ class VoiceConfigService:
         self._cache_timestamp: Optional[float] = None
         self.cache_duration = 300  # 5 Minuten Cache
     
-    async def get_voice_config(self, speaker_name: str) -> Optional[Dict[str, Any]]:
+    async def get_voice_config(self, speaker_name: str, language_override: Optional[str] = None) -> Optional[Dict[str, Any]]:
         """
         Holt Voice-Konfiguration für einen Speaker
         
         Args:
             speaker_name: Name des Speakers (marcel, jarvis, etc.)
+            language_override: Überschreibt die Datenbanksprache (für --lang Parameter)
             
         Returns:
             Voice-Konfiguration oder None wenn nicht gefunden
@@ -49,6 +50,12 @@ class VoiceConfigService:
             if not voice_config:
                 logger.warning(f"⚠️ Voice-Konfiguration für '{speaker_name}' nicht gefunden")
                 return None
+            
+            # 🌍 LANGUAGE OVERRIDE: Überschreibe Sprache wenn Parameter gesetzt
+            if language_override:
+                voice_config = dict(voice_config)  # Kopie erstellen
+                voice_config['language'] = language_override
+                logger.debug(f"🌍 Language Override für {speaker_name}: {language_override}")
             
             return voice_config
             
