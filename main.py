@@ -89,7 +89,8 @@ class RadioXMaster:
         self,
         preset_name: str = "zurich",
         target_news_count: int = 4,
-        target_time: Optional[str] = None
+        target_time: Optional[str] = None,
+        language: str = "en"
     ) -> Dict[str, Any]:
         """Executes the complete, robust v3.2 workflow with corrected operational order."""
         
@@ -106,7 +107,7 @@ class RadioXMaster:
             
             print("🤖 Processing with GPT...")
             processed_data = await self._execute_data_processing(
-                collected_data["data"], target_news_count, target_time, preset_name, show_config["data"]
+                collected_data["data"], target_news_count, target_time, preset_name, show_config["data"], language
             )
 
             # --- STEP 3: Generate Cover First (for Dashboard integration) ---
@@ -202,7 +203,7 @@ class RadioXMaster:
     
     async def _execute_data_processing(
         self, raw_data: Dict[str, Any], target_news_count: int, 
-        target_time: Optional[str], preset_name: str, show_config: Dict[str, Any]
+        target_time: Optional[str], preset_name: str, show_config: Dict[str, Any], language: str = "en"
     ) -> Dict[str, Any]:
         """Execute data processing step with proactive duplicate filtering."""
         
@@ -217,7 +218,8 @@ class RadioXMaster:
             preset_name=preset_name,
             show_config=show_config,
             last_show_context=last_show_context,
-            used_article_titles=used_article_titles # Pass the set of used titles
+            used_article_titles=used_article_titles, # Pass the set of used titles
+            language=language
         )
         self._validate_step_result(result, "Data processing")
         
@@ -654,7 +656,7 @@ class RadioXMaster:
         self, raw_data: Dict[str, Any], target_news_count: int = 4,
         target_time: Optional[str] = None, preset_name: Optional[str] = None,
         show_config: Dict[str, Any] = None, last_show_context: Optional[Dict[str, Any]] = None,
-        used_article_titles: Optional[set] = None
+        used_article_titles: Optional[set] = None, language: str = "en"
     ) -> Dict[str, Any]:
         """Execute data processing with performance optimization"""
         try:
@@ -667,7 +669,8 @@ class RadioXMaster:
                 preset_name=preset_name,
                 show_config=show_config,
                 last_show_context=last_show_context,
-                used_article_titles=used_article_titles # Pass down to the service
+                used_article_titles=used_article_titles, # Pass down to the service
+                language=language
             )
             
             duration = (datetime.now() - start_time).total_seconds()
@@ -1153,6 +1156,7 @@ async def main():
     parser.add_argument("--preset", default="zurich", help="Show Preset (default: zurich)")
     parser.add_argument("--news-count", type=int, default=4, help="Anzahl News (default: 4)")
     parser.add_argument("--target-time", help="Zielzeit für Show (HH:MM)")
+    parser.add_argument("--lang", default="en", choices=["en", "de"], help="Sprache für das Manuskript (default: en, de für Deutsch)")
     
     args = parser.parse_args()
 
@@ -1172,7 +1176,7 @@ async def main():
             # FIXED: Lade echte Daten aus JSON-File statt Mock-Daten
             result = await master.run_processing_only_with_real_data(args.news_count, args.target_time, args.preset)
         else:
-            result = await master.run_complete_workflow(args.preset, args.news_count, args.target_time)
+            result = await master.run_complete_workflow(args.preset, args.news_count, args.target_time, args.lang)
         
         # Exit with appropriate code
         sys.exit(0 if result.get("success") else 1)

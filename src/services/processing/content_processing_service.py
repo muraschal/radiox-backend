@@ -78,7 +78,7 @@ class ContentProcessingService:
         self, raw_data: Dict[str, Any], target_news_count: int = 4,
         target_time: Optional[str] = None, preset_name: Optional[str] = None,
         show_config: Dict[str, Any] = None, last_show_context: Optional[Dict[str, Any]] = None,
-        used_article_titles: Optional[set] = None
+        used_article_titles: Optional[set] = None, language: str = "en"
     ) -> Dict[str, Any]:
         """Main processing pipeline with a new two-stage GPT process (Text-based final output)."""
         
@@ -112,7 +112,8 @@ class ContentProcessingService:
             scripting_prompt_data = {
                 "news": full_content_for_scripting, "weather": raw_data.get("weather", {}),
                 "crypto": raw_data.get("crypto", {}), "show_config": show_config,
-                "target_news_count": len(full_content_for_scripting), "target_time": target_time
+                "target_news_count": len(full_content_for_scripting), "target_time": target_time,
+                "language": language
             }
             scripting_prompt = self._create_scripting_prompt(scripting_prompt_data)
             radio_script_text = await self._generate_script_text_with_gpt(scripting_prompt)
@@ -446,6 +447,7 @@ class ContentProcessingService:
         weather = prepared_data.get("weather", {})
         crypto = prepared_data.get("crypto", {})
         target_time = prepared_data.get('target_time', 'a few minutes')
+        language = prepared_data.get('language', 'en')
 
         show_details = show_config.get("show", {})
         show_name = show_details.get("display_name", "RadioX")
@@ -485,11 +487,20 @@ class ContentProcessingService:
             time_of_day = "late night"
             greeting_guidance = "Late night/good evening greetings appropriate"
             
+        # Language configuration
+        if language == "de":
+            lang_instruction = """🌍 SPRACHE: NUR DEUTSCH
+Schreibe den kompletten Dialog auf DEUTSCH. Alle Sprecher-Dialoge müssen auf Deutsch sein."""
+            lang_name = "DEUTSCH"
+        else:
+            lang_instruction = """🌍 LANGUAGE: ENGLISH ONLY
+Write the entire dialogue in ENGLISH. All speaker dialogue must be in English language."""
+            lang_name = "ENGLISH"
+
         return f"""🎙️ FINAL RADIOX PROMPT
 Create a realistic radio script with defined speakers for a {target_time or "5-7 minute"} show.
 
-🌍 LANGUAGE: ENGLISH ONLY
-Write the entire dialogue in ENGLISH. All speaker dialogue must be in English language.
+{lang_instruction}
 
 ⏰ TIME CONTEXT: {time_of_day.upper()} ({current_hour:02d}:xx)
 Current time guidance: {greeting_guidance}
