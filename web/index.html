@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RadioX AI • Live Shows</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #0f0f0f 0%, #1a1a1a 50%, #0f0f0f 100%);
+            color: #ffffff;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* Matrix Background Animation */
+        .matrix-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0.03;
+            background-image: 
+                linear-gradient(45deg, #00ff00 25%, transparent 25%),
+                linear-gradient(-45deg, #00ff00 25%, transparent 25%),
+                linear-gradient(45deg, transparent 75%, #00ff00 75%),
+                linear-gradient(-45deg, transparent 75%, #00ff00 75%);
+            background-size: 50px 50px;
+            background-position: 0 0, 0 25px, 25px -25px, -25px 0px;
+            animation: matrix-move 20s linear infinite;
+            z-index: -1;
+        }
+
+        @keyframes matrix-move {
+            0% { background-position: 0 0, 0 25px, 25px -25px, -25px 0px; }
+            100% { background-position: 50px 50px, 50px 75px, 75px 25px, 25px 50px; }
+        }
+
+        /* Header */
+        .header {
+            text-align: center;
+            padding: 3rem 1rem;
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1));
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid rgba(102, 126, 234, 0.2);
+        }
+
+        .title {
+            font-size: 4rem;
+            font-weight: 900;
+            letter-spacing: -0.02em;
+            margin-bottom: 1rem;
+            background: linear-gradient(135deg, #ffffff 0%, #667eea 50%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .red-x {
+            color: #ff4444;
+            -webkit-text-fill-color: #ff4444;
+        }
+
+        .ai-sup {
+            font-size: 1.2rem;
+            color: #667eea;
+            -webkit-text-fill-color: #667eea;
+            vertical-align: super;
+        }
+
+        .subtitle {
+            font-size: 1.1rem;
+            color: #aaa;
+            max-width: 600px;
+            margin: 0 auto;
+            line-height: 1.6;
+        }
+
+        /* Main Content */
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem 1rem;
+        }
+
+        .section-title {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 2rem;
+            text-align: center;
+            color: #667eea;
+        }
+
+        /* Shows Grid */
+        .shows-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 3rem;
+        }
+
+        .show-card {
+            background: linear-gradient(135deg, rgba(26, 26, 26, 0.9), rgba(15, 15, 15, 0.9));
+            border: 1px solid rgba(102, 126, 234, 0.2);
+            border-radius: 12px;
+            padding: 1.5rem;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .show-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.05), rgba(118, 75, 162, 0.05));
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            z-index: -1;
+        }
+
+        .show-card:hover::before {
+            opacity: 1;
+        }
+
+        .show-card:hover {
+            transform: translateY(-5px);
+            border-color: rgba(102, 126, 234, 0.4);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3), 0 0 20px rgba(102, 126, 234, 0.1);
+        }
+
+        .show-header {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .show-icon {
+            width: 50px;
+            height: 50px;
+            border-radius: 8px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            flex-shrink: 0;
+        }
+
+        .show-info h3 {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: #ffffff;
+            margin-bottom: 0.25rem;
+        }
+
+        .show-time {
+            font-size: 0.9rem;
+            color: #888;
+        }
+
+        .show-meta {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .meta-badge {
+            padding: 0.25rem 0.5rem;
+            font-size: 0.75rem;
+            border-radius: 4px;
+            font-weight: 500;
+        }
+
+        .badge-live {
+            background: #ff4444;
+            color: white;
+            animation: pulse 2s infinite;
+        }
+
+        .badge-audio {
+            background: #4CAF50;
+            color: white;
+        }
+
+        .badge-dashboard {
+            background: #2196F3;
+            color: white;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .show-actions {
+            display: flex;
+            gap: 0.75rem;
+            margin-top: 1rem;
+        }
+
+        .action-btn {
+            flex: 1;
+            padding: 0.75rem;
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            background: rgba(102, 126, 234, 0.1);
+            color: #667eea;
+            text-decoration: none;
+            border-radius: 6px;
+            text-align: center;
+            font-weight: 500;
+            font-size: 0.9rem;
+            transition: all 0.2s ease;
+        }
+
+        .action-btn:hover {
+            background: rgba(102, 126, 234, 0.2);
+            border-color: rgba(102, 126, 234, 0.5);
+            transform: translateY(-1px);
+        }
+
+        .action-btn.primary {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border-color: transparent;
+        }
+
+        .action-btn.primary:hover {
+            background: linear-gradient(135deg, #5a6fd8, #6a4190);
+        }
+
+        /* Stats Section */
+        .stats-section {
+            background: linear-gradient(135deg, rgba(26, 26, 26, 0.8), rgba(15, 15, 15, 0.8));
+            border: 1px solid rgba(102, 126, 234, 0.2);
+            border-radius: 12px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            backdrop-filter: blur(10px);
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .stat-item {
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #667eea;
+            margin-bottom: 0.25rem;
+        }
+
+        .stat-label {
+            font-size: 0.9rem;
+            color: #888;
+        }
+
+        /* Footer */
+        .footer {
+            text-align: center;
+            padding: 2rem 1rem;
+            color: #666;
+            border-top: 1px solid rgba(102, 126, 234, 0.1);
+            margin-top: 3rem;
+        }
+
+        /* Mobile Responsive */
+        @media (max-width: 768px) {
+            .title {
+                font-size: 2.5rem;
+            }
+            
+            .shows-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            .container {
+                padding: 1rem;
+            }
+        }
+
+        /* Loading Animation */
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(102, 126, 234, 0.3);
+            border-radius: 50%;
+            border-top-color: #667eea;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="matrix-bg"></div>
+    
+    <!-- Header -->
+    <header class="header">
+        <h1 class="title">RADIO<span class="red-x">X</span><sup class="ai-sup">AI</sup></h1>
+        <p class="subtitle">AI-generated radio shows. Enterprise quality. Zero compromise. It's the future, and it's loud.</p>
+    </header>
+
+    <!-- Main Content -->
+    <div class="container">
+        <!-- Stats Section -->
+        <div class="stats-section">
+            <h2 class="section-title">📊 Live Statistics</h2>
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <div class="stat-value" id="totalShows">-</div>
+                    <div class="stat-label">Total Shows</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="todayShows">-</div>
+                    <div class="stat-label">Today</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="totalAudio">-</div>
+                    <div class="stat-label">Audio Files</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="lastUpdate">-</div>
+                    <div class="stat-label">Last Update</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Shows Section -->
+        <section>
+            <h2 class="section-title">🎙️ Recent Shows</h2>
+            <div class="shows-grid" id="showsContainer">
+                <!-- Shows will be populated by JavaScript -->
+                <div class="show-card">
+                    <div class="show-header">
+                        <div class="show-icon">🔄</div>
+                        <div class="show-info">
+                            <h3>Loading Shows...</h3>
+                            <div class="show-time">
+                                <span class="loading"></span> Scanning web directory
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <p>&copy; 2025 RadioX AI • Built with passion and code • <a href="https://github.com/your-repo" style="color: #667eea;">View Source</a></p>
+    </footer>
+
+    <script>
+        // Scan for shows and populate the grid
+        async function loadShows() {
+            const container = document.getElementById('showsContainer');
+            const today = new Date().toISOString().slice(0, 10).replace(/-/g, '').slice(2);
+            
+            try {
+                // We'll scan for files in the current directory
+                // Since we can't directly list files from JS, we'll try common patterns
+                const shows = await findShows();
+                
+                if (shows.length === 0) {
+                    container.innerHTML = `
+                        <div class="show-card">
+                            <div class="show-header">
+                                <div class="show-icon">📂</div>
+                                <div class="show-info">
+                                    <h3>No Shows Found</h3>
+                                    <div class="show-time">Generate your first show with main.py</div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                // Sort shows by timestamp (newest first)
+                shows.sort((a, b) => b.timestamp.localeCompare(a.timestamp));
+                
+                container.innerHTML = shows.map(show => `
+                    <div class="show-card">
+                        <div class="show-header">
+                            <div class="show-icon">${show.isLive ? '🔴' : '📻'}</div>
+                            <div class="show-info">
+                                <h3>${show.title}</h3>
+                                <div class="show-time">${show.timeString}</div>
+                            </div>
+                        </div>
+                        <div class="show-meta">
+                            ${show.isLive ? '<span class="meta-badge badge-live">🔴 LIVE</span>' : ''}
+                            ${show.hasAudio ? '<span class="meta-badge badge-audio">🎵 Audio</span>' : ''}
+                            <span class="meta-badge badge-dashboard">📊 Dashboard</span>
+                        </div>
+                        <div class="show-actions">
+                            <a href="${show.dashboardFile}" class="action-btn primary">📊 Dashboard</a>
+                            ${show.hasAudio ? `<a href="${show.audioFile}" class="action-btn">🎵 Audio</a>` : ''}
+                            ${show.hasCover ? `<a href="${show.coverFile}" class="action-btn">🎨 Cover</a>` : ''}
+                        </div>
+                    </div>
+                `).join('');
+                
+                // Update stats
+                updateStats(shows, today);
+                
+            } catch (error) {
+                console.error('Error loading shows:', error);
+                container.innerHTML = `
+                    <div class="show-card">
+                        <div class="show-header">
+                            <div class="show-icon">❌</div>
+                            <div class="show-info">
+                                <h3>Error Loading Shows</h3>
+                                <div class="show-time">${error.message}</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+        }
+        
+        async function findShows() {
+            const shows = [];
+            const patterns = [];
+            
+            // Generate possible patterns for today and recent dates
+            const now = new Date();
+            for (let i = 0; i < 7; i++) { // Last 7 days
+                const date = new Date(now);
+                date.setDate(date.getDate() - i);
+                const dateStr = date.toISOString().slice(2, 10).replace(/-/g, '');
+                
+                // Generate hour patterns (more recent hours first)
+                for (let hour = 23; hour >= 0; hour--) {
+                    for (let minute = 59; minute >= 0; minute -= 10) {
+                        const timeStr = `${dateStr}_${hour.toString().padStart(2, '0')}${minute.toString().padStart(2, '0')}`;
+                        patterns.push(timeStr);
+                    }
+                }
+            }
+            
+            // Check for existing files
+            for (const pattern of patterns.slice(0, 50)) { // Limit to recent patterns
+                try {
+                    const dashboardFile = `radiox_dashboard_fancy_${pattern}.html`;
+                    const audioFile = `radiox_${pattern}.mp3`;
+                    const coverFile = `radiox_${pattern}.png`;
+                    
+                    // Try to fetch the dashboard file to see if it exists
+                    const response = await fetch(dashboardFile, { method: 'HEAD' });
+                    if (response.ok) {
+                        const hasAudio = await checkFileExists(audioFile);
+                        const hasCover = await checkFileExists(coverFile);
+                        
+                        shows.push({
+                            timestamp: pattern,
+                            title: `RadioX ${pattern.slice(0, 6)} ${pattern.slice(7)}`,
+                            timeString: formatTimestamp(pattern),
+                            dashboardFile,
+                            audioFile: hasAudio ? audioFile : null,
+                            coverFile: hasCover ? coverFile : null,
+                            hasAudio,
+                            hasCover,
+                            isLive: isRecent(pattern, 10) // Last 10 minutes
+                        });
+                    }
+                } catch (e) {
+                    // File doesn't exist, continue
+                }
+                
+                if (shows.length >= 20) break; // Limit results
+            }
+            
+            return shows;
+        }
+        
+        async function checkFileExists(filename) {
+            try {
+                const response = await fetch(filename, { method: 'HEAD' });
+                return response.ok;
+            } catch {
+                return false;
+            }
+        }
+        
+        function formatTimestamp(timestamp) {
+            const dateStr = timestamp.slice(0, 6);
+            const timeStr = timestamp.slice(7);
+            const year = '20' + dateStr.slice(0, 2);
+            const month = dateStr.slice(2, 4);
+            const day = dateStr.slice(4, 6);
+            const hour = timeStr.slice(0, 2);
+            const minute = timeStr.slice(2, 4);
+            
+            const date = new Date(`${year}-${month}-${day}T${hour}:${minute}:00`);
+            return date.toLocaleString('de-DE', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        }
+        
+        function isRecent(timestamp, minutes) {
+            const dateStr = timestamp.slice(0, 6);
+            const timeStr = timestamp.slice(7);
+            const year = '20' + dateStr.slice(0, 2);
+            const month = dateStr.slice(2, 4);
+            const day = dateStr.slice(4, 6);
+            const hour = timeStr.slice(0, 2);
+            const minute = timeStr.slice(2, 4);
+            
+            const showDate = new Date(`${year}-${month}-${day}T${hour}:${minute}:00`);
+            const now = new Date();
+            const diffMinutes = (now - showDate) / (1000 * 60);
+            
+            return diffMinutes <= minutes;
+        }
+        
+        function updateStats(shows, today) {
+            const todayShows = shows.filter(show => show.timestamp.startsWith(today));
+            const audioCount = shows.filter(show => show.hasAudio).length;
+            const lastShow = shows[0];
+            
+            document.getElementById('totalShows').textContent = shows.length;
+            document.getElementById('todayShows').textContent = todayShows.length;
+            document.getElementById('totalAudio').textContent = audioCount;
+            document.getElementById('lastUpdate').textContent = lastShow ? 
+                lastShow.timeString.split(' ')[1] : 'Never';
+        }
+        
+        // Load shows on page load
+        document.addEventListener('DOMContentLoaded', loadShows);
+        
+        // Auto-refresh every 30 seconds
+        setInterval(loadShows, 30000);
+    </script>
+</body>
+</html> 
