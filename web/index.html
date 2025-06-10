@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RadioX - Professional AI Radio Station</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📻</text></svg>">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+        .gradient-bg { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+        .glass { backdrop-filter: blur(10px); background: rgba(255, 255, 255, 0.1); }
+        .pulse-dot { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+    </style>
+</head>
+<body class="gradient-bg min-h-screen flex items-center justify-center p-4">
+    <div class="glass rounded-2xl p-8 max-w-lg w-full text-white text-center shadow-2xl">
+        <div class="mb-6">
+            <div class="text-6xl mb-4">📻</div>
+            <h1 class="text-3xl font-bold mb-2">RadioX</h1>
+            <p class="text-lg opacity-80">Professional AI Radio Station</p>
+            <div class="text-sm opacity-60 mt-2">radiox.rapold.io</div>
+        </div>
+
+        <!-- Loading State -->
+        <div id="loading" class="space-y-4">
+            <div class="flex items-center justify-center space-x-3">
+                <div class="w-3 h-3 bg-white rounded-full pulse-dot"></div>
+                <span class="text-lg">Lade neueste Show...</span>
+            </div>
+            <div class="text-sm opacity-60">Du wirst automatisch weitergeleitet</div>
+        </div>
+
+        <!-- Show Info (hidden initially) -->
+        <div id="showInfo" class="hidden space-y-4">
+            <div class="text-lg font-medium" id="showTitle">Neueste Show</div>
+            <div class="text-sm opacity-80" id="showTime"></div>
+            <div class="space-y-3">
+                <button onclick="goToLatestShow()" class="w-full bg-white bg-opacity-20 hover:bg-opacity-30 transition-all px-6 py-3 rounded-lg font-medium">
+                    🎧 Show anhören
+                </button>
+                <button onclick="showAllShows()" class="w-full bg-white bg-opacity-10 hover:bg-opacity-20 transition-all px-6 py-2 rounded-lg text-sm">
+                    📚 Alle Shows anzeigen
+                </button>
+            </div>
+        </div>
+
+        <!-- Show List (hidden initially) -->
+        <div id="showList" class="hidden">
+            <div class="text-lg font-medium mb-4">📚 Verfügbare Shows</div>
+            <div class="text-xs opacity-60 mb-3">Die letzten 10 Shows</div>
+            <div id="showsContainer" class="space-y-2 max-h-64 overflow-y-auto">
+                <!-- Shows werden hier dynamisch eingefügt -->
+            </div>
+            <button onclick="hideShowList()" class="mt-4 text-sm opacity-60 hover:opacity-80 transition-opacity">
+                ← Zurück
+            </button>
+        </div>
+
+        <!-- Footer -->
+        <div class="mt-8 pt-4 border-t border-white border-opacity-20 text-xs opacity-60">
+            <div>Powered by AI • Made with ❤️ by RadioX Team</div>
+            <div class="mt-1">
+                <a href="https://github.com/muraschal/radiox-backend" target="_blank" class="hover:opacity-80 transition-opacity">
+                    🔗 GitHub Repository
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let shows = [];
+        let latestShow = null;
+
+        // Formatiere Timestamp zu lesbarem Datum
+        function formatShowTime(timestamp) {
+            const year = 2000 + parseInt(timestamp.substr(0, 2));
+            const month = parseInt(timestamp.substr(2, 2)) - 1;
+            const day = parseInt(timestamp.substr(4, 2));
+            const hour = parseInt(timestamp.substr(7, 2));
+            const minute = parseInt(timestamp.substr(9, 2));
+            
+            const date = new Date(year, month, day, hour, minute);
+            return date.toLocaleString('de-DE', {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        }
+
+        // Lade Shows aus JSON
+        async function loadShows() {
+            try {
+                const response = await fetch('shows.json');
+                if (response.ok) {
+                    const data = await response.json();
+                    shows = data.shows || [];
+                    latestShow = shows[0]; // Erste Show ist die neueste
+                    
+                    if (latestShow) {
+                        showLatestShow();
+                        // Auto-redirect nach 4 Sekunden
+                        setTimeout(() => {
+                            window.location.href = latestShow.htmlFile;
+                        }, 4000);
+                    } else {
+                        showError('Keine Shows verfügbar');
+                    }
+                } else {
+                    throw new Error('shows.json nicht gefunden');
+                }
+            } catch (error) {
+                console.error('Fehler beim Laden der Shows:', error);
+                showError('Shows konnten nicht geladen werden');
+            }
+        }
+
+        function showLatestShow() {
+            document.getElementById('loading').classList.add('hidden');
+            document.getElementById('showInfo').classList.remove('hidden');
+            
+            document.getElementById('showTitle').textContent = `Show vom ${formatShowTime(latestShow.timestamp)}`;
+            document.getElementById('showTime').textContent = `Dauer: ${Math.round(latestShow.size / 1024 / 1024)} MB`;
+        }
+
+        function showError(message) {
+            document.getElementById('loading').innerHTML = `
+                <div class="text-red-300">❌ ${message}</div>
+                <div class="text-sm opacity-60 mt-2">Versuche es später erneut</div>
+            `;
+        }
+
+        function goToLatestShow() {
+            if (latestShow) {
+                window.location.href = latestShow.htmlFile;
+            }
+        }
+
+        function showAllShows() {
+            document.getElementById('showInfo').classList.add('hidden');
+            document.getElementById('showList').classList.remove('hidden');
+            
+            const container = document.getElementById('showsContainer');
+            container.innerHTML = shows.map(show => `
+                <div class="bg-white bg-opacity-10 rounded-lg p-3 text-left hover:bg-opacity-20 transition-all cursor-pointer" 
+                     onclick="window.location.href='${show.htmlFile}'">
+                    <div class="font-medium text-sm">Show vom ${formatShowTime(show.timestamp)}</div>
+                    <div class="text-xs opacity-70 flex justify-between">
+                        <span>${Math.round(show.size / 1024 / 1024)} MB</span>
+                        <span>🎧 ${Math.round(show.audioSize / 1024 / 1024)} MB Audio</span>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function hideShowList() {
+            document.getElementById('showList').classList.add('hidden');
+            document.getElementById('showInfo').classList.remove('hidden');
+        }
+
+        // Starte beim Laden der Seite
+        window.addEventListener('load', loadShows);
+    </script>
+</body>
+</html> 

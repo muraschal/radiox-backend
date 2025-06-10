@@ -3,6 +3,10 @@
 # Output-Ordner
 output/
 audio_archive/
+outplay/
+
+# Web-Ordner für Vercel (wird committed)
+# web/ - NICHT ignorieren!
 
 # Temporäre Ordner (falls sie erstellt werden)
 temp/
@@ -72,4 +76,5 @@ util_*.py
 
 # Ausnahmen für offizielle Scripts
 !test_official.py
-!util_official.py 
+!util_official.py
+!sync_web_shows.py 
