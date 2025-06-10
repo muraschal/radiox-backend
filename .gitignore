@@ -23,6 +23,7 @@ debug_*.py
 *.json
 !requirements.txt
 !package.json
+!vercel.json
 
 # Audio-Dateien
 *.mp3
