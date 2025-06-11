@@ -514,7 +514,13 @@ Schreibe den kompletten Dialog auf DEUTSCH. Alle Sprecher-Dialoge müssen auf De
             lang_name = "DEUTSCH"
         else:
             lang_instruction = """🌍 LANGUAGE: ENGLISH ONLY
-Write the entire dialogue in ENGLISH. All speaker dialogue must be in English language."""
+Write the entire dialogue in ENGLISH. All speaker dialogue must be in English language.
+
+🎙️ ENGLISH TTS OPTIMIZATION:
+• Write PERCENT symbols (%) as "percent" (e.g. "2.5%" → "2.5 percent")
+• Write DEGREE symbols (°) as "degrees" (e.g. "20°C" → "20 degrees Celsius")
+• Use natural English number pronunciation and phrasing
+• Optimize for natural English TTS pronunciation"""
             lang_name = "ENGLISH"
 
         return f"""🎙️ FINAL RADIOX PROMPT
