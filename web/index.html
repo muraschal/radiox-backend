@@ -24,18 +24,32 @@
         }
 
         .title {
-            font-size: 3rem;
+            font-size: 3.5rem;
             font-weight: 900;
-            margin-bottom: 1rem;
-            background: linear-gradient(135deg, #ffffff 0%, #667eea 50%, #764ba2 100%);
+            margin-bottom: 0.3rem;
+            letter-spacing: -0.05em;
+            background: linear-gradient(135deg, #ffffff 0%, #c0c0c0 100%);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
+            text-shadow: 0 0 30px rgba(255,255,255,0.3);
+            position: relative;
+            z-index: 2;
         }
 
-        .red-x {
-            color: #ff4444;
-            -webkit-text-fill-color: #ff4444;
+        .title .red-x {
+            color: #ff4444 !important;
+            -webkit-text-fill-color: #ff4444 !important;
+            background: none !important;
+            background-clip: initial !important;
+        }
+        
+        .title .ai-sup {
+            font-size: 0.4em;
+            color: #ffffff !important;
+            -webkit-text-fill-color: #ffffff !important;
+            background: none !important;
+            background-clip: initial !important;
         }
 
         .loading {
@@ -95,7 +109,7 @@
 </head>
 <body>
     <div class="container">
-        <h1 class="title">RADIO<span class="red-x">X</span></h1>
+        <h1 class="title">RADIO<span class="red-x">X</span><sup class="ai-sup">AI</sup></h1>
         <div class="loading" id="status">
             Suche neueste Show...
             <span class="spinner"></span>
