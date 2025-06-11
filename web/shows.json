@@ -1,13 +1,22 @@
 {
-  "lastUpdated": "2025-06-11T02:11:36.804800",
+  "lastUpdated": "2025-06-11T02:25:23.691083",
   "totalShows": 10,
   "shows": [
+    {
+      "timestamp": "250611_0225",
+      "htmlFile": "radiox_dashboard_fancy_250611_0225.html",
+      "mp3File": "radiox_250611_0225.mp3",
+      "pngFile": "radiox_250611_0225.png",
+      "size": 64979,
+      "audioSize": 6698073,
+      "coverSize": 1342675
+    },
     {
       "timestamp": "250611_0211",
       "htmlFile": "radiox_dashboard_fancy_250611_0211.html",
       "mp3File": "radiox_250611_0211.mp3",
       "pngFile": "radiox_250611_0211.png",
-      "size": 63841,
+      "size": 65391,
       "audioSize": 3380731,
       "coverSize": 932150
     },
@@ -16,7 +25,7 @@
       "htmlFile": "radiox_dashboard_fancy_250611_0204.html",
       "mp3File": "radiox_250611_0204.mp3",
       "pngFile": "radiox_250611_0204.png",
-      "size": 63513,
+      "size": 65063,
       "audioSize": 3180111,
       "coverSize": 1053460
     },
@@ -25,7 +34,7 @@
       "htmlFile": "radiox_dashboard_fancy_250611_0157.html",
       "mp3File": "radiox_250611_0157.mp3",
       "pngFile": "radiox_250611_0157.png",
-      "size": 62459,
+      "size": 64009,
       "audioSize": 3041178,
       "coverSize": 1922342
     },
@@ -34,7 +43,7 @@
       "htmlFile": "radiox_dashboard_fancy_250611_0154.html",
       "mp3File": "radiox_250611_0154.mp3",
       "pngFile": "radiox_250611_0154.png",
-      "size": 63534,
+      "size": 65084,
       "audioSize": 3379896,
       "coverSize": 1666997
     },
@@ -43,7 +52,7 @@
       "htmlFile": "radiox_dashboard_fancy_250611_0150.html",
       "mp3File": "radiox_250611_0150.mp3",
       "pngFile": "radiox_250611_0150.png",
-      "size": 64179,
+      "size": 65729,
       "audioSize": 7110181,
       "coverSize": 1944428
     },
@@ -52,7 +61,7 @@
       "htmlFile": "radiox_dashboard_fancy_250611_0144.html",
       "mp3File": "radiox_250611_0144.mp3",
       "pngFile": "radiox_250611_0144.png",
-      "size": 63425,
+      "size": 64975,
       "audioSize": 4019560,
       "coverSize": 1460212
     },
@@ -61,7 +70,7 @@
       "htmlFile": "radiox_dashboard_fancy_250611_0139.html",
       "mp3File": "radiox_250611_0139.mp3",
       "pngFile": "radiox_250611_0139.png",
-      "size": 63637,
+      "size": 65187,
       "audioSize": 6698073,
       "coverSize": 1540080
     },
@@ -70,7 +79,7 @@
       "htmlFile": "radiox_dashboard_fancy_250611_0013.html",
       "mp3File": "radiox_250611_0013.mp3",
       "pngFile": "radiox_250611_0013.png",
-      "size": 62558,
+      "size": 64108,
       "audioSize": 4631683,
       "coverSize": 1680421
     },
@@ -79,18 +88,9 @@
       "htmlFile": "radiox_dashboard_fancy_250611_0007.html",
       "mp3File": "radiox_250611_0007.mp3",
       "pngFile": "radiox_250611_0007.png",
-      "size": 63271,
+      "size": 64821,
       "audioSize": 3841322,
       "coverSize": 1683082
-    },
-    {
-      "timestamp": "250611_0000",
-      "htmlFile": "radiox_dashboard_fancy_250611_0000.html",
-      "mp3File": "radiox_250611_0000.mp3",
-      "pngFile": "radiox_250611_0000.png",
-      "size": 58906,
-      "audioSize": 4855709,
-      "coverSize": 1622919
     }
   ]
 }
