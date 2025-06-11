@@ -51,6 +51,16 @@
             background: none !important;
             background-clip: initial !important;
         }
+        
+        .title {
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        
+        .title:hover {
+            transform: scale(1.05);
+            text-shadow: 0 0 40px rgba(255,255,255,0.5);
+        }
 
         .loading {
             font-size: 1.2rem;
@@ -109,7 +119,9 @@
 </head>
 <body>
     <div class="container">
-        <h1 class="title">RADIO<span class="red-x">X</span><sup class="ai-sup">AI</sup></h1>
+        <a href="https://github.com/muraschal/radiox-backend" target="_blank" rel="noopener noreferrer" style="text-decoration: none;">
+            <h1 class="title">RADIO<span class="red-x">X</span><sup class="ai-sup">AI</sup></h1>
+        </a>
         <div class="loading" id="status">
             Suche neueste Show...
             <span class="spinner"></span>
