@@ -836,8 +836,8 @@ class AudioGenerationService:
             intro_fade_duration = 10.0  # 10s ultra-smooth intro fadeout (3s-13s)
             fade_down_end = pure_intro_duration + intro_fade_duration  # End of first fade (13s)
             speech_end = intro_duration + speech_duration  # When speech ends
-            ramp_up_start = speech_end - 7.0  # Start final ramp-up 7s before speech ends (10s später als vorher)  
-            ramp_up_duration = 7.0  # 7s ultra-smooth ramp-up duration (angepasst für späteren Start)
+            ramp_up_start = speech_end - 4.0  # Start final ramp-up 4s before speech ends (3s später als vorher)  
+            ramp_up_duration = 4.0  # 4s ultra-smooth ramp-up duration (verkürzt für späteren Start)
             
             filter_complex = (
                 f"[0:a]asplit=3[jingle1][jingle2][jingle3];"                                     # Split jingle into 3 streams
