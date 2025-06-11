@@ -1099,6 +1099,10 @@ class DashboardFancyService:
         
         /* Mobile Responsive */
         @media (max-width: 768px) {{
+            .audio-section {{
+                padding: 2rem 2rem;
+            }}
+            
             .player-content {{
                 flex-direction: column;
                 gap: 1.5rem;
