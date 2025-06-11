@@ -504,7 +504,13 @@ class ContentProcessingService:
         # Language configuration
         if language == "de":
             lang_instruction = """🌍 SPRACHE: NUR DEUTSCH
-Schreibe den kompletten Dialog auf DEUTSCH. Alle Sprecher-Dialoge müssen auf Deutsch sein."""
+Schreibe den kompletten Dialog auf DEUTSCH. Alle Sprecher-Dialoge müssen auf Deutsch sein.
+
+🎙️ DEUTSCHE AUSSPRACHE-OPTIMIERUNG:
+• Schreibe DOLLAR-Zeichen ($) als "Dollar" aus (z.B. "$100" → "100 Dollar")
+• Schreibe GRAD-Zeichen (°) als "Grad" aus (z.B. "20°C" → "20 Grad Celsius")
+• Verwende deutsche Zahlenaussprache und Formulierungen
+• Optimiere für natürliche deutsche TTS-Aussprache"""
             lang_name = "DEUTSCH"
         else:
             lang_instruction = """🌍 LANGUAGE: ENGLISH ONLY
