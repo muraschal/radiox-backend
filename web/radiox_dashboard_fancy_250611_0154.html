@@ -1476,23 +1476,52 @@ LUCY: Until we meet again in the midnight hour, dear listeners. Goodnight and sw
             async getAvailableShows() {
                 const existingShows = [];
                 
-                // Smart detection: scan broadly for dashboard files
-                const currentTs = this.currentTimestamp;
-                const datePart = currentTs.split('_')[0]; // e.g., "250610"
-                const currentTime = parseInt(currentTs.split('_')[1]); // e.g., 1701
+                try {
+                    // NEW: Use shows.json API for accurate show discovery
+                    const response = await fetch('shows.json');
+                    if (response.ok) {
+                        const data = await response.json();
+                        if (data.shows && data.shows.length > 0) {
+                            // Extract timestamps from shows.json
+                            const timestamps = data.shows.map(show => show.timestamp);
+                            console.log('🎯 Shows from API:', timestamps);
+                            return timestamps; // Already sorted newest first
+                        }
+                    }
+                } catch (error) {
+                    console.log('📡 shows.json API failed, falling back to manual discovery:', error.message);
+                }
                 
-                // Generate comprehensive time slots for the day (every 30 minutes)
+                // FALLBACK: Smart detection across multiple days if API fails
+                const currentTs = this.currentTimestamp;
+                const datePart = currentTs.split('_')[0]; // e.g., "250611"
+                
+                // Get current date and previous 2 days for broader search
+                const searchDates = [];
+                const currentDate = new Date();
+                for (let i = 0; i < 3; i++) {
+                    const searchDate = new Date(currentDate);
+                    searchDate.setDate(currentDate.getDate() - i);
+                    const dateStr = searchDate.toISOString().slice(2, 10).replace(/-/g, '');
+                    searchDates.push(dateStr);
+                }
+                
+                console.log('🔍 Searching dates:', searchDates);
+                
+                // Generate comprehensive time slots for multiple days
                 const timeSlots = [];
                 
-                // Start from 6:00 AM to 11:59 PM
-                for (let hour = 6; hour < 24; hour++) {
-                    for (let minute = 0; minute < 60; minute += 30) {
-                        const timeStr = hour.toString().padStart(2, '0') + 
-                                      minute.toString().padStart(2, '0');
-                        const timestamp = `${datePart}_${timeStr}`;
-                        timeSlots.push(timestamp);
+                searchDates.forEach(dateStr => {
+                    // More realistic time slots: every 15 minutes from 6 AM to midnight
+                    for (let hour = 6; hour < 24; hour++) {
+                        for (let minute = 0; minute < 60; minute += 15) {
+                            const timeStr = hour.toString().padStart(2, '0') + 
+                                          minute.toString().padStart(2, '0');
+                            const timestamp = `${dateStr}_${timeStr}`;
+                            timeSlots.push(timestamp);
+                        }
                     }
-                }
+                });
                 
                 // Check all potential time slots in parallel for better performance
                 const checkPromises = timeSlots.map(async timestamp => {
@@ -1522,8 +1551,8 @@ LUCY: Until we meet again in the midnight hour, dear listeners. Goodnight and sw
                     existingShows.push(this.currentTimestamp);
                 }
                 
-                const sortedShows = existingShows.sort();
-                console.log('🎯 Available Shows:', sortedShows);
+                const sortedShows = existingShows.sort().reverse(); // Newest first
+                console.log('🎯 Available Shows (fallback):', sortedShows);
                 
                 return sortedShows;
             }

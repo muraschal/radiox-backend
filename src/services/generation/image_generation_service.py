@@ -64,8 +64,8 @@ class ImageGenerationService:
             return await self._generate_fallback_cover(session_id, broadcast_content)
         
         try:
-            # 1. DALL-E Prompt erstellen
-            prompt = self._create_dalle_prompt(broadcast_content, target_time)
+            # 1. DALL-E Prompt erstellen (mit GPT-Übersetzung)
+            prompt = await self._create_dalle_prompt(broadcast_content, target_time)
             
             # 2. DALL-E API Request
             cover_url = await self._request_dalle_image(prompt)
@@ -288,55 +288,101 @@ class ImageGenerationService:
     
     # Private Methods
     
-    def _create_dalle_prompt(self, broadcast_content: Dict[str, Any], target_time: Optional[str] = None) -> str:
-        """Professional DALL-E prompt for consistent RadioX covers"""
+    async def _create_dalle_prompt(self, broadcast_content: Dict[str, Any], target_time: Optional[str] = None) -> str:
+        """Professional DALL-E prompt for consistent RadioX covers - ALL IN ENGLISH"""
         
         # Extract show data from broadcast_content
         show_config = broadcast_content.get("show_config", {})
         show_info = show_config.get("show", {})
         selected_news = broadcast_content.get("selected_news", [])
         
-        # Show Category
-        show_name = show_info.get("name", "Radio Show")
+        # Show Category - Translate to English for better DALL-E understanding
+        preset_name = show_info.get("preset_name", "Radio Show")
+        display_name = show_info.get("display_name", preset_name)
+        description = show_info.get("description", "")
         city_focus = show_info.get("city_focus", "Local")
-        category = f"{show_name} - {city_focus} Focus"
         
-        # Topics (from selected news)
+        # Translate German show info to English
+        display_name_en = await self._translate_to_english(display_name) if display_name else "Radio Show"
+        description_en = await self._translate_to_english(description) if description else ""
+        city_focus_en = await self._translate_to_english(city_focus) if city_focus else "Local"
+        
+        # Build comprehensive English category
+        if description_en:
+            category = f"{display_name_en} - {description_en}"
+        else:
+            category = f"{display_name_en} - {city_focus_en} Focus"
+        
+        # Topics - Translate German titles to English with GPT
         topics = []
-        for news_item in selected_news[:3]:  # Max 3 topics
+        for news_item in selected_news[:3]:  # Max 3 topics for readability
             title = news_item.get("title", "")
             if title:
-                # Extract key topic from title (first 3-4 words)
-                topic_words = title.split()[:4]
-                topics.append(" ".join(topic_words))
+                # Translate German title to English for better DALL-E comprehension
+                english_title = await self._translate_to_english(title)
+                # Use FULL translated title but limit to reasonable length
+                full_title = english_title[:100] + "..." if len(english_title) > 100 else english_title
+                topics.append(full_title)
         
         if not topics:
             topics = ["Breaking News", "Local Updates", "Tech Innovation"]
         
         topics_str = ", ".join(topics[:3])
         
-        # Hosts (from speaker configurations)
+        # Hosts - Only include real speaker names (already in English)
         hosts = []
         primary_speaker = show_config.get("speaker", {})
         secondary_speaker = show_config.get("secondary_speaker", {})
         
-        if primary_speaker.get("voice_name"):
+        if primary_speaker.get("voice_name") and primary_speaker["voice_name"] != "AI Host":
             hosts.append(primary_speaker["voice_name"])
-        if secondary_speaker.get("voice_name"):
+        if secondary_speaker.get("voice_name") and secondary_speaker["voice_name"] != "AI Host":
             hosts.append(secondary_speaker["voice_name"])
-            
-        if not hosts:
-            hosts = ["AI Host"]
-            
-        hosts_str = " & ".join(hosts)
         
-        # Create optimized prompt (balance between professional and stability)
-        prompt = f"""Create a sleek podcast cover for "RadioX" - {category}. Topics: {topics_str}. Hosts: {hosts_str}. 
+        # Create optimized English prompt - NO "Hosts:" section if no real hosts
+        if hosts:
+            hosts_str = " & ".join(hosts)
+            prompt = f"""Create a sleek podcast cover for "RadioX" - {category}. Topics: {topics_str}. Hosts: {hosts_str}. 
+
+Style: Modern minimalist design with bold typography, dark blue/black background, electric accent colors (neon cyan, yellow). Include subtle AI elements (waveforms, circuits). Professional tech aesthetic, square format."""
+        else:
+            prompt = f"""Create a sleek podcast cover for "RadioX" - {category}. Topics: {topics_str}. 
 
 Style: Modern minimalist design with bold typography, dark blue/black background, electric accent colors (neon cyan, yellow). Include subtle AI elements (waveforms, circuits). Professional tech aesthetic, square format."""
 
-        logger.debug(f"DALL-E prompt created: {len(prompt)} characters")
+        logger.debug(f"DALL-E prompt created (English): {len(prompt)} characters")
         return prompt
+    
+    async def _translate_to_english(self, german_text: str) -> str:
+        """GPT ping-pong: Translate German text to English for DALL-E"""
+        if not german_text or not self.openai_api_key:
+            return german_text
+        
+        try:
+            import openai
+            client = openai.AsyncOpenAI(api_key=self.openai_api_key)
+            
+            # Simple, focused translation prompt
+            translation_prompt = f"""Translate this German text to English for an AI image generator. Keep it concise and clear:
+
+German: {german_text}
+
+English:"""
+
+            response = await client.chat.completions.create(
+                model="gpt-4o-mini",  # Fast, cheap model for translation
+                messages=[{"role": "user", "content": translation_prompt}],
+                max_tokens=200,
+                temperature=0.3  # Low temperature for consistent translation
+            )
+            
+            translated = response.choices[0].message.content.strip()
+            logger.debug(f"Translation: '{german_text}' → '{translated}'")
+            return translated
+            
+        except Exception as e:
+            logger.warning(f"⚠️ Translation failed for '{german_text}': {e}")
+            return german_text  # Fallback to original
     
     def _extract_show_style(self, broadcast_content: Dict[str, Any]) -> str:
         """Extract full show style description from DB"""
