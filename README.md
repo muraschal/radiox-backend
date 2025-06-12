@@ -2,7 +2,7 @@
 
 <div align="center">
 
-![Release](https://img.shields.io/badge/release-v3.3-brightgreen)
+![Release](https://img.shields.io/badge/release-v3.3.1-brightgreen)
 ![Build](https://img.shields.io/badge/build-passing-brightgreen)
 ![License](https://img.shields.io/badge/license-MIT-blue)
 ![Python](https://img.shields.io/badge/python-3.8+-blue)
@@ -189,7 +189,7 @@ sequenceDiagram
     
     User->>Main: python main.py --news-count 3
     
-    Note over Main: 📻 RadioX v3.3 Workflow Start
+    Note over Main: 📻 RadioX v3.3.1 Workflow Start
     
     Main->>Show: get_show_preset("zurich")
     Show->>DB: SELECT show configuration
@@ -247,7 +247,7 @@ sequenceDiagram
 ### 🏗️ Component Architecture
 
 ```
-🎙️ RadioX v3.3 - Enterprise AI Radio Platform
+🎙️ RadioX v3.3.1 - Enterprise AI Radio Platform
 │
 ├── 🎭 Content Intelligence Layer
 │   ├── GPT-4 Script Generation with Show Context
@@ -389,7 +389,7 @@ ls -la jingles/                  # View available jingles (all formats)
 - **📂 Archive**: Automatic, zero-maintenance
 - **🎼 Multi-Format**: Supports MP3, FLAC, WAV, OGG jingles
 
-## 🌟 What's New in v3.3
+## 🌟 What's New in v3.3.1
 
 ### ✨ **Audio Engineering Revolution**
 - 🎵 **Professional Jingle Mixing** - 10% backing level for broadcast-professional sound
@@ -397,6 +397,7 @@ ls -la jingles/                  # View available jingles (all formats)
 - 🔊 **Advanced FFmpeg Engineering** - 3-phase audio system with speech dominance
 - ⚡ **Perfect Workflow Synchronization** - Dashboard always finds correct audio files
 - 🌍 **English Codebase** - Complete translation for international development
+- 🔧 **Runtime Stability** - Enhanced f-string formatting and deployment reliability
 
 ### 🔧 **Technical Improvements**  
 - ⚡ **Parallel Processing** - High-performance audio generation
