@@ -41,6 +41,9 @@ class ShowConfiguration:
     exclude_categories: List[str] = field(default_factory=list)
     show_behavior: Dict[str, Any] = field(default_factory=dict)
     
+    # NEW: GPT-optimized article selection instructions
+    gpt_selection_instructions: str = ""
+    
     # Metadata
     min_priority: int = 5
     max_feeds_per_category: int = 10
@@ -326,6 +329,8 @@ class ShowService:
             news_categories=preset_data.get("news_categories", []),
             exclude_categories=preset_data.get("exclude_categories", []),
             show_behavior=preset_data.get("show_behavior", {}),
+            gpt_selection_instructions=preset_data.get("gpt_selection_instructions", ""),
+            
             min_priority=preset_data.get("min_priority", 5),
             max_feeds_per_category=preset_data.get("max_feeds_per_category", 10),
             is_active=preset_data.get("is_active", True),

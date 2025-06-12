@@ -364,12 +364,12 @@ class AudioGenerationService:
                 # Default speaker for lines without speaker prefix
                 # ENTFERNT: Automatische Weather-Speaker Zuweisung für maximale Flexibilität
                 # Verwende immer den Default-Speaker für untagged content
-                segments.append({
+                    segments.append({
                     "speaker": self._get_primary_speaker_from_config(),  # Dynamischer Default
-                    "text": line,
-                    "original_speaker": "default",
-                    "auto_assigned": False
-                })
+                        "text": line,
+                        "original_speaker": "default",
+                        "auto_assigned": False
+                    })
         
         return segments
     
@@ -578,7 +578,7 @@ class AudioGenerationService:
         if not speaker_tag:
             return False
         
-        # Convert to lowercase for comparison  
+        # Convert to lowercase for comparison
         tag_lower = speaker_tag.lower()
         
         # Conservative validation - allow common speaker types and aliases (dynamic)

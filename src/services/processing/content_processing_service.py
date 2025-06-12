@@ -689,7 +689,7 @@ Only the dialogue text - directly usable as radio script."""
             price = bitcoin.get('price_usd')
             change_24h = bitcoin.get('change_24h', 0)
             try:
-                return f"Bitcoin ${float(price):,.0f} ({float(change_24h):+.1f}% 24h)"
+                return f"Bitcoin ${float(price):.0f} ({float(change_24h):+.1f}% 24h)"
             except (ValueError, TypeError):
                 return f"Bitcoin ${price} ({change_24h}% 24h)"
         
@@ -930,6 +930,9 @@ CRITICAL: This is a SOLO SHOW - avoid repetitive '{speaker_lower}:' tags. Let th
         city_focus = show_details.get("city_focus", "Zürich")
         show_description = show_details.get("description", "")
         
+        # NEW: Get GPT selection instructions for optimized article selection
+        gpt_instructions = show_details.get("gpt_selection_instructions", "")
+        
         # Build show style with full DB values
         show_style = f"Show: {show_name} | Focus: {city_focus}\nStyle: {show_description}"
         
@@ -954,6 +957,17 @@ CRITICAL: This is a SOLO SHOW - avoid repetitive '{speaker_lower}:' tags. Let th
         city_focus = show_details.get("city_focus", "Zürich")
         content_scope = f"Local focus: {city_focus}, with selective international/tech coverage"
 
+        # Build GPT-optimized selection instructions
+        selection_criteria = ""
+        if gpt_instructions:
+            selection_criteria = f"""
+## 🎯 SPECIFIC SELECTION CRITERIA (PRIORITY)
+{gpt_instructions}
+
+## GENERAL FILTER LOGIC (SECONDARY)"""
+        else:
+            selection_criteria = "## FILTER LOGIC"
+
         return f"""
 # SYSTEM PROMPT – RADIOX ARTICLE SELECTOR
 
@@ -970,7 +984,7 @@ You are an expert content strategist and radio news curator. Your task is to sel
 **Content Scope:** 
 {content_scope}
 
-## FILTER LOGIC
+{selection_criteria}
 Select {target_count} articles that best match:
 1. **Stylistic fit:** Articles that invite commentary in the voice of the show (e.g. irony, critique, emotional depth, insider analysis).
 2. **Scope fit:** Articles that match the show's geographic or topical focus.

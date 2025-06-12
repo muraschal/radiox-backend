@@ -210,7 +210,7 @@ class BitcoinService:
             if price >= price_threshold:
                 alerts.append({
                     "type": "price_threshold",
-                    "message": f"₿ Bitcoin above ${price_threshold:,.0f}! Current: ${price:,.2f}",
+                    "message": f"₿ Bitcoin above ${price_threshold:.0f}! Current: ${price:.2f}",
                     "price": price,
                     "threshold": price_threshold
                 })
@@ -230,7 +230,7 @@ class BitcoinService:
                 if abs(price - milestone) < 1000:  # Within 1k of milestone
                     alerts.append({
                         "type": "milestone_approach",
-                        "message": f"₿ Bitcoin approaching ${milestone:,.0f}! Current: ${price:,.2f}",
+                        "message": f"₿ Bitcoin approaching ${milestone:.0f}! Current: ${price:.2f}",
                         "price": price,
                         "milestone": milestone
                     })
@@ -314,7 +314,7 @@ class BitcoinService:
 CURRENT TIME: {current_time} ({time_context})
 
 BITCOIN DATA:
-- Price: ${price_data['price_usd']:,.0f}
+- Price: ${price_data['price_usd']:.0f}
 - 1h: {price_data['change_1h']:+.1f}%
 - 24h: {price_data['change_24h']:+.1f}%
 - 7d: {price_data['change_7d']:+.1f}%
@@ -465,4 +465,4 @@ Your answer in English:"""
         else:
             trend_word = "dropped significantly"
         
-        return f"Bitcoin is trading at {price:,.0f} dollars and {trend_word} by {abs(change):.1f} percent {time_description}." 
+        return f"Bitcoin is trading at {price:.0f} dollars and {trend_word} by {abs(change):.1f} percent {time_description}." 
