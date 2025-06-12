@@ -1266,14 +1266,14 @@ class DashboardFancyService:
     <div class="mvp-banner">MVP</div>
     
     <!-- Header -->
-    <header class="header">
+        <header class="header">
         <div class="logo-container">
             <a href="index.html" style="text-decoration: none; color: inherit;">
                 <h1 class="title">RADIO<span class="red-x">X</span><sup class="ai-sup">AI</sup></h1>
             </a>
             <p class="subtitle">AI-generated. Enterprise quality. Zero compromise. It's the future, and it's loud.</p>
         </div>
-    </header>
+        </header>
 
     <!-- Glasmorph Audio Player -->
     <section class="audio-section">
@@ -1284,8 +1284,8 @@ class DashboardFancyService:
                         <img src="{cover_filename}" alt="RadioX Cover" class="cover-image">
                         <div class="play-overlay" id="playButton">
                             <div class="play-icon"></div>
-                        </div>
-                    </div>
+            </div>
+    </div>
                     <div class="audio-info">
                         <h2 class="audio-title">{show_name} – {timestamp_formatted}</h2>
                         <div class="audio-meta">Generated {generation_time} | Duration: {duration_formatted}</div>
@@ -1636,7 +1636,7 @@ class DashboardFancyService:
                 </div>
                 <div class="stat-card">
                     <div class="stat-icon">🌡️</div>
-                                            <div class="stat-value">{stats['weather_temp']}</div>
+                    <div class="stat-value">{stats['weather_temp']}</div>
                     <div class="stat-label">Temperature</div>
                     <div class="stat-trend trend-neutral">{weather_trend}</div>
                 </div>
