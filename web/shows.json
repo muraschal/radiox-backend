@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2025-06-15T16:21:45.420586",
+  "lastUpdated": "2025-06-15T16:23:24.516226",
   "totalShows": 10,
   "shows": [
     {
@@ -9,7 +9,10 @@
       "pngFile": "radiox_250615_1449.png",
       "size": 2489,
       "audioSize": 6372063,
-      "coverSize": 3224877
+      "coverSize": 3224877,
+      "title": "RIVA - The Wedding Show",
+      "subtitle": "Special Edition \u2022 Mallorca \u2022 Vanessa \u2764\ufe0f Richard",
+      "description": "Eine besondere RadioX Sendung zur Hochzeit von Vanessa und Richard auf Mallorca. Mit der kompletten Liebesgeschichte vom ersten Treffen im Zug bis zum Antrag auf dem Parkplatz."
     },
     {
       "timestamp": "250615_1437",
