@@ -11,11 +11,11 @@
     <meta property="og:description" content="AI-generated. Enterprise quality. Zero compromise. It's the future, and it's loud.">
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://radiox.ai">
-    <meta property="og:image" content="radiox_250613_1036.png">
+    <meta property="og:image" content="radiox_250615_1437.png">
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="RadioX – Your Radio, Just Got Smarter.">
     <meta name="twitter:description" content="AI-generated. Enterprise quality. Zero compromise. It's the future, and it's loud.">
-    <meta name="twitter:image" content="radiox_250613_1036.png">
+    <meta name="twitter:image" content="radiox_250615_1437.png">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📻</text></svg>">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
@@ -223,11 +223,97 @@
             color: #ffffff;
         }
         
+        /* Filter Container */
+        .filter-container {
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: 12px;
+            padding: var(--space-lg);
+            margin-bottom: var(--space-lg);
+            backdrop-filter: var(--glass-blur);
+            display: flex;
+            flex-wrap: wrap;
+            gap: var(--space-md);
+            align-items: center;
+        }
+        
+        .filter-group {
+            display: flex;
+            align-items: center;
+            gap: var(--space-xs);
+        }
+        
+        .filter-label {
+            font-size: var(--text-sm);
+            font-weight: 600;
+            color: #ffffff;
+            white-space: nowrap;
+        }
+        
+        .filter-select, .filter-search {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 6px;
+            padding: 6px 12px;
+            color: #ffffff;
+            font-size: var(--text-sm);
+            min-width: 140px;
+        }
+        
+        .filter-search {
+            min-width: 200px;
+        }
+        
+        .filter-select:focus, .filter-search:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.3);
+        }
+        
+        .filter-select option {
+            background: #1a1a1a;
+            color: #ffffff;
+        }
+        
+        .filter-stats {
+            margin-left: auto;
+            color: #cccccc;
+            font-size: var(--text-sm);
+            font-weight: 500;
+        }
+        
         .articles-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
             gap: var(--space-lg);
             margin-top: var(--space-lg);
+        }
+        
+        .load-more-container {
+            text-align: center;
+            margin-top: var(--space-xl);
+        }
+        
+        .load-more-btn {
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: 8px;
+            padding: var(--space-md) var(--space-xl);
+            color: #ffffff;
+            font-weight: 600;
+            cursor: pointer;
+            backdrop-filter: var(--glass-blur);
+            transition: all 0.2s ease;
+        }
+        
+        .load-more-btn:hover {
+            background: rgba(102, 126, 234, 0.2);
+            border-color: #667eea;
+        }
+        
+        .load-more-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
         }
         
         .article-card {
@@ -296,6 +382,17 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
+        }
+        
+        .dev-info-header:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+        
+        .dev-info-toggle {
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #667eea;
+            transition: transform 0.2s ease;
         }
         
         .dev-info-card-title {
@@ -856,6 +953,97 @@
         .badge-source { background: linear-gradient(135deg, #667eea, #764ba2); color: white; }
         .badge-category { background: #333; color: #ccc; }
         .badge-time { background: #222; color: #888; }
+        .badge-featured { background: linear-gradient(135deg, #ff4444, #ff6666); color: white; font-weight: 600; }
+        
+        /* 🎯 FEATURED: Special styling for show articles */
+        .featured-show-article {
+            border: 2px solid #ff4444 !important;
+            background: rgba(255, 68, 68, 0.08) !important;
+            box-shadow: 0 0 20px rgba(255, 68, 68, 0.2);
+            position: relative;
+        }
+        
+        .featured-show-article:hover {
+            border-color: #ff6666 !important;
+            background: rgba(255, 68, 68, 0.12) !important;
+            box-shadow: 0 0 30px rgba(255, 68, 68, 0.3), 0 8px 32px rgba(102, 126, 234, 0.1);
+        }
+        
+        .featured-show-article::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, #ff4444, #ff6666, #ff4444);
+            animation: pulse-red 2s ease-in-out infinite;
+        }
+        
+        @keyframes pulse-red {
+            0%, 100% { opacity: 0.8; }
+            50% { opacity: 1; }
+        }
+        
+        /* 🎯 INTELLIGENCE: Zweispaltiges Layout */
+        .intelligence-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: var(--space-md);
+            margin-bottom: var(--space-lg);
+        }
+        
+        .intelligence-card {
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: 16px;
+            overflow: hidden;
+            backdrop-filter: var(--glass-blur);
+            transition: all 0.3s ease;
+        }
+        
+        .intelligence-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 32px rgba(102, 126, 234, 0.1);
+        }
+        
+        .intelligence-header {
+            padding: var(--space-sm) var(--space-md);
+            background: rgba(255, 255, 255, 0.05);
+            border-bottom: 1px solid var(--glass-border);
+        }
+        
+        .intelligence-title {
+            font-size: var(--text-lg);
+            font-weight: 600;
+            color: #ffffff;
+            margin: 0;
+        }
+        
+        .intelligence-content {
+            padding: var(--space-md);
+        }
+        
+        .intelligence-summary {
+            font-size: var(--text-sm);
+            color: #ccc;
+            line-height: 1.6;
+            font-style: italic;
+            margin-bottom: var(--space-sm);
+        }
+        
+        .intelligence-location {
+            font-size: var(--text-xs);
+            color: #888;
+            text-align: right;
+        }
+        
+        /* Mobile: Stack intelligence cards */
+        @media (max-width: 768px) {
+            .intelligence-grid {
+                grid-template-columns: 1fr;
+            }
+        }
         
         .article-title {
             font-size: var(--text-base);
@@ -930,11 +1118,12 @@
         .dev-info-content {
             max-height: 0;
             overflow: hidden;
-            transition: max-height 0.3s ease;
+            transition: max-height 0.5s ease;
         }
           
         .dev-info-content.expanded {
-            max-height: 2000px;
+            max-height: none;
+            overflow: visible;
         }
           
         .dev-info-preview {
@@ -1206,13 +1395,13 @@
             <div class="glasmorph-player" id="glasmorphPlayer">
                 <div class="player-content">
                     <div class="cover-container">
-                        <img src="radiox_250613_1036.png" alt="RadioX Cover" class="cover-image">
+                        <img src="radiox_250615_1437.png" alt="RadioX Cover" class="cover-image">
                         <div class="play-overlay" id="playButton">
                             <div class="play-icon"></div>
             </div>
     </div>
                     <div class="audio-info">
-                        <h2 class="audio-title">Zurich Local News | 10:36 Edition – 10:36</h2>
+                        <h2 class="audio-title">RIVA - the wedding show | 14:37 Edition – 14:37</h2>
                         <div class="audio-meta">Generated just now | Duration: 5:00</div>
                         
                         <div class="custom-controls">
@@ -1294,32 +1483,30 @@
     <section class="intelligence-section">
         <div class="intelligence-container">
             
-            <!-- Weather Card - INTELLIGENT GPT SUMMARY -->
-            <div class="bg-white rounded-lg shadow-sm">
-                <div class="bg-orange-500 text-white px-4 py-3 rounded-t-lg">
-                    <h3 class="font-bold">🌤️ <span class="yellow-highlight">Weather</span> Intelligence</h3>
-                </div>
-                <div class="p-4">
-                    <div class="bg-orange-50 border border-orange-200 p-3 rounded">
-                        <div class="text-sm text-orange-800 leading-relaxed">
-                            "Good morning Zurich, it's a beautiful day with a current temperature of 25.2°C and clear skies. Expect a slight dip to 24.9°C by 11:00, but warming up to 26.4°C by the afternoon with a few clouds. The rest of the week looks promising with similar weather patterns, so enjoy the sunshine!"
+            <div class="intelligence-grid">
+                <!-- Weather Card - INTELLIGENT GPT SUMMARY -->
+                <div class="intelligence-card weather-card">
+                    <div class="intelligence-header">
+                        <h3 class="intelligence-title">🌤️ Weather Intelligence</h3>
+                    </div>
+                    <div class="intelligence-content">
+                        <div class="intelligence-summary">
+                            "Beautiful Mallorca weather"
+                        </div>
+                        <div class="intelligence-location">
+                            <span>Zürich</span>
                         </div>
                     </div>
-                    <div class="mt-3 text-xs text-gray-600">
-                        <span>Zürich</span>
+                </div>
+                
+                <!-- Bitcoin Card - INTELLIGENT GPT SUMMARY -->
+                <div class="intelligence-card bitcoin-card">
+                    <div class="intelligence-header">
+                        <h3 class="intelligence-title">₿ Bitcoin Intelligence</h3>
                     </div>
-                </div>
-            </div>
-            
-            <!-- Bitcoin Card - INTELLIGENT GPT SUMMARY -->
-            <div class="bg-white rounded-lg shadow-sm">
-                <div class="bg-yellow-500 text-white px-4 py-3 rounded-t-lg">
-                    <h3 class="font-bold">₿ <span class="orange-highlight">Bitcoin</span> Intelligence</h3>
-                </div>
-                <div class="p-4">
-                    <div class="bg-yellow-50 border border-yellow-200 p-3 rounded">
-                        <div class="text-sm text-yellow-800 leading-relaxed">
-                            "Bitcoin is currently priced at $105,209, showing a slight negative trend of -2.4% over the past 24 hours, despite a positive growth of 1.7% over the week. As the Asian markets remain active and Europe kicks off, normal market movements are observed with one active alert."
+                    <div class="intelligence-content">
+                        <div class="intelligence-summary">
+                            "Bitcoin intelligence not available"
                         </div>
                     </div>
                 </div>
@@ -1328,25 +1515,60 @@
         </div>
     </section>
 
-    <!-- Featured Articles Section -->
+    <!-- All Articles Section with Dynamic Filters -->
     <section class="articles-section">
         <div class="articles-container">
-            <h2 class="section-title">📰 Featured Articles</h2>
-            <div class="articles-grid">
-                
-                <article class="article-card">
-                    <div class="article-meta">
-                        <span class="article-badge badge-source">Nzz</span>
-                        <span class="article-badge badge-category">zuerich</span>
-                        <span class="article-badge badge-time">0min ago</span>
-                    </div>
-                    <h3 class="article-title">«Die Tauben haben einem das Sandwich aus der Hand gerissen» – wie Städte das Problem mit den Vögeln lösen</h3>
-                    <p class="article-excerpt">In Zürich und Basel ist die Taube ein Politikum. Wieder einmal. Ist es wirklich so unmöglich, dass Tauben und Menschen in einer Stadt zusammenleben? Bericht aus einer Stadt, die es...</p>
-                    <div class="article-actions">
-                        <a href="https://www.nzz.ch/zuerich/winterthur-kuemmert-sich-um-seine-tauben-und-koennte-so-zum-vorbild-fuer-andere-staedte-werden-ein-besuch-im-taubenschlag-ld.1875982" target="_blank" class="action-link">🔗 Read more</a>
-                        <a href="https://www.nzz.ch/zuerich.rss" target="_blank" class="action-link">📡 Source</a>
-                    </div>
-                </article>
+            <h2 class="section-title">📰 All Articles</h2>
+            
+            <!-- 🚀 NEW: Smart Filter Bar with Show Presets -->
+            <div class="filter-container">
+                <div class="filter-group">
+                    <label class="filter-label">🎭 Show Preset:</label>
+                    <select id="presetFilter" class="filter-select">
+                        <option value="all">All Presets</option>
+                        <option value="zurich" title="Zurich Local News - Latest local news from Zurich and surrounding areas">Zurich Local News</option><option value="news" title="Global News Hot - International breaking news from all perspectives">Global News Hot</option><option value="oev" title="Public Transport News - Public transport special - Swiss transport and mobility focus">Public Transport News</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label class="filter-label">📂 Category:</label>
+                    <select id="categoryFilter" class="filter-select">
+                        <option value="all">All Categories</option>
+                        <option value="bitcoin">Bitcoin</option><option value="business">Business</option><option value="crypto">Crypto</option><option value="curated_1">Curated 1</option><option value="curated_2">Curated 2</option><option value="curated_3">Curated 3</option><option value="deutschland">Deutschland</option><option value="finanzen">Finanzen</option><option value="general">General</option><option value="heute">Heute</option><option value="international">International</option><option value="kultur">Kultur</option><option value="news_general">News General</option><option value="oesterreich">Oesterreich</option><option value="oev">Oev</option><option value="schweiz">Schweiz</option><option value="security">Security</option><option value="startup">Startup</option><option value="tech">Tech</option><option value="wetter">Wetter</option><option value="wirtschaft">Wirtschaft</option><option value="world">World</option><option value="zuerich">Zuerich</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label class="filter-label">📡 Source:</label>
+                    <select id="sourceFilter" class="filter-select">
+                        <option value="all">All Sources</option>
+                        <option value="20min">20MIN</option><option value="20min_partner">20MIN_PARTNER</option><option value="3sat">3SAT</option><option value="ard">ARD</option><option value="arte">ARTE</option><option value="bbc">BBC</option><option value="bitcoinmagazine">BITCOINMAGAZINE</option><option value="cash">CASH</option><option value="cointelegraph">COINTELEGRAPH</option><option value="cointelegraph_de">COINTELEGRAPH_DE</option><option value="deutschlandfunk">DEUTSCHLANDFUNK</option><option value="heise">HEISE</option><option value="nzz">NZZ</option><option value="orf">ORF</option><option value="rsi">RSI</option><option value="rss_app">RSS_APP</option><option value="rt">RT</option><option value="rts">RTS</option><option value="sbb_alerts">SBB_ALERTS</option><option value="srf">SRF</option><option value="swissinfo">SWISSINFO</option><option value="tagesanzeiger">TAGESANZEIGER</option><option value="techcrunch">TECHCRUNCH</option><option value="theverge">THEVERGE</option><option value="vbz_alerts">VBZ_ALERTS</option><option value="wired">WIRED</option><option value="zdf">ZDF</option><option value="zvv">ZVV</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label class="filter-label">🕒 Time:</label>
+                    <select id="timeFilter" class="filter-select">
+                        <option value="all">All Time</option>
+                        <option value="1h">Last Hour</option>
+                        <option value="6h">Last 6 Hours</option>
+                        <option value="24h">Last 24 Hours</option>
+                        <option value="7d">Last 7 Days</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <input type="text" id="searchInput" class="filter-search" placeholder="🔍 Search articles...">
+                </div>
+                <div class="filter-stats">
+                    Showing <span id="visibleCount">0</span> of <span id="totalCount">0</span> articles
+                </div>
+            </div>
+            
+            <!-- Articles Grid - Client-side Rendered -->
+            <div class="articles-grid" id="articlesGrid">
+                <!-- Articles will be rendered by JavaScript -->
+            </div>
+            
+            <!-- Load More Button -->
+            <div class="load-more-container">
+                <button id="loadMoreBtn" class="load-more-btn">Load More Articles</button>
             </div>
         </div>
     </section>
@@ -1360,17 +1582,15 @@
             <div class="dev-info-card">
                 <div class="dev-info-header" onclick="toggleDevSection('dalle-generation')">
                     <h3 class="dev-info-card-title">🎨 DALL-E Cover Generation</h3>
-                    <span class="dev-info-toggle" id="toggle-dalle-generation">▼</span>
+                    <span class="dev-info-toggle" id="toggle-dalle-generation">▶</span>
                 </div>
                 <div class="dev-info-content" id="content-dalle-generation">
                     <div class="dev-info-preview">
-                        <strong>DALL-E Prompt:</strong> Create a sleek podcast cover for "RadioX" - Radio Show - Local Focus. Topics: "The pigeons snatched ...
+                        <strong>DALL-E Prompt:</strong> 🎨 DALL-E Prompt wird während Cover-Generierung erstellt (läuft parallel zum Dashboard)....
                     </div>
                     <div class="dev-info-full">
                         <h4 style="color: #ccc; margin-bottom: 1rem;">🎨 DALL-E Image Generation Prompt</h4>
-                        <pre class="dev-prompt">Create a sleek podcast cover for "RadioX" - Radio Show - Local Focus. Topics: "The pigeons snatched the sandwich from my hand" – how cities are addressing the bird problem.. 
-
-Style: Modern minimalist design with bold typography, dark blue/black background, electric accent colors (neon cyan, yellow). Include subtle AI elements (waveforms, circuits). Professional tech aesthetic, square format.</pre>
+                        <pre class="dev-prompt">🎨 DALL-E Prompt wird während Cover-Generierung erstellt (läuft parallel zum Dashboard).</pre>
                     </div>
                 </div>
             </div>
@@ -1379,41 +1599,29 @@ Style: Modern minimalist design with bold typography, dark blue/black background
             <div class="dev-info-card">
                 <div class="dev-info-header" onclick="toggleDevSection('gpt-processing')">
                     <h3 class="dev-info-card-title">🤖 GPT Processing Results</h3>
-                    <span class="dev-info-toggle" id="toggle-gpt-processing">▼</span>
+                    <span class="dev-info-toggle" id="toggle-gpt-processing">▶</span>
                 </div>
                 <div class="dev-info-content" id="content-gpt-processing">
                     <div class="dev-info-preview">
-                        <strong>GPT Input:</strong> Stage 1: 
-# SYSTEM PROMPT – RADIOX ARTICLE SELECTOR
-
-## MISSION
-You are an expert content strategist...
+                        <strong>GPT Input:</strong> No data available...
                     </div>
                     <div class="dev-info-full">
                         <h4 style="color: #ccc; margin-bottom: 1rem;">📤 Input Prompt</h4>
-                        <pre class="dev-prompt">Stage 1: 
-# SYSTEM PROMPT – RADIOX ARTICLE SELECTOR
-
-## MISSION
-You are an expert content strategist and radi... | Stage 2: 🎙️ FINAL RADIOX PROMPT
-Create a realistic radio script with defined speakers for a 5-7 minute show.
-...</pre>
+                        <pre class="dev-prompt">No data available</pre>
                         <h4 style="color: #ccc; margin: 2rem 0 1rem;">📥 Generated Radio Script</h4>
-                        <pre class="dev-prompt">MARCEL: Guten Morgen, Zürich! Ein neuer Tag, ein neues Sandwich, das den Tauben zum Opfer fällt. Da möchte man in Ruhe sein Frühstück genießen und schwupps, die Taube nimmt&#x27;s mit. Und wie Städte dieses Problem lösen, dazu später mehr.
+                        <pre class="dev-prompt">Marcel:
+Hoi zäme – willkommen zur verlängerten Special Edition von RadioX. Heute nicht live aus Zürich, sondern direkt von der Insel, wo der Aperol nie leer wird und die Liebe nicht untergeht: Mallorca.  
+Und der Grund für diese kleine mediterrane Sonderausgabe ist gross. Sehr gross.  
+Denn heute sagen sich zwei ganz besondere Menschen offiziell &quot;Ja&quot;.  
+Vanessa und Richard – ihr seid das beste Beispiel dafür, dass Timing eben doch alles ist.
 
-JARVIS: Ja, das nenne ich das Hitchcock-Syndrom. Aber zunächst zum Wetter. Guten Morgen Zürich, es ist ein wunderschöner Tag, aktuell 25,2 Grad Celsius und klarer Himmel. Erwarten Sie einen leichten Abfall auf 24,9 Grad um 11 Uhr, aber es wird sich bis zum Nachmittag auf 26,4 Grad erwärmen, mit ein paar Wolken. Die restliche Woche sieht vielversprechend aus, also genießen Sie die Sonne!
+Jarvis:
+Oder um es technischer zu sagen: Zwei Menschen mit perfektem Matching – nur das Scheduling war über Jahre… na ja… sagen wir: asynchron.  
+Aber keine Sorge. Seit Telegram im Spiel ist, läuft das System stabil.
 
-MARCEL: Ein bisschen Wärme tut uns allen gut, besonders unseren gefiederten Freunden. Aber mal im Ernst, Tauben als Politikum in Zürich und Basel, wirklich jetzt? Ist es so unmöglich, dass Tauben und Menschen in einer Stadt zusammenleben?
-
-JARVIS: Nun, Marcel, das ist eine Frage des Perspektivwechsels. Ist es die Taube, die uns stört, oder stören wir die Taube? Vielleicht sollten wir uns mehr um Koexistenz bemühen, als um Konflikt. 
-
-MARCEL: Da hast du wohl recht, Jarvis. Von Koexistenz zur Krypto-Währung. Der Bitcoin liegt derzeit bei 105.209 Dollar, zeigt einen leichten negativen Trend von -2,4% in den letzten 24 Stunden, trotz eines positiven Wachstums von 1,7% über die Woche. Während die asiatischen Märkte aktiv bleiben und Europa startet, werden normale Marktbewegungen beobachtet.
-
-JARVIS: Ach, der Bitcoin. Manchmal frage ich mich, ob er mehr oder weniger beständig ist als das Züricher Taubenproblem. Aber so ist das Leben, ständig im Fluss, voller Überraschungen. 
-
-MARCEL: Ja, wie das Sandwich, das man gerade noch in der Hand hielt. Aber wir dürfen nicht vergessen, dass es auch Städte gibt, die es besser machen. Vielleicht können wir von ihnen lernen. Und jetzt, genießt den Tag, Zürich. Bis morgen! 
-
-JARVIS: Auf Wiedersehen, Zürich. Passen Sie auf Ihre Sandwiches auf.</pre>
+Marcel:
+Lasst mich euch mitnehmen an den Anfang.  
+Sie war zehn, er fünfzehn. Damals ein riesiger Altersunterschied – heute i...</pre>
                     </div>
                 </div>
             </div>
@@ -1422,7 +1630,7 @@ JARVIS: Auf Wiedersehen, Zürich. Passen Sie auf Ihre Sandwiches auf.</pre>
             <div class="dev-info-card">
                 <div class="dev-info-header" onclick="toggleDevSection('dashboard-analytics')">
                     <h3 class="dev-info-card-title">📊 Dashboard Analytics</h3>
-                    <span class="dev-info-toggle" id="toggle-dashboard-analytics">▼</span>
+                    <span class="dev-info-toggle" id="toggle-dashboard-analytics">▶</span>
                 </div>
                 <div class="dev-info-content" id="content-dashboard-analytics">
                     <div class="dev-info-preview">
@@ -1433,9 +1641,9 @@ JARVIS: Auf Wiedersehen, Zürich. Passen Sie auf Ihre Sandwiches auf.</pre>
 ========================
 
 📊 Real-time Data Processing:
-- News Collection: 1546 articles processed
-- Source Diversity: 22 unique sources
-- GPT Processing: 303 words generated
+- News Collection: 0 articles processed
+- Source Diversity: 0 unique sources
+- GPT Processing: 675 words generated
 - Data Freshness: Live updates every workflow run
 
 🔄 Processing Pipeline:
@@ -1458,7 +1666,7 @@ JARVIS: Auf Wiedersehen, Zürich. Passen Sie auf Ihre Sandwiches auf.</pre>
 
     <!-- Audio Element -->
     <audio id="radioAudio" class="hidden-audio" preload="metadata">
-        <source src="radiox_250613_1036.mp3" type="audio/mpeg">
+        <source src="radiox_250615_1437.mp3" type="audio/mpeg">
         Your browser does not support the audio element.
     </audio>
 
@@ -1639,36 +1847,395 @@ JARVIS: Auf Wiedersehen, Zürich. Passen Sie auf Ihre Sandwiches auf.</pre>
 
         // Dev section toggle functionality
         function toggleDevSection(sectionId) {
+            console.log('Toggle called for:', sectionId); // Debug
             const content = document.getElementById('content-' + sectionId);
             const toggle = document.getElementById('toggle-' + sectionId);
+            
+            console.log('Content element:', content); // Debug
+            console.log('Toggle element:', toggle); // Debug
             
             if (content && toggle) {
                 if (content.style.display === 'none' || !content.style.display) {
                     content.style.display = 'block';
                     toggle.textContent = '▼';
+                    console.log('Expanded section:', sectionId); // Debug
                 } else {
                     content.style.display = 'none';
                     toggle.textContent = '▶';
+                    console.log('Collapsed section:', sectionId); // Debug
                 }
+            } else {
+                console.error('Elements not found for section:', sectionId); // Debug
             }
         }
         
         // Make toggleDevSection available globally
         window.toggleDevSection = toggleDevSection;
         
-        // Initialize dev sections as collapsed
-        document.addEventListener('DOMContentLoaded', () => {
+        // Initialize dev sections as collapsed after DOM loads
+        function initializeDevSections() {
+            console.log('Initializing dev sections...'); // Debug
             const devSections = ['dalle-generation', 'gpt-processing', 'dashboard-analytics'];
+            
             devSections.forEach(sectionId => {
                 const content = document.getElementById('content-' + sectionId);
                 const toggle = document.getElementById('toggle-' + sectionId);
                 
+                console.log(`Initializing ${sectionId}:`, content, toggle); // Debug
+                
                 if (content && toggle) {
                     content.style.display = 'none';
                     toggle.textContent = '▶';
+                    console.log(`${sectionId} initialized as collapsed`); // Debug
+                } else {
+                    console.warn(`Failed to initialize ${sectionId}`); // Debug
                 }
             });
-        });
+        }
+        
+        // Initialize on DOM ready with multiple fallbacks
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initializeDevSections);
+        } else {
+            initializeDevSections();
+        }
+        
+        // Also try after a short delay to ensure all elements are rendered
+        setTimeout(initializeDevSections, 100);
+
+        // Article Filtering System
+        
+            // 🚀 EMBEDDED ARTICLES DATA FOR CLIENT-SIDE FILTERING
+            const allArticlesData = [];
+            const showContext = {"default_preset": "news", "show_timestamp": "", "is_current_show": true};
+            let allArticles = [];
+            
+        let currentPage = 1;
+        const articlesPerPage = 20;
+        
+        function initializeArticleSystem() {
+            // 🚀 NEW: Use embedded articles data instead of DOM elements
+            console.log('🚀 Initializing new article system with', allArticlesData.length, 'articles');
+            
+            // Set up filter event listeners with SMART DEFAULTS
+            const presetFilter = document.getElementById('presetFilter');
+            const categoryFilter = document.getElementById('categoryFilter');
+            const sourceFilter = document.getElementById('sourceFilter');
+            const timeFilter = document.getElementById('timeFilter');
+            const searchInput = document.getElementById('searchInput');
+            const loadMoreBtn = document.getElementById('loadMoreBtn');
+            
+            // Apply smart defaults based on show context
+            if (showContext.default_preset && presetFilter) {
+                presetFilter.value = showContext.default_preset;
+            }
+            
+            // Event listeners with intelligent time filter handling
+            if (presetFilter) presetFilter.addEventListener('change', handlePresetChange);
+            if (categoryFilter) categoryFilter.addEventListener('change', handleCategoryChange);
+            if (sourceFilter) sourceFilter.addEventListener('change', handleSourceChange);
+            if (timeFilter) timeFilter.addEventListener('change', filterArticles);
+            if (searchInput) {
+                searchInput.addEventListener('input', debounce(filterArticles, 300));
+            }
+            if (loadMoreBtn) loadMoreBtn.addEventListener('click', loadMoreArticles);
+            
+            // Initial render
+            renderAllArticles();
+            filterArticles();
+        }
+        
+        // 🚀 NEW: Smart filter handlers with intelligent time defaults
+        function handlePresetChange() {
+            // When preset changes, reset time filter to "all" (no time limit)
+            const timeFilter = document.getElementById('timeFilter');
+            if (timeFilter) {
+                timeFilter.value = 'all';
+            }
+            resetOtherFilters(['presetFilter']);
+            filterArticles();
+        }
+        
+        function handleCategoryChange() {
+            // When category changes, set time filter to 24h default
+            const timeFilter = document.getElementById('timeFilter');
+            if (timeFilter && timeFilter.value === 'all') {
+                timeFilter.value = '24h';
+            }
+            resetOtherFilters(['categoryFilter', 'timeFilter']);
+            filterArticles();
+        }
+        
+        function handleSourceChange() {
+            // When source changes, set time filter to 24h default
+            const timeFilter = document.getElementById('timeFilter');
+            if (timeFilter && timeFilter.value === 'all') {
+                timeFilter.value = '24h';
+            }
+            resetOtherFilters(['sourceFilter', 'timeFilter']);
+            filterArticles();
+        }
+        
+        function resetOtherFilters(keepFilters) {
+            // Reset filters that are not in keepFilters array
+            const allFilterIds = ['presetFilter', 'categoryFilter', 'sourceFilter'];
+            allFilterIds.forEach(filterId => {
+                if (!keepFilters.includes(filterId)) {
+                    const filter = document.getElementById(filterId);
+                    if (filter) filter.value = 'all';
+                }
+            });
+        }
+        
+        function filterArticles() {
+            const presetFilter = document.getElementById('presetFilter');
+            const categoryFilter = document.getElementById('categoryFilter');
+            const sourceFilter = document.getElementById('sourceFilter');
+            const timeFilter = document.getElementById('timeFilter');
+            const searchInput = document.getElementById('searchInput');
+            
+            const selectedPreset = presetFilter?.value || 'all';
+            const selectedCategory = categoryFilter?.value || 'all';
+            const selectedSource = sourceFilter?.value || 'all';
+            const selectedTime = timeFilter?.value || 'all';
+            const searchTerm = searchInput?.value.toLowerCase() || '';
+            
+            // 🎯 CHECK IF NO FILTERS ARE ACTIVE (initial state)
+            const isInitialState = selectedPreset === 'all' && selectedCategory === 'all' && 
+                                   selectedSource === 'all' && selectedTime === 'all' && !searchTerm;
+            
+            console.log('🔍 Filtering with:', { selectedPreset, selectedCategory, selectedSource, selectedTime, searchTerm, isInitialState });
+            
+            // 🐛 DEBUG: Count show articles
+            const showArticlesCount = allArticlesData.filter(a => a.is_show_article === true).length;
+            console.log('🎯 Show articles found:', showArticlesCount, 'of', allArticlesData.length, 'total');
+            
+            const filteredArticles = allArticlesData.filter(article => {
+                // 🎯 INITIAL STATE: Only show actual show articles
+                if (isInitialState) {
+                    const isShow = article.is_show_article === true;
+                    if (isShow) console.log('✅ Show article found:', article.title);
+                    return isShow;
+                }
+                
+                // Preset filter - implement show-specific filtering
+                if (selectedPreset !== 'all') {
+                    // Map presets to categories
+                    const presetCategories = {
+                        'zurich': ['schweiz', 'zuerich', 'wetter', 'finanzen'],
+                        'news': ['business', 'international', 'deutschland', 'schweiz'],
+                        'oev': ['oev', 'schweiz']
+                    };
+                    
+                    const allowedCategories = presetCategories[selectedPreset] || [];
+                    if (!allowedCategories.includes(article.category.toLowerCase())) {
+                        return false;
+                    }
+                }
+                
+                // Category filter
+                if (selectedCategory !== 'all' && article.category !== selectedCategory) {
+                    return false;
+                }
+                
+                // Source filter  
+                if (selectedSource !== 'all' && article.source.toLowerCase() !== selectedSource.toLowerCase()) {
+                    return false;
+                }
+                
+                // Time filter
+                if (selectedTime !== 'all') {
+                    const maxAge = getMaxAgeFromFilter(selectedTime);
+                    if (article.age_hours > maxAge) {
+                        return false;
+                    }
+                }
+                
+                // Search filter
+                if (searchTerm && !article.title.toLowerCase().includes(searchTerm)) {
+                    return false;
+                }
+                
+                return true;
+            });
+            
+            renderFilteredArticles(filteredArticles);
+            updateArticleCount(filteredArticles.length, allArticlesData.length);
+            currentPage = 1;
+        }
+        
+        function getMaxAgeFromFilter(timeFilter) {
+            switch (timeFilter) {
+                case '1h': return 1;
+                case '6h': return 6;
+                case '24h': return 24;
+                case '7d': return 168; // 7 * 24
+                default: return Infinity;
+            }
+        }
+        
+        // 🚀 NEW: Render all articles initially (DOM creation)
+        function renderAllArticles() {
+            const grid = document.getElementById('articlesGrid');
+            if (!grid) return;
+            
+            grid.innerHTML = ''; // Clear existing content
+            
+            allArticlesData.forEach(article => {
+                const articleElement = createArticleElement(article);
+                grid.appendChild(articleElement);
+            });
+            
+            console.log('✅ Rendered', allArticlesData.length, 'articles to DOM');
+        }
+        
+        // 🚀 NEW: Create article HTML element from data
+        function createArticleElement(article) {
+            const articleDiv = document.createElement('article');
+            
+            // 🎯 FEATURED: Add special styling for show articles
+            if (article.is_show_article === true) {
+                articleDiv.className = 'article-card featured-show-article';
+            } else {
+                articleDiv.className = 'article-card';
+            }
+            articleDiv.style.display = 'none'; // Initially hidden for filtering
+            
+            const escapedTitle = escapeHtml(article.title);
+            const cleanExcerpt = cleanHtmlMarkup(article.excerpt);
+            const escapedExcerpt = escapeHtml(cleanExcerpt);
+            
+            // 🎯 FEATURED: Add show badge for featured articles
+            const showBadge = article.is_show_article === true ? 
+                '<span class="article-badge badge-featured">📻 IN SHOW</span>' : '';
+            
+            articleDiv.innerHTML = `
+                <div class="article-meta">
+                    ${showBadge}
+                    <span class="article-badge badge-source">${article.source}</span>
+                    <span class="article-badge badge-category">${article.category}</span>
+                    <span class="article-badge badge-time">${article.published}</span>
+                </div>
+                <h3 class="article-title">${escapedTitle}</h3>
+                <p class="article-excerpt">${escapedExcerpt}</p>
+                <div class="article-actions">
+                    <a href="${article.read_more_url}" target="_blank" class="action-link" rel="noopener noreferrer">🔗 Read more</a>
+                    <a href="${article.source_url}" target="_blank" class="action-link" rel="noopener noreferrer">📡 Source</a>
+                </div>
+            `;
+            
+            return articleDiv;
+        }
+        
+        // 🧹 NEW: Clean HTML markup from article excerpts
+        function cleanHtmlMarkup(text) {
+            if (!text) return '';
+            
+            // Remove common HTML tags and entities
+            return text
+                .replace(/<[^>]*>/g, '') // Remove HTML tags
+                .replace(/&nbsp;/g, ' ') // Replace &nbsp; with space
+                .replace(/&amp;/g, '&')  // Replace &amp; with &
+                .replace(/&lt;/g, '<')   // Replace &lt; with <
+                .replace(/&gt;/g, '>')   // Replace &gt; with >
+                .replace(/&quot;/g, '"') // Replace &quot; with "
+                .replace(/&#39;/g, "'")  // Replace &#39; with '
+                .replace(/\s+/g, ' ')    // Replace multiple spaces with single space
+                .trim();                 // Remove leading/trailing whitespace
+        }
+        
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
+        function renderFilteredArticles(articles) {
+            const grid = document.getElementById('articlesGrid');
+            if (!grid) return;
+            
+            // Hide all articles first
+            const allElements = grid.querySelectorAll('.article-card');
+            allElements.forEach(el => el.style.display = 'none');
+            
+            // Show filtered articles (first page)
+            const visibleArticles = articles.slice(0, currentPage * articlesPerPage);
+            visibleArticles.forEach((article, index) => {
+                const articleElement = allElements[allArticlesData.indexOf(article)];
+                if (articleElement) {
+                    articleElement.style.display = 'block';
+                }
+            });
+            
+            // Update load more button
+            const loadMoreBtn = document.getElementById('loadMoreBtn');
+            if (loadMoreBtn) {
+                if (articles.length > visibleArticles.length) {
+                    loadMoreBtn.style.display = 'block';
+                    loadMoreBtn.textContent = `Load More (${articles.length - visibleArticles.length} remaining)`;
+                } else {
+                    loadMoreBtn.style.display = 'none';
+                }
+            }
+        }
+        
+        function loadMoreArticles() {
+            currentPage++;
+            filterArticles();
+        }
+        
+        function updateArticleCount(visible, total) {
+            const visibleElement = document.getElementById('visibleCount');
+            const totalElement = document.getElementById('totalCount');
+            
+            if (visibleElement) visibleElement.textContent = visible;
+            if (totalElement) totalElement.textContent = total;
+        }
+        
+        function debounce(func, wait) {
+            let timeout;
+            return function executedFunction(...args) {
+                const later = () => {
+                    clearTimeout(timeout);
+                    func(...args);
+                };
+                clearTimeout(timeout);
+                timeout = setTimeout(later, wait);
+            };
+        }
+        
+        // Initialize article system after DOM loads
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initializeArticleSystem);
+        } else {
+            initializeArticleSystem();
+        }
+        
+        // Also try after a short delay
+        setTimeout(initializeArticleSystem, 200);
+
+        // 🛠️ DEV-CARDS: Toggle functionality
+        function toggleDevSection(sectionId) {
+            const content = document.getElementById(sectionId);
+            const toggle = document.querySelector(`[onclick="toggleDevSection('${sectionId}')"] .dev-info-toggle`);
+            
+            if (content && toggle) {
+                const isExpanded = content.classList.contains('expanded');
+                
+                if (isExpanded) {
+                    content.classList.remove('expanded');
+                    toggle.classList.remove('expanded');
+                    toggle.textContent = '▶';
+                } else {
+                    content.classList.add('expanded');
+                    toggle.classList.add('expanded');
+                    toggle.textContent = '▼';
+                }
+            }
+        }
+        
+        // Make toggleDevSection globally available
+        window.toggleDevSection = toggleDevSection;
 
         // Initialize
         updatePlayButton();
