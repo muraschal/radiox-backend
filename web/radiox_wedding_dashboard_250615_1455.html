@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RIVA - the wedding show | RadioX Wedding Special</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #ffeaa7 0%, #fab1a0 25%, #fd79a8 50%, #e84393 75%, #a29bfe 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .wedding-container {
+            max-width: 1200px;
+            width: 100%;
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(20px);
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .wedding-header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+        
+        .wedding-title {
+            font-size: 3rem;
+            color: #2d3436;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        
+        .wedding-subtitle {
+            font-size: 1.5rem;
+            color: #636e72;
+            margin-bottom: 20px;
+        }
+        
+        .wedding-time {
+            font-size: 1.2rem;
+            color: #74b9ff;
+            font-weight: bold;
+        }
+        
+        .wedding-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 40px;
+        }
+        
+        .wedding-card {
+            background: rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 25px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+        
+        .wedding-card h3 {
+            color: #2d3436;
+            margin-bottom: 15px;
+            font-size: 1.3rem;
+        }
+        
+        .speakers-list {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+        
+        .speaker-tag {
+            background: linear-gradient(45deg, #fd79a8, #e84393);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: bold;
+            text-transform: capitalize;
+        }
+        
+        .cover-preview {
+            text-align: center;
+        }
+        
+        .cover-image {
+            max-width: 100%;
+            height: auto;
+            border-radius: 10px;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+        }
+        
+        .audio-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 15px;
+        }
+        
+        .duration {
+            background: #00b894;
+            color: white;
+            padding: 5px 15px;
+            border-radius: 15px;
+            font-weight: bold;
+        }
+        
+        .script-preview {
+            grid-column: 1 / -1;
+        }
+        
+        .script-text {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            border-radius: 10px;
+            font-family: 'Courier New', monospace;
+            line-height: 1.6;
+            color: #2d3436;
+            white-space: pre-wrap;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        .hearts {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            overflow: hidden;
+        }
+        
+        .heart {
+            position: absolute;
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 20px;
+            animation: float 6s ease-in-out infinite;
+        }
+        
+        @keyframes float {
+            0%, 100% { transform: translateY(0) rotate(0deg); }
+            50% { transform: translateY(-20px) rotate(180deg); }
+        }
+        
+        .wedding-footer {
+            text-align: center;
+            margin-top: 40px;
+            color: #636e72;
+            font-style: italic;
+        }
+        
+        @media (max-width: 768px) {
+            .wedding-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="hearts">
+        <div class="heart" style="left: 10%; animation-delay: 0s;">💕</div>
+        <div class="heart" style="left: 20%; animation-delay: 1s;">💖</div>
+        <div class="heart" style="left: 30%; animation-delay: 2s;">💝</div>
+        <div class="heart" style="left: 40%; animation-delay: 3s;">💗</div>
+        <div class="heart" style="left: 50%; animation-delay: 4s;">💓</div>
+        <div class="heart" style="left: 60%; animation-delay: 5s;">💕</div>
+        <div class="heart" style="left: 70%; animation-delay: 1.5s;">💖</div>
+        <div class="heart" style="left: 80%; animation-delay: 2.5s;">💝</div>
+        <div class="heart" style="left: 90%; animation-delay: 3.5s;">💗</div>
+    </div>
+    
+    <div class="wedding-container">
+        <div class="wedding-header">
+            <h1 class="wedding-title">💒 RIVA - the wedding show</h1>
+            <p class="wedding-subtitle">RadioX Wedding Special | Mallorca Edition</p>
+            <p class="wedding-time">Generated: 14:55 | 250615_1455</p>
+        </div>
+        
+        <div class="wedding-grid">
+            <div class="wedding-card">
+                <h3>🎭 Speakers</h3>
+                <div class="speakers-list">
+                    <div class="speaker-tag">marcel</div>
+                    <div class="speaker-tag">jarvis</div>
+                </div>
+            </div>
+            
+            <div class="wedding-card">
+                <h3>🎨 Cover</h3>
+                <div class="cover-preview">
+                    <p><strong>File:</strong> RIVA_cover.JPG</p>
+                    <p style="color: #00b894; font-weight: bold;">✅ RIVA Magazine Style</p>
+                </div>
+            </div>
+            
+            <div class="wedding-card">
+                <h3>🎵 Audio</h3>
+                <div class="audio-info">
+                    <div>
+                        <p><strong>File:</strong> wedding_with_music_wedding_20250615_145524.mp3</p>
+                        <p><strong>Quality:</strong> High</p>
+                    </div>
+                    <div class="duration">387.4 min</div>
+                </div>
+            </div>
+            
+            <div class="wedding-card">
+                <h3>🏝️ Location</h3>
+                <p><strong>Venue:</strong> Mallorca Finca</p>
+                <p><strong>Style:</strong> Mediterranean Wedding</p>
+                <p><strong>Vibe:</strong> Intimate & Elegant</p>
+            </div>
+            
+            <div class="wedding-card script-preview">
+                <h3>📝 Script Preview</h3>
+                <div class="script-text">MARCEL: Hoi zäme – willkommen zur verlängerten Special Edition von RadioX. Heute nicht live aus Zürich, sondern direkt von der Insel, wo der Aperol nie leer wird und die Liebe nicht untergeht: Mallorca.
+
+MARCEL: Und der Grund für diese kleine mediterrane Sonderausgabe ist gross. Sehr gross. Denn heute sagen sich zwei ganz besondere Menschen offiziell „Ja". Vanessa und Richard – ihr seid das beste Beispiel dafür, dass Timing eben doch alles ist.
+
+JARVIS: Oder um es technischer zu sagen: Zwei Mens...</div>
+            </div>
+        </div>
+        
+        <div class="wedding-footer">
+            <p>💕 Special Wedding Show für Vanessa & Richard</p>
+            <p>🎙️ RadioX • Mallorca • 14:55</p>
+        </div>
+    </div>
+</body>
+</html>
