@@ -42,7 +42,7 @@ from services.processing import ContentProcessingService
 from services.generation import AudioGenerationService
 from src.services.generation.image_generation_service import ImageGenerationService
 # Direct import to avoid circular dependencies
-from src.services.utilities.dashboard_fancy_service import DashboardFancyService
+from src.services.utilities.dashboard_service import DashboardService
 
 
 @dataclass(frozen=True)
@@ -75,7 +75,7 @@ class RadioXMaster:
         self._content_processor = ContentProcessingService()
         self._audio_generator = AudioGenerationService() if audio_enabled else None
         self._image_generator = ImageGenerationService() if audio_enabled else None
-        self._dashboard_service = DashboardFancyService()
+        self._dashboard_service = DashboardService()
         self._content_logger = None  # Lazy loading for GPT article tracking
         
         self._log_initialization()
@@ -696,9 +696,14 @@ class RadioXMaster:
         if audio_data:
             processed_data['audio_generation'] = audio_data
 
-        # Generate Show Notes Dashboard with DashboardFancyService using the final timestamp
-        filepath = await self._dashboard_service.generate_fancy_dashboard(
-            raw_data, processed_data, show_config
+        # Generate Show Notes Dashboard with new Jinja2 Service
+        filepath = await self._dashboard_service.generate_dashboard(
+            raw_data=raw_data, 
+            processed_data=processed_data, 
+            show_config=show_config,
+            timestamp=timestamp,
+            cover_data=cover_data,
+            audio_data=audio_data
         )
         
         return filepath
