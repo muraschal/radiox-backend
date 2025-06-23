@@ -352,10 +352,10 @@ class RadioXMaster:
         try:
             print("🌐 Syncing to web & publishing...")
             
-            # Step 1: Run web sync
+            # Step 1: Run dynamic web sync
             import subprocess
             sync_result = subprocess.run(
-                ["python3", "sync_web_shows.py"],
+                ["python3", "sync_web_dynamic.py"],
                 capture_output=True,
                 text=True,
                 timeout=60
