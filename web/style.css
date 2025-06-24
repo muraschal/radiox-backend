@@ -339,4 +339,17 @@ body::before {
     .dashboard-section {
         padding: var(--space-lg) var(--space-md);
     }
+}
+
+.prompts-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+    margin-top: 1.5rem;
+}
+
+@media (min-width: 768px) {
+    .prompts-grid {
+        grid-template-columns: 1fr;
+    }
 } 
