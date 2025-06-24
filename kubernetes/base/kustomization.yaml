@@ -1,0 +1,22 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: radiox
+
+resources:
+  - namespace.yaml
+  - redis-deployment.yaml
+  - api-gateway-deployment.yaml
+  - show-service-deployment.yaml
+  - content-service-deployment.yaml
+  - audio-service-deployment.yaml
+  - media-service-deployment.yaml
+  - speaker-service-deployment.yaml
+  - data-service-deployment.yaml
+  - analytics-service-deployment.yaml
+  - configmap.yaml
+  - secrets.yaml
+
+commonLabels:
+  app: radiox
+  managed-by: kustomize 

@@ -75,6 +75,7 @@ services:
       - REDIS_URL=redis://redis:6379
       - SUPABASE_URL=${SUPABASE_URL}
       - SUPABASE_KEY=${SUPABASE_KEY}
+      - SUPABASE_SERVICE_KEY=${SUPABASE_SERVICE_KEY}
       - ELEVENLABS_API_KEY=${ELEVENLABS_API_KEY}
     depends_on:
       - redis
