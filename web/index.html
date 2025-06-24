@@ -134,14 +134,13 @@
     </div>
 
     <script>
-        // Hardcoded aktueller Show-Timestamp für sofortigen Fallback
+        // DYNAMISCH GENERIERT - Aktualisiert: 2025-06-24 01:52:24
         const CURRENT_SHOWS = [
-            'radiox_dashboard_fancy_250614_0711.html',
-            'radiox_dashboard_fancy_250614_0703.html',
-            'radiox_dashboard_fancy_250614_0653.html',
-            'radiox_dashboard_fancy_250613_2246.html',
-            'radiox_dashboard_fancy_250613_2232.html'
-        ];
+            "radiox_250624_0140.html",
+            "radiox_250624_0117.html",
+            "radiox_250624_0044.html",
+            "radiox_250624_0030.html"
+];
 
         async function redirectToLatestShow() {
             let latestShow = null;
@@ -155,7 +154,8 @@
                     
                     if (data.shows && data.shows.length > 0) {
                         latestShow = data.shows[0].htmlFile;
-                        document.getElementById('status').innerHTML = `Weiterleitung zu ${data.shows[0].timestamp}... <span class="spinner"></span>`;
+                        const showType = data.shows[0].type || 'Show';
+                        document.getElementById('status').innerHTML = `Weiterleitung zu ${showType}... <span class="spinner"></span>`;
                     }
                 }
             } catch (error) {
@@ -203,75 +203,31 @@
             const fallbackEl = document.getElementById('fallback');
             const linksEl = document.getElementById('show-links');
             
-            // Versuche bekannte Patterns zu finden
-            const availableShows = await findAvailableShows();
-            
-            if (availableShows.length > 0) {
-                linksEl.innerHTML = availableShows.map(show => 
-                    `<a href="${show.file}" class="manual-link">${show.name}</a>`
-                ).join('<br>');
-            } else {
-                linksEl.innerHTML = `
-                    <div style="color: #888; margin: 1rem 0;">
-                        Keine Shows gefunden. 
-                        <br><small>Generiere eine Show mit: <code>python main.py --preset news</code></small>
-                    </div>
-                `;
-            }
-            
-            fallbackEl.style.display = 'block';
-        }
-        
-        async function findAvailableShows() {
-            const shows = [];
-            const today = new Date().toISOString().slice(2, 10).replace(/-/g, '');
-            
-            // Prüfe hardcoded Shows zuerst
+            // Versuche alle Shows aus CURRENT_SHOWS zu laden
             for (const showFile of CURRENT_SHOWS) {
                 try {
                     const response = await fetch(showFile, { method: 'HEAD' });
                     if (response.ok) {
-                        const timestamp = showFile.match(/(\d{6}_\d{4})/)?.[1] || 'unknown';
-                        shows.push({
-                            file: showFile,
-                            name: `Show ${timestamp.slice(0, 6)} ${timestamp.slice(7)}`
-                        });
+                        const link = document.createElement('a');
+                        link.href = showFile;
+                        link.className = 'manual-link';
+                        
+                        const timestamp = showFile.match(/(\d{6}_\d{4})/)?.[1] || showFile;
+                        const showType = showFile.includes('dashboard_fancy') ? 'Legacy' : 'Jinja2';
+                        link.textContent = `${timestamp} (${showType})`;
+                        
+                        linksEl.appendChild(link);
                     }
                 } catch (e) {
-                    // Show nicht verfügbar
+                    console.log(`${showFile} nicht verfügbar:`, e.message);
                 }
             }
             
-            // Zusätzlich: Versuche aktuelle Stunden-Patterns
-            for (let hour = 23; hour >= 0 && shows.length < 10; hour--) {
-                for (let minute = 59; minute >= 0; minute -= 15) {
-                    const timeStr = `${today}_${hour.toString().padStart(2, '0')}${minute.toString().padStart(2, '0')}`;
-                    const filename = `radiox_dashboard_fancy_${timeStr}.html`;
-                    
-                    // Skip wenn schon in hardcoded Liste
-                    if (CURRENT_SHOWS.includes(filename)) continue;
-                    
-                    try {
-                        const response = await fetch(filename, { method: 'HEAD' });
-                        if (response.ok) {
-                            shows.push({
-                                file: filename,
-                                name: `Show ${timeStr.slice(0, 6)} ${timeStr.slice(7)}`
-                            });
-                        }
-                    } catch (e) {
-                        // File doesn't exist
-                    }
-                    
-                    if (shows.length >= 10) break;
-                }
-            }
-            
-            return shows;
+            fallbackEl.style.display = 'block';
         }
-        
-        // Starte Weiterleitung beim Laden der Seite
-        document.addEventListener('DOMContentLoaded', redirectToLatestShow);
+
+        // Starte Weiterleitung
+        redirectToLatestShow();
     </script>
 </body>
-</html> 
+</html>
