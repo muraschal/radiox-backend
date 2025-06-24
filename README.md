@@ -61,11 +61,23 @@ Frontend (radiox.cloud) → API Gateway (8000) → 8 Microservices → Supabase
 
 ## Documentation
 
+### **🎯 Quick Access**
+- **[🌐 Production API](https://api.radiox.cloud)** - Live production system
+- **[📊 Live Status](https://api.radiox.cloud/services/status)** - Real-time monitoring
+- **[🔧 API Docs](https://api.radiox.cloud/docs)** - Interactive Swagger UI
+
+### **📚 Complete Documentation**
+
 | 📖 Guide | 🎯 Audience | 📝 Content |
 |----------|-------------|-------------|
 | **[User Guide](docs/user-guide/)** | Content Creators | Show generation, voice setup |
 | **[Developer Guide](docs/developer-guide/)** | Engineers | Architecture, development |
+| • **[Tech Stack](docs/developer-guide/tech-stack.md)** | Tech Teams | Complete technology overview |
+| • **[AI Pipeline](docs/developer-guide/ai-pipeline.md)** | AI Engineers | GPT-4, TTS, ML integration |
+| • **[Architecture](docs/developer-guide/architecture.md)** | System Architects | Design principles, patterns |
 | **[Deployment Guide](docs/deployment/)** | DevOps | Production setup, monitoring |
+| • **[Production Status](docs/deployment/production-status.md)** | Operations | Live system overview |
+| • **[Cloudflare Setup](docs/deployment/cloudflare-setup.md)** | Infrastructure | CDN, security, tunnels |
 
 ## Production Environment
 
