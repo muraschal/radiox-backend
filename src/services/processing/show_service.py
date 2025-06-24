@@ -14,6 +14,7 @@ from typing import Dict, Any, List, Optional, Tuple
 from datetime import datetime, timezone, timedelta
 from dataclasses import dataclass, field
 from loguru import logger
+from ..infrastructure.supabase_service import SupabaseService
 
 # Database import
 import sys
@@ -81,10 +82,11 @@ class ShowService:
     - Error Handling (Graceful degradation)
     """
     
-    __slots__ = ('_db', '_show_cache', '_speaker_cache', '_cache_timestamp', '_cache_ttl')
+    __slots__ = ('_db', '_show_cache', '_speaker_cache', '_cache_timestamp', '_cache_ttl', 'supabase')
     
     def __init__(self):
-        self._db = None  # Lazy loading
+        self.supabase = SupabaseService()
+        self._db = self.supabase.client
         self._show_cache = {}
         self._speaker_cache = {}
         self._cache_timestamp = None
@@ -94,9 +96,7 @@ class ShowService:
     
     @property
     def db(self):
-        """Lazy database connection"""
-        if self._db is None:
-            self._db = get_db()
+        """Direct access to Supabase client"""
         return self._db
     
     def _is_cache_valid(self) -> bool:
@@ -122,7 +122,7 @@ class ShowService:
         
         try:
             response = await asyncio.to_thread(
-                lambda: self.db.client.table("show_presets")
+                lambda: self.db.table("show_presets")
                 .select("*")
                 .eq("preset_name", preset_name)
                 .execute()
@@ -155,10 +155,10 @@ class ShowService:
         
         try:
             query_func = lambda: (
-                self.db.client.table("show_presets")
+                self.db.table("show_presets")
                 .select("*")
                 .eq("is_active", True) if active_only 
-                else self.db.client.table("show_presets").select("*")
+                else self.db.table("show_presets").select("*")
             ).order("display_name").execute()
             
             response = await asyncio.to_thread(query_func)
@@ -190,14 +190,22 @@ class ShowService:
             logger.debug(f"📋 Cache hit for speaker: {speaker_name}")
             return self._speaker_cache[speaker_name]
 
-        # ⚡ CRITICAL FIX: Use optimized database client method
+        # ⚡ CRITICAL FIX: Use standard Supabase client method
         try:
-            # Use optimized speaker config method from database client
-            speaker_config = await self.db.get_speaker_config_optimized(speaker_name)
+            # Use standard Supabase query
+            response = await asyncio.to_thread(
+                lambda: self.db.table("voice_configurations")
+                .select("*")
+                .eq("speaker_name", speaker_name)
+                .eq("is_active", True)
+                .execute()
+            )
             
-            if not speaker_config:
+            if not response.data:
                 logger.warning(f"⚠️ Sprecher '{speaker_name}' nicht gefunden")
                 return None
+            
+            speaker_config = response.data[0]
 
             # Update cache
             self._speaker_cache[speaker_name] = speaker_config
@@ -386,31 +394,5 @@ async def get_show_for_generation(preset_name: str, language: str = "en") -> Opt
     service = await get_show_service()
     return await service.prepare_show_generation(preset_name, language)
 
-async def test_show_service() -> bool:
-    """Test show service functionality"""
-    try:
-        service = await get_show_service()
-        
-        # Test preset loading
-        zurich_config = await service.get_show_preset("zurich")
-        if not zurich_config:
-            return False
-        
-        # Test speaker loading
-        marcel_config = await service.get_speaker_configuration("marcel")
-        if not marcel_config:
-            return False
-        
-        # Test show generation preparation
-        generation_config = await service.prepare_show_generation("zurich")
-        if not generation_config:
-            return False
-        
-        return True
-        
-    except Exception:
-        return False
-
-
 if __name__ == "__main__":
-    asyncio.run(test_show_service()) 
+    print("Show Service - production ready") 

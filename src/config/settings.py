@@ -21,7 +21,7 @@ class Settings(BaseSettings):
     
     # ElevenLabs
     elevenlabs_api_key: Optional[str] = None
-    elevenlabs_marcel_voice_id: Optional[str] = None
+
     elevenlabs_jarvis_voice_id: Optional[str] = None
     
     # CoinMarketCap
@@ -30,12 +30,7 @@ class Settings(BaseSettings):
     # Weather API
     weather_api_key: Optional[str] = None  # OpenWeatherMap API Key
     
-    # Twitter/X (alte und neue Feldnamen)
-    twitter_bearer_token: Optional[str] = None
-    twitter_api_key: Optional[str] = None
-    twitter_api_secret: Optional[str] = None
-    twitter_access_token: Optional[str] = None
-    twitter_access_token_secret: Optional[str] = None
+
     
     # X API (neue Feldnamen)
     x_client_id: Optional[str] = None

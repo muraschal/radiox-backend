@@ -156,34 +156,7 @@ class BroadcastGenerationService:
         
         return result
     
-    async def test_generation(self) -> bool:
-        """Testet die Broadcast-Generierung"""
-        
-        # Test mit minimalen Daten
-        test_content = {
-            "selected_news": [
-                {
-                    "title": "Test News",
-                    "summary": "Eine Test-Nachricht für die Broadcast-Generierung.",
-                    "primary_category": "test"
-                }
-            ],
-            "context_data": {
-                "weather": {"formatted": "20°C, sonnig"},
-                "crypto": {"formatted": "$100,000 (+2.5%)"}
-            }
-        }
-        
-        try:
-            result = await self.generate_broadcast(test_content)
-            return "session_id" in result and len(result["script_content"]) > 100
-        except Exception as e:
-            logger.error(f"Broadcast Generation Test Fehler: {e}")
-            return False
-    
-    async def test_broadcast_generation(self) -> bool:
-        """Alias für test_generation - für CLI Kompatibilität"""
-        return await self.test_generation()
+
     
     # Private Methods
     

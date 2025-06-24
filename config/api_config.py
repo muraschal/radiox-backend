@@ -137,7 +137,27 @@ def get_default_gpt_model() -> str:
     return get_api_configuration().models.default_gpt_model
 
 def get_default_elevenlabs_model() -> str:
-    """Replace hardcoded 'eleven_turbo_v2'"""
+    """Get default ElevenLabs model dynamically from database - replaces hardcoded 'eleven_turbo_v2'"""
+    try:
+        # Try to load from database first
+        from pathlib import Path
+        import sys
+        sys.path.append(str(Path(__file__).parent.parent / "src"))
+        from services.infrastructure.supabase_service import SupabaseService
+        
+        db = SupabaseService()
+        
+        # Get best mid-quality model (most balanced for default use)
+        result = db.client.table('elevenlabs_models').select('model_id').eq('quality_tier', 'mid').eq('is_active', True).order('latency_ms', desc=False).limit(1).execute()
+        
+        if result.data and len(result.data) > 0:
+            return result.data[0]['model_id']
+            
+    except Exception:
+        # Silent fallback to prevent initialization issues
+        pass
+    
+    # Ultimate fallback for bootstrap scenarios
     return get_api_configuration().models.default_elevenlabs_model
 
 def get_content_categories() -> list[str]:

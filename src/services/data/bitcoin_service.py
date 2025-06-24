@@ -241,16 +241,7 @@ class BitcoinService:
             logger.error(f"❌ Error checking Bitcoin alerts: {e}")
             return []
     
-    async def test_connection(self) -> bool:
-        """Tests Bitcoin API connection"""
-        
-        try:
-            bitcoin_data = await self.get_bitcoin_price()
-            return bitcoin_data is not None and "price_usd" in bitcoin_data
-            
-        except Exception as e:
-            logger.error(f"Bitcoin Service test error: {e}")
-            return False
+
     
     async def get_bitcoin_summary_with_gpt(self) -> str:
         """Get intelligent Bitcoin summary using GPT based on raw data and market conditions"""

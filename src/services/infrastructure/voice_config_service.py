@@ -7,10 +7,12 @@ Lädt Voice-Konfigurationen aus Supabase statt hardcoded Definitionen.
 Ersetzt die hardcoded voice_config im AudioGenerationService.
 """
 
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List, Optional, Tuple
 from loguru import logger
 import sys
 from pathlib import Path
+from dataclasses import dataclass
+from ..infrastructure.supabase_service import SupabaseService
 
 # Add database path
 sys.path.append(str(Path(__file__).parent.parent.parent))
@@ -22,8 +24,8 @@ class VoiceConfigService:
     """Service für Voice-Konfigurationen aus Supabase"""
     
     def __init__(self):
-        db_wrapper = get_db()
-        self.db = db_wrapper.client  # Direkter Zugriff auf den Supabase Client
+        self.supabase = SupabaseService()
+        self.db = self.supabase.client  # Direkter Zugriff auf den Supabase Client
         self._voice_cache: Optional[Dict[str, Dict[str, Any]]] = None
         self._cache_timestamp: Optional[float] = None
         self.cache_duration = 300  # 5 Minuten Cache
@@ -399,51 +401,7 @@ class VoiceConfigService:
         
         return voice_config
 
-    async def test_voice_service(self) -> bool:
-        """
-        Testet den Voice Configuration Service
-        
-        Returns:
-            True wenn alle Tests erfolgreich
-        """
-        
-        try:
-            logger.info("🧪 Teste Voice Configuration Service...")
-            
-            # Test 1: Alle Voices laden
-            all_voices = await self.get_all_voice_configs()
-            if not all_voices:
-                logger.error("❌ Test 1 fehlgeschlagen: Keine Voices geladen")
-                return False
-            logger.info(f"✅ Test 1: {len(all_voices)} Voices geladen")
-            
-            # Test 2: Primary Voices laden
-            primary_voices = await self.get_primary_voices()
-            if not primary_voices:
-                logger.error("❌ Test 2 fehlgeschlagen: Keine Primary Voices gefunden")
-                return False
-            logger.info(f"✅ Test 2: {len(primary_voices)} Primary Voices gefunden")
-            
-            # Test 3: Spezifische Voice laden
-            marcel_voice = await self.get_voice_config("marcel")
-            if not marcel_voice:
-                logger.error("❌ Test 3 fehlgeschlagen: Marcel Voice nicht gefunden")
-                return False
-            logger.info(f"✅ Test 3: Marcel Voice geladen: {marcel_voice['voice_name']}")
-            
-            # Test 4: Statistiken
-            stats = await self.get_voice_stats()
-            if "error" in stats:
-                logger.error("❌ Test 4 fehlgeschlagen: Statistiken-Fehler")
-                return False
-            logger.info(f"✅ Test 4: Statistiken geladen: {stats['total']} Voices")
-            
-            logger.info("🎉 Alle Voice Configuration Service Tests erfolgreich!")
-            return True
-            
-        except Exception as e:
-            logger.error(f"❌ Voice Configuration Service Test fehlgeschlagen: {e}")
-            return False
+
 
 
 # Singleton Instance für einfache Verwendung
@@ -457,29 +415,5 @@ def get_voice_config_service() -> VoiceConfigService:
     return _voice_config_service
 
 
-async def main():
-    """Test-Funktion"""
-    
-    print("🎤 VOICE CONFIGURATION SERVICE TEST")
-    print("=" * 50)
-    
-    service = get_voice_config_service()
-    success = await service.test_voice_service()
-    
-    if success:
-        print("\n🎉 Voice Configuration Service funktioniert perfekt!")
-        
-        # Zeige Statistiken
-        stats = await service.get_voice_stats()
-        print(f"\n📊 STATISTIKEN:")
-        print(f"   Total Voices: {stats['total']}")
-        print(f"   Aktive Voices: {stats['active']}")
-        print(f"   Primary Voices: {stats['primary']}")
-        print(f"   Sprachen: {', '.join(stats['languages'])}")
-    else:
-        print("❌ Voice Configuration Service Test fehlgeschlagen!")
-
-
 if __name__ == "__main__":
-    import asyncio
-    asyncio.run(main()) 
+    print("Voice Config Service - production ready") 

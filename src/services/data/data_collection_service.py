@@ -126,39 +126,7 @@ class DataCollectionService:
             "collection_timestamp": datetime.now().isoformat()
         }
     
-    async def test_connections(self) -> Dict[str, bool]:
-        """Testet alle Datenquellen-Verbindungen"""
-        
-        logger.info("🔧 Teste alle Datenquellen...")
-        
-        results = {}
-        
-        # Test RSS Feeds
-        try:
-            test_feeds = await self.rss_service.get_all_active_feeds()
-            results["rss_service"] = len(test_feeds) > 0
-        except Exception as e:
-            logger.error(f"RSS Test Fehler: {e}")
-            results["rss_service"] = False
-        
-        # Test Weather Service
-        try:
-            weather = await self.weather_service.get_complete_weather("zurich")  # ⭐ NEU: Mit Forecast!
-            results["weather_service"] = weather is not None
-        except Exception as e:
-            logger.error(f"Weather Test Fehler: {e}")
-            results["weather_service"] = False
-        
-        # Test Crypto Service
-        try:
-            crypto = await self.crypto_service.get_bitcoin_price()
-            results["crypto_service"] = crypto is not None
-        except Exception as e:
-            logger.error(f"Crypto Test Fehler: {e}")
-            results["crypto_service"] = False
-        
-        logger.info(f"🔧 Verbindungstests abgeschlossen: {results}")
-        return results
+
     
     async def generate_html_dashboards(self, data: Dict[str, Any]) -> bool:
         """

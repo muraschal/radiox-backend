@@ -228,7 +228,7 @@ class SupabaseService:
                     tweet_data = {
                         'title': f"@{tweet.get('author_username')}: {tweet.get('text', '')[:100]}...",
                         'summary': tweet.get('text', ''),
-                        'source': f"twitter_{tweet.get('author_username')}",
+                        # Twitter API removed - no longer supported
                         'category': tweet.get('category', 'bitcoin'),
                         'priority': tweet.get('priority', 5),
                         'published_at': tweet.get('created_at', datetime.utcnow()).isoformat(),

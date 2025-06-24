@@ -232,25 +232,7 @@ class ContentProcessingService:
             logger.error(f"❌ Fehler beim Laden der Show-Konfiguration: {e}")
             return None
     
-    async def test_processing(self) -> bool:
-        """Test GPT processing functionality"""
-        # Explicit test data - Google Best Practice: "Obvious over clever"
-        test_data = {
-            "news": [{
-                "title": "Test News Zürich",
-                "summary": "Eine Test-Nachricht über Zürich für die GPT-Verarbeitung.",
-                "source": "test",
-                "published": datetime.now().isoformat()
-            }],
-            "weather": {"temperature": 15, "condition": "sunny"},
-            "crypto": {"bitcoin": 105000, "change": "+2%"}
-        }
-        
-        try:
-            result = await self.process_content_for_show(test_data, target_news_count=1)
-            return result.get("success", False) and len(result.get("selected_news", [])) > 0
-        except Exception:
-            return False
+
     
     async def _generate_new_tailwind_dashboard(self, result: Dict[str, Any], raw_data: Dict[str, Any], show_config: Dict[str, Any]) -> None:
         """Generate new Tailwind CSS-based dashboard"""

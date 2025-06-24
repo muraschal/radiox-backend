@@ -16,6 +16,8 @@ from typing import Dict, List, Optional, Set, Any
 from loguru import logger
 import sys
 from pathlib import Path
+from dataclasses import dataclass, asdict
+from ..infrastructure.supabase_service import SupabaseService
 
 # Add database path
 sys.path.append(str(Path(__file__).parent.parent.parent))
@@ -27,8 +29,8 @@ class SpeakerRegistry:
     """Dynamisches Speaker Registry System"""
     
     def __init__(self):
-        db_wrapper = get_db()
-        self.db = db_wrapper.client
+        self.supabase = SupabaseService()
+        self.client = self.supabase.client
         self._cache: Optional[Dict[str, Dict[str, Any]]] = None
         self._cache_timestamp: Optional[float] = None
         self.cache_duration = 300  # 5 Minuten Cache
@@ -51,7 +53,7 @@ class SpeakerRegistry:
         try:
             logger.debug("🎤 Lade Sprecher aus Datenbank...")
             
-            result = self.db.table("voice_configurations").select("*").eq("is_active", True).execute()
+            result = self.client.table("voice_configurations").select("*").eq("is_active", True).execute()
             
             speakers = {}
             for voice in result.data:
@@ -196,36 +198,5 @@ async def get_speaker_fallback_mapping() -> Dict[str, str]:
 
 
 # Test Function
-async def test_speaker_registry():
-    """Test das Speaker Registry System"""
-    
-    print("🎤 SPEAKER REGISTRY TEST")
-    print("=" * 30)
-    
-    registry = get_speaker_registry()
-    
-    # Test alle Sprecher
-    speakers = await registry.get_all_speakers()
-    print(f"📊 Gefundene Sprecher: {len(speakers)}")
-    for name, info in speakers.items():
-        print(f"  🎙️ {name}: {info['voice_name']} ({info.get('description', 'No description')[:50]}...)")
-    
-    # Test Convenience Functions
-    print(f"\n✅ Valid Speakers: {await get_valid_speakers()}")
-    print(f"🎯 Default Speaker: {await get_default_speaker_name()}")
-    # Entfernt: Automatische Content-Speaker (weather/news)
-    # print(f"🌤️ Weather Speaker: {await registry.get_weather_speaker()}")
-    # print(f"📰 News Speaker: {await registry.get_news_speaker()}")
-    
-    # Test Mapping
-    mapping = await get_speaker_fallback_mapping()
-    print(f"\n🔄 Speaker Mapping:")
-    for alias, speaker in mapping.items():
-        print(f"  {alias} → {speaker}")
-    
-    print(f"\n✅ Speaker Registry Test completed!")
-
-
 if __name__ == "__main__":
-    import asyncio
-    asyncio.run(test_speaker_registry()) 
+    print("Speaker Registry - production ready") 

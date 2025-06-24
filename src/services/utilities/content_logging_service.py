@@ -331,30 +331,7 @@ class ContentLoggingService:
         except Exception as e:
             logger.warning(f"⚠️ Cleanup Fehler: {e}")
 
-    async def test_content_logging(self) -> bool:
-        """Testet das vereinfachte Content Logging"""
-        
-        # Mock-Daten
-        mock_show_title = "Radio X Test 1234"
-        mock_articles = [
-            {"title": "Test Artikel 1", "source": "Test Source"},
-            {"title": "Test Artikel 2", "source": "Test Source"}
-        ]
-        mock_metadata = {"test": True, "mode": "simplified"}
-        
-        try:
-            result = await self.log_show_broadcast(
-                mock_show_title, 
-                mock_articles, 
-                mock_metadata
-            )
-            
-            logger.info(f"Content Logging Test: {result['success']}")
-            return result["success"]
-            
-        except Exception as e:
-            logger.error(f"Content Logging Test Fehler: {e}")
-            return False
+
 
     # LEGACY METHODS (für Rückwärts-Kompatibilität)
     

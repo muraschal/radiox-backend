@@ -188,12 +188,37 @@
     {% if radio_script %}
     <section class="dashboard-section">
         <div class="dashboard-container">
-            <h2 class="section-title">🤖 Generated Script</h2>
+            <h2 class="section-title">🤖 Generated Script (Full)</h2>
             <div class="stat-card">
-                <div class="stat-label">Radio Script Preview</div>
-                <div style="margin-top: 1rem; color: rgba(255,255,255,0.9); font-size: 0.9rem; line-height: 1.6; font-family: 'JetBrains Mono', monospace;">
-                    {{ radio_script|truncate(500) }}
+                <div class="stat-label">Complete Radio Script</div>
+                <div style="margin-top: 1rem; color: rgba(255,255,255,0.9); font-size: 0.9rem; line-height: 1.6; font-family: 'JetBrains Mono', monospace; white-space: pre-wrap;">
+                    {{ radio_script }}
                 </div>
+            </div>
+        </div>
+    </section>
+    {% endif %}
+
+    <!-- GPT Prompts -->
+    {% if gpt_prompts %}
+    <section class="dashboard-section">
+        <div class="dashboard-container">
+            <h2 class="section-title">🧠 GPT Prompts (Human Readable)</h2>
+            <div class="prompts-grid">
+                {% for prompt in gpt_prompts %}
+                <div class="stat-card">
+                    <div class="stat-label">{{ prompt.stage }} • {{ prompt.model }}</div>
+                    <div style="margin-top: 1rem; color: rgba(255,255,255,0.9); font-size: 0.85rem; line-height: 1.5;">
+                        <strong>Purpose:</strong> {{ prompt.purpose }}
+                    </div>
+                    <div style="margin-top: 1rem; color: rgba(255,255,255,0.8); font-size: 0.8rem; line-height: 1.4; font-family: 'JetBrains Mono', monospace; background: rgba(0,0,0,0.3); padding: 1rem; border-radius: 8px; white-space: pre-wrap;">{{ prompt.prompt }}</div>
+                    {% if prompt.response_summary %}
+                    <div style="margin-top: 1rem; color: rgba(102, 126, 234, 0.9); font-size: 0.8rem;">
+                        <strong>Response:</strong> {{ prompt.response_summary }}
+                    </div>
+                    {% endif %}
+                </div>
+                {% endfor %}
             </div>
         </div>
     </section>

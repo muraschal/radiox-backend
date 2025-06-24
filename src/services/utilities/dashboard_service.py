@@ -148,6 +148,9 @@ class DashboardService:
             'radio_script': processed_info.get('radio_script', ''),
             'show_config': show_config,
             
+            # GPT Prompts (NEW)
+            'gpt_prompts': self._extract_gpt_prompts(processed_info, raw_data),
+            
             # Raw data for debugging
             'raw_data': raw_data,
             'processed_info': processed_info
@@ -243,6 +246,75 @@ class DashboardService:
         except Exception as e:
             logger.warning(f"⚠️ CSS copy warning: {e}")
     
+    def _extract_gpt_prompts(self, processed_info: Dict[str, Any], raw_data: Dict[str, Any]) -> List[Dict[str, Any]]:
+        """Extrahiert und formatiert GPT Prompts aus den verarbeiteten Daten"""
+        prompts = []
+        
+        try:
+            # Extract GPT prompt from processed data
+            gpt_prompt = processed_info.get('gpt_prompt', '')
+            
+            if gpt_prompt:
+                # Stage 1: Article Selection Prompt
+                if 'STAGE 1' in gpt_prompt or 'Select' in gpt_prompt:
+                    prompts.append({
+                        'stage': 'Stage 1: Article Selection',
+                        'model': 'gpt-4',
+                        'purpose': 'Intelligente Auswahl relevanter News-Artikel basierend auf Show-Preset und Zielgruppe',
+                        'prompt': self._clean_prompt_for_display(gpt_prompt),
+                        'response_summary': f"{len(processed_info.get('selected_news', []))} Artikel ausgewählt"
+                    })
+                
+                # Stage 2: Script Generation Prompt (if different)
+                script_prompt = processed_info.get('script_prompt', '')
+                if script_prompt and script_prompt != gpt_prompt:
+                    prompts.append({
+                        'stage': 'Stage 2: Script Generation',
+                        'model': 'gpt-4',
+                        'purpose': 'Generierung des finalen Radio-Scripts mit natürlichen Dialogen und Moderationen',
+                        'prompt': self._clean_prompt_for_display(script_prompt),
+                        'response_summary': f"{len(processed_info.get('radio_script', '').split())} Wörter generiert"
+                    })
+                elif not script_prompt:
+                    # Single-stage prompt (both selection and script generation)
+                    prompts.append({
+                        'stage': 'Combined: Selection + Script',
+                        'model': 'gpt-4',
+                        'purpose': 'Artikel-Auswahl und Script-Generierung in einem Schritt',
+                        'prompt': self._clean_prompt_for_display(gpt_prompt),
+                        'response_summary': f"{len(processed_info.get('selected_news', []))} Artikel → {len(processed_info.get('radio_script', '').split())} Wörter"
+                    })
+            
+            # Add Bitcoin GPT prompt if available
+            bitcoin_data = raw_data.get('crypto', {})
+            if bitcoin_data.get('bitcoin_summary'):
+                prompts.append({
+                    'stage': 'Bitcoin Analysis',
+                    'model': 'gpt-4',
+                    'purpose': 'Intelligente Analyse der Bitcoin-Marktdaten für Radio-Integration',
+                    'prompt': 'Analysiere die aktuellen Bitcoin-Daten und erstelle eine prägnante, radio-taugliche Zusammenfassung...',
+                    'response_summary': f"Bitcoin Summary: {len(bitcoin_data.get('bitcoin_summary', '').split())} Wörter"
+                })
+            
+        except Exception as e:
+            logger.warning(f"⚠️ GPT Prompts extraction warning: {e}")
+        
+        return prompts
+    
+    def _clean_prompt_for_display(self, prompt: str) -> str:
+        """Bereinigt GPT Prompts für bessere Lesbarkeit"""
+        if not prompt:
+            return "Kein Prompt verfügbar"
+        
+        # Remove excessive whitespace and normalize line breaks
+        cleaned = '\n'.join(line.strip() for line in prompt.split('\n') if line.strip())
+        
+        # Limit length for display (but keep it readable)
+        if len(cleaned) > 2000:
+            cleaned = cleaned[:2000] + "\n\n... (gekürzt für Anzeige)"
+        
+        return cleaned
+
 
 
 

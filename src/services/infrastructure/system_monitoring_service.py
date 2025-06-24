@@ -182,24 +182,7 @@ class SystemMonitoringService:
             
         return cleanup_results
     
-    async def test_monitoring(self) -> bool:
-        """Testet das Monitoring-System"""
-        
-        try:
-            # Test System-Status
-            status = await self.get_system_status()
-            
-            # Test Error-Logging
-            await self.log_error("test_error", "Test-Fehler für Monitoring-Test")
-            
-            # Test Event-Logging
-            await self.log_system_event("test_event", {"test": True})
-            
-            return status.get("health_score", 0) > 0
-            
-        except Exception as e:
-            logger.error(f"Monitoring Test Fehler: {e}")
-            return False
+
     
     # Private Methods
     

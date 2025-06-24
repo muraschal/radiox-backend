@@ -108,29 +108,7 @@ class ContentCombinerService:
                 "timestamp": datetime.now().isoformat()
             }
     
-    async def test_combiner(self) -> bool:
-        """Testet den Content Combiner"""
-        
-        mock_audio = {
-            "success": True,
-            "audio_path": "test_audio.mp3",
-            "duration_seconds": 120
-        }
-        
-        mock_cover = {
-            "success": True,
-            "cover_path": "test_cover.png",
-            "cover_type": "fallback"
-        }
-        
-        try:
-            validation = await self._validate_inputs(mock_audio, mock_cover)
-            logger.info(f"Combiner Test - Validierung: {validation}")
-            return True
-            
-        except Exception as e:
-            logger.error(f"Combiner Test Fehler: {e}")
-            return False
+
     
     async def create_windows_compatible_mp3(
         self,

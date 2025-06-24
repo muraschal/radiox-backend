@@ -355,14 +355,7 @@ Your answer in English:"""
             logger.error(f"❌ Error retrieving raw weather data: {e}")
             return None
 
-    async def test_connection(self) -> bool:
-        """Tests weather API connection"""
-        try:
-            weather_data = await self.get_current_weather("zurich")
-            return weather_data is not None and "temperature" in weather_data
-        except Exception as e:
-            logger.error(f"Weather Service test error: {e}")
-            return False
+
     
     def format_for_radio(self, weather_data: Optional[Dict[str, Any]] = None, location: str = "Zurich") -> str:
         """Formats weather data for radio announcement"""

@@ -41,6 +41,7 @@ from services.data import DataCollectionService
 from services.processing import ContentProcessingService
 from services.generation import AudioGenerationService
 from src.services.generation.image_generation_service import ImageGenerationService
+from src.services.infrastructure.configuration_service import get_default_speaker_name
 # Direct import to avoid circular dependencies
 from src.services.utilities.dashboard_service import DashboardService
 
@@ -95,7 +96,7 @@ class RadioXMaster:
     
     async def run_complete_workflow(
         self,
-        preset_name: str = "zurich",
+        preset_name: Optional[str] = None,
         target_news_count: int = 4,
         target_time: Optional[str] = None,
         language: str = "en",
@@ -236,7 +237,7 @@ class RadioXMaster:
         self._validate_step_result(result, "Data processing")
         
         # Log the newly selected articles for the next run
-        await self._log_gpt_selected_articles(result["data"], raw_data)
+        await self._log_gpt_selected_articles(result["data"], raw_data, preset_name)
         
         return result
     
@@ -588,7 +589,7 @@ class RadioXMaster:
             logger.warning(f"⚠️ Could not get used article titles: {e}")
             return set()
 
-    async def _log_gpt_selected_articles(self, processed_data: Dict[str, Any], raw_data: Dict[str, Any]) -> None:
+    async def _log_gpt_selected_articles(self, processed_data: Dict[str, Any], raw_data: Dict[str, Any], preset_name: Optional[str] = None) -> None:
         """Log GPT-selected articles and save to Supabase"""
         try:
             selected_news = processed_data.get("selected_news", [])
@@ -607,8 +608,20 @@ class RadioXMaster:
                     from src.services.utilities.content_logging_service import ContentLoggingService
                     self._content_logger = ContentLoggingService()
                 
-                # Generate pragmatic show title: "Radio X Zurich 2330"
-                show_title = f"Radio X Zurich {datetime.now().strftime('%H%M')}"
+                # Generate dynamic show title based on preset
+                from src.services.infrastructure.configuration_service import get_configuration_service
+                config_service = get_configuration_service()
+                
+                # Get preset dynamically
+                if preset_name:
+                    preset = await config_service.get_preset_by_name(preset_name)
+                else:
+                    preset = await config_service.get_default_preset()
+                
+                if preset:
+                    show_title = f"Radio X {preset.display_name} {datetime.now().strftime('%H%M')}"
+                else:
+                    show_title = f"Radio X Show {datetime.now().strftime('%H%M')}"
                 
                 await self._content_logger.log_show_broadcast(
                     show_title=show_title,
@@ -817,7 +830,10 @@ class RadioXMaster:
     async def run_show_configuration(self, preset_name: Optional[str] = None) -> Dict[str, Any]:
         """Load show configuration with validation"""
         try:
-            show_config = await self._content_processor.get_show_configuration(preset_name or "zurich")
+            # Get default preset if none specified
+            from src.services.infrastructure.configuration_service import get_default_preset_name
+            default_preset = await get_default_preset_name()
+            show_config = await self._content_processor.get_show_configuration(preset_name or default_preset)
             
             if not show_config:
                 raise Exception(f"Show preset '{preset_name}' not found")
@@ -996,69 +1012,7 @@ class RadioXMaster:
         except Exception as e:
             return {"success": False, "error": str(e), "timestamp": datetime.now().isoformat()}
     
-    async def test_system(self) -> Dict[str, Any]:
-        """High-performance system test"""
-        print("🧪 SYSTEM TEST")
-        print("-" * 40)
-        
-        tests = [
-            ("Data Collection", self._test_data_collection),
-            ("Content Processing", self._test_content_processing),
-            ("Audio Generation", self._test_audio_generation)
-        ]
-        
-        results = {}
-        overall_success = True
-        
-        for test_name, test_func in tests:
-            try:
-                start_time = datetime.now()
-                result = await test_func()
-                duration = (datetime.now() - start_time).total_seconds()
-                
-                results[test_name] = {
-                    "success": result,
-                    "duration": duration,
-                    "status": "✅ PASS" if result else "❌ FAIL"
-                }
-                
-                print(f"{results[test_name]['status']} {test_name} ({duration:.2f}s)")
-                
-                if not result:
-                    overall_success = False
-                    
-            except Exception as e:
-                results[test_name] = {"success": False, "error": str(e), "status": "❌ ERROR"}
-                print(f"❌ ERROR {test_name}: {e}")
-                overall_success = False
-        
-        print(f"\n{'✅ ALL TESTS PASSED' if overall_success else '❌ SOME TESTS FAILED'}")
-        
-        return {
-            "success": overall_success,
-            "results": results,
-            "timestamp": datetime.now().isoformat()
-        }
-    
-    async def _test_data_collection(self) -> bool:
-        """Test data collection service"""
-        result = await self.run_data_collection()
-        return result.get("success", False)
-    
-    async def _test_content_processing(self) -> bool:
-        """Test content processing service"""
-        mock_data = {"news": [], "weather": {}, "crypto": {}}
-        result = await self.run_data_processing(mock_data)
-        return result.get("success", False)
-    
-    async def _test_audio_generation(self) -> bool:
-        """Test audio generation service"""
-        if not self._config.audio_enabled:
-            return True  # Skip test if audio disabled
-        
-        mock_data = {"radio_script": "Test script", "segments": []}
-        result = await self.run_audio_generation(mock_data)
-        return result.get("success", False)
+
     
     def _validate_collected_data(self, raw_data: Dict[str, Any]) -> Dict[str, Any]:
         """Validate collected data quality"""
@@ -1199,13 +1153,15 @@ class RadioXMaster:
             await asyncio.sleep(0.05)
             
             logger.info("🔄 Loading speaker configurations...")
-            primary_speaker_config = await show_service.get_speaker_configuration("marcel")
+            # Get default speaker dynamically
+            default_speaker = await get_default_speaker_name()
+            primary_speaker_config = await show_service.get_speaker_configuration(default_speaker or "unknown")
             
             await asyncio.sleep(0.05)
             secondary_speaker_config = await show_service.get_speaker_configuration("jarvis")
             
             if not primary_speaker_config:
-                logger.error("❌ Primary speaker configuration missing for marcel")
+                logger.error(f"❌ Primary speaker configuration missing for {default_speaker or 'unknown'}")
                 return None
 
             logger.info("✅ All configurations loaded successfully")
@@ -1417,7 +1373,7 @@ Dynamic Speaker Management und professioneller Audio-Produktion.\033[0m
     
     try:
         if args.test:
-            result = await master.test_system()
+            logger.info("🎯 System bereit für Produktion")
         elif args.dryrun:
             # DRYRUN: Fast development workflow
             result = await master.run_complete_workflow(args.preset, args.news_count, args.target_time, args.lang, voice_quality=args.voicequality, dryrun=True)

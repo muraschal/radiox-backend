@@ -226,7 +226,7 @@ class AudioGenerationService:
             
             payload = {
                 "text": self._enhance_text_for_speech(text, speaker),
-                "model_id": voice_config.get("model_id", self._get_default_model()),
+                "model_id": voice_config.get("model_id", await self._get_default_model()),
                 "voice_settings": {
                     "stability": voice_config.get("stability", 0.5),
                     "similarity_boost": voice_config.get("similarity_boost", 0.8),
@@ -260,16 +260,29 @@ class AudioGenerationService:
         except Exception as e:
             return None
     
-    def _get_default_model(self) -> str:
-        """Get default ElevenLabs model from central configuration"""
+    async def _get_default_model(self) -> str:
+        """Get default ElevenLabs model dynamically from database based on voice quality"""
         try:
+            # Get voice quality from current context
+            voice_quality = getattr(self, '_current_voice_quality', 'mid')
+            
+            # Load model from centralized configuration service
+            from ..infrastructure.configuration_service import get_best_elevenlabs_model
+            
+            model_id = await get_best_elevenlabs_model(voice_quality)
+            if model_id:
+                logger.debug(f"✅ Using database model for {voice_quality} quality: {model_id}")
+                return model_id
+            
+            # Fallback to API config if database fails
             import sys
             sys.path.append(str(Path(__file__).parent.parent.parent.parent))
             from config.api_config import get_default_elevenlabs_model
             return get_default_elevenlabs_model()
-        except ImportError:
+        except Exception as e:
+            logger.warning(f"⚠️ Database model lookup failed: {e}, using fallback")
             # Ultimate fallback
-            return "eleven_turbo_v2"
+            return "eleven_turbo_v2_5"
     
     async def _get_voice_with_fallback(self, speaker_name: str) -> Optional[Dict[str, Any]]:
         """Get voice configuration with intelligent fallback"""
@@ -992,10 +1005,7 @@ class AudioGenerationService:
         except Exception as e:
             return 0.0
             
-    async def test_audio_generation(self) -> bool:
-        """Test the main audio generation functionality."""
-        # This should be updated to reflect the new workflow
-        return True
+
         
     async def cleanup_old_files(self, days_old: int = None) -> Dict[str, Any]:
         """Clean up old temporary files."""

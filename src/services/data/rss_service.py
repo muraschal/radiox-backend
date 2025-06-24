@@ -24,10 +24,10 @@ from loguru import logger
 from contextlib import asynccontextmanager
 
 # Import Supabase Client
-import sys
-from pathlib import Path
-sys.path.append(str(Path(__file__).parent.parent.parent))
-from database.supabase_client import get_db
+import asyncio
+from typing import Dict, List, Any, Optional
+from loguru import logger
+from ..infrastructure.supabase_service import SupabaseService
 
 
 @dataclass(frozen=True)
@@ -58,7 +58,7 @@ class RSSService:
     __slots__ = ('_db', '_config')
     
     def __init__(self):
-        self._db = get_db()
+        self._db = SupabaseService()
         self._config = RSSConfig()
     
     @asynccontextmanager
@@ -282,13 +282,3 @@ class RSSService:
                 logger.error(f"❌ Feed fetch error for {feed_url}: {e}")
                 return []
     
-    async def test_connection(self) -> bool:
-        """Test RSS service connectivity"""
-        test_url = "https://feeds.bbci.co.uk/news/rss.xml"
-        
-        async with self._session_manager() as session:
-            try:
-                content = await self._fetch_content(session, test_url)
-                return bool(content)
-            except Exception:
-                return False
