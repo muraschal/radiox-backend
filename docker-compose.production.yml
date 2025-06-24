@@ -6,13 +6,15 @@ services:
     image: cloudflare/cloudflared:latest
     container_name: radiox-tunnel
     restart: unless-stopped
-    command: tunnel run
+    command: tunnel --config /tmp/config.yml run
     environment:
       - TUNNEL_TOKEN=${CLOUDFLARE_TUNNEL_TOKEN}
     depends_on:
       - api-gateway
     networks:
       - radiox-network
+    volumes:
+      - ./tunnel-config.yml:/tmp/config.yml:ro
 
   # Core Infrastructure
   redis:

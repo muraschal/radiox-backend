@@ -1,0 +1,22 @@
+ingress:
+  # API Subdomain for Backend - route to internal API Gateway
+  - hostname: api.radiox.cloud
+    service: http://api-gateway:8000
+    
+  # Health Check specific routing
+  - hostname: api.radiox.cloud
+    path: /health
+    service: http://api-gateway:8000/health
+    
+  # Service Status endpoint
+  - hostname: api.radiox.cloud
+    path: /services/status
+    service: http://api-gateway:8000/services/status
+    
+  # API Documentation
+  - hostname: api.radiox.cloud
+    path: /docs
+    service: http://api-gateway:8000/docs
+    
+  # Catch-all rule (required) - must be last
+  - service: http_status:404 
