@@ -1,0 +1,161 @@
+version: '3.8'
+
+services:
+  # Core Infrastructure
+  redis:
+    image: redis:7-alpine
+    container_name: radiox-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+
+  # API Gateway
+  api-gateway:
+    build:
+      context: ./services/api-gateway
+      dockerfile: Dockerfile
+    container_name: radiox-api-gateway
+    ports:
+      - "8000:8000"
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_KEY=${SUPABASE_KEY}
+    depends_on:
+      - redis
+    volumes:
+      - ./logs:/app/logs
+
+  # Show Service
+  show-service:
+    build:
+      context: ./services/show-service
+      dockerfile: Dockerfile
+    container_name: radiox-show-service
+    ports:
+      - "8001:8000"
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_KEY=${SUPABASE_KEY}
+    depends_on:
+      - redis
+    volumes:
+      - ./logs:/app/logs
+
+  # Content Service
+  content-service:
+    build:
+      context: ./services/content-service
+      dockerfile: Dockerfile
+    container_name: radiox-content-service
+    ports:
+      - "8002:8000"
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_KEY=${SUPABASE_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+    depends_on:
+      - redis
+    volumes:
+      - ./logs:/app/logs
+
+  # Audio Service
+  audio-service:
+    build:
+      context: ./services/audio-service
+      dockerfile: Dockerfile
+    container_name: radiox-audio-service
+    ports:
+      - "8003:8000"
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_KEY=${SUPABASE_KEY}
+      - ELEVENLABS_API_KEY=${ELEVENLABS_API_KEY}
+    depends_on:
+      - redis
+    volumes:
+      - ./logs:/app/logs
+      - ./temp:/app/temp
+      - ./jingles:/app/jingles
+
+  # Media Service
+  media-service:
+    build:
+      context: ./services/media-service
+      dockerfile: Dockerfile
+    container_name: radiox-media-service
+    ports:
+      - "8004:8000"
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_KEY=${SUPABASE_KEY}
+    depends_on:
+      - redis
+    volumes:
+      - ./logs:/app/logs
+      - ./web:/app/web
+      - ./outplay:/app/outplay
+
+  # Speaker Service
+  speaker-service:
+    build:
+      context: ./services/speaker-service
+      dockerfile: Dockerfile
+    container_name: radiox-speaker-service
+    ports:
+      - "8005:8000"
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_KEY=${SUPABASE_KEY}
+    depends_on:
+      - redis
+    volumes:
+      - ./logs:/app/logs
+
+  # Data Service
+  data-service:
+    build:
+      context: ./services/data-service
+      dockerfile: Dockerfile
+    container_name: radiox-data-service
+    ports:
+      - "8006:8000"
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_KEY=${SUPABASE_KEY}
+    depends_on:
+      - redis
+    volumes:
+      - ./logs:/app/logs
+
+  # Analytics Service
+  analytics-service:
+    build:
+      context: ./services/analytics-service
+      dockerfile: Dockerfile
+    container_name: radiox-analytics-service
+    ports:
+      - "8007:8000"
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_KEY=${SUPABASE_KEY}
+    depends_on:
+      - redis
+    volumes:
+      - ./logs:/app/logs
+
+volumes:
+  redis_data:
+
+networks:
+  default:
+    name: radiox-network 
