@@ -1,415 +1,537 @@
-# 🔧 Development Guide
+# Development Setup
 
 <div align="center">
 
-![Developer Guide](https://img.shields.io/badge/guide-developer-purple)
-![Difficulty](https://img.shields.io/badge/difficulty-intermediate-yellow)
-![Time](https://img.shields.io/badge/time-30%20min-orange)
+![Development](https://img.shields.io/badge/development-setup-green)
+![Docker](https://img.shields.io/badge/docker-required-2496ED)
+![Python](https://img.shields.io/badge/python-3.9+-blue)
 
-**🛠️ Complete guide to setting up and developing RadioX**
+**Complete development environment setup for RadioX microservices**
 
-[🏠 Documentation](../) • [👨‍💻 Developer Guides](../README.md#-developer-guides) • [🏗️ Architecture](architecture.md) • [🧪 Testing](testing.md)
+[🏠 Documentation](../) • [🏗️ Architecture](architecture.md) • [🔧 Services](services.md) • [🚀 Production](../deployment/production.md)
 
 </div>
 
 ---
 
-## 🎯 Overview
+## Quick Start
 
-This guide covers **complete development setup** for RadioX, from environment configuration to development workflows and code quality standards.
+### Prerequisites
+```bash
+# Required software
+- Docker & Docker Compose (latest)
+- Python 3.9+ (for CLI client)
+- Git
+- Make (optional, for convenience commands)
+```
 
-### ✨ **What You'll Learn**
-- 🔧 **Environment Setup** - Automated .env configuration
-- 🏗️ **Development Workflow** - Best practices and patterns
-- 🎤 **Voice Configuration** - Supabase-based voice management
-- 🛡️ **Code Quality** - Strict architectural guidelines
+### 5-Minute Setup
+```bash
+# 1. Clone repository
+git clone https://github.com/muraschal/radiox-backend.git
+cd radiox-backend
+
+# 2. Environment configuration
+cp env.example .env
+# Edit .env with your API keys
+
+# 3. Start all microservices
+make up                    # or: docker-compose up -d
+
+# 4. Verify services
+make health               # or: curl http://localhost:8000/services/status
+
+# 5. Generate your first show
+python main.py --news-count 3 --preset zurich
+```
 
 ---
 
-## 🚀 Quick Setup
+## Environment Configuration
 
-### **⚡ Automated Setup (Recommended)**
-
+### Required API Keys
 ```bash
-# 1. Clone and setup
-git clone https://github.com/your-org/RadioX.git
-cd radiox-backend  # ✅ NEW: Direct backend root
+# .env file configuration
+# OpenAI (GPT-4 + DALL-E 3)
+OPENAI_API_KEY=sk-your-key-here
 
-# 2. Setup virtual environment
-python -m venv venv
-source venv/bin/activate  # Linux/Mac
-# OR: venv\Scripts\activate  # Windows
+# ElevenLabs (TTS)
+ELEVENLABS_API_KEY=your-key-here
 
-# 3. Install dependencies
+# Supabase (Database)
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_KEY=your-anon-key-here
+
+# Optional APIs
+COINMARKETCAP_API_KEY=your-key-here        # Bitcoin data
+OPENWEATHERMAP_API_KEY=your-key-here       # Weather data
+```
+
+### Service Configuration
+```bash
+# Docker network settings
+DOCKER_NETWORK=radiox-network
+
+# Service URLs (auto-configured in Docker)
+API_GATEWAY_URL=http://localhost:8000
+SHOW_SERVICE_URL=http://localhost:8001
+CONTENT_SERVICE_URL=http://localhost:8002
+AUDIO_SERVICE_URL=http://localhost:8003
+MEDIA_SERVICE_URL=http://localhost:8004
+SPEAKER_SERVICE_URL=http://localhost:8005
+DATA_SERVICE_URL=http://localhost:8006
+ANALYTICS_SERVICE_URL=http://localhost:8007
+
+# Redis cache
+REDIS_URL=redis://localhost:6379
+```
+
+---
+
+## Microservices Architecture
+
+### Service Structure
+```
+radiox-backend/
+├── services/                    # 8 Docker microservices
+│   ├── api-gateway/            # Port 8000 - Central routing
+│   │   ├── Dockerfile
+│   │   ├── main.py
+│   │   └── requirements.txt
+│   ├── show-service/           # Port 8001 - Show orchestration
+│   ├── content-service/        # Port 8002 - News + GPT
+│   ├── audio-service/          # Port 8003 - TTS + mixing
+│   ├── media-service/          # Port 8004 - Files + cover art
+│   ├── speaker-service/        # Port 8005 - Voice config
+│   ├── data-service/           # Port 8006 - Database ops
+│   └── analytics-service/      # Port 8007 - Metrics
+├── main.py                     # CLI client (HTTP → services)
+├── docker-compose.yml          # Service orchestration
+├── Makefile                    # Development commands
+└── docs/                       # Documentation
+```
+
+### Development Workflow
+```bash
+# Start all services in development mode
+make dev                       # Start with auto-reload
+make up                        # Start production mode
+make down                      # Stop all services
+
+# Individual service development
+make up-service SERVICE=content-service
+make logs-service SERVICE=show-service
+make restart-service SERVICE=audio-service
+
+# Health monitoring
+make health                    # Check all services
+make status                    # Detailed service status
+make logs                      # View all logs
+```
+
+---
+
+## Local Development
+
+### Docker-First Development
+```bash
+# Build all services
+make build
+
+# Start with live reload (recommended for development)
+make dev
+
+# Access services
+curl http://localhost:8000/health              # API Gateway
+curl http://localhost:8001/health              # Show Service
+curl http://localhost:8002/content/news        # Content Service
+```
+
+### Individual Service Development
+```bash
+# Develop specific service locally
+cd services/content-service
+
+# Install dependencies
 pip install -r requirements.txt
 
-# 4. Configure API keys
-nano .env
+# Run service locally (outside Docker)
+python -m uvicorn main:app --reload --port 8002
 
-# 5. Test system
-python main.py --test
+# Test service
+curl http://localhost:8002/health
 ```
 
-**🎯 That's it!** Your development environment is ready.
-
-### **📁 Project Structure Update (v3.2)**
-
-**⚠️ IMPORTANT:** Das RadioX Backend wurde von der Frontend-Monorepo getrennt und ist jetzt ein eigenständiges Repository.
-
-#### **🔄 Migration Changes:**
-- ✅ **Neue Struktur:** `radiox-backend/` ist jetzt das Root-Verzeichnis
-- ✅ **Pfad-Korrekturen:** Alle internen Pfade wurden angepasst
-- ✅ **Dependencies:** Vollständige `requirements.txt` mit allen Abhängigkeiten
-- ✅ **Konfiguration:** `.env` liegt jetzt im Root-Verzeichnis
-
----
-
-## 🔧 Environment Configuration
-
-### **📋 Intelligent .env Management**
-
-RadioX includes an **intelligent setup system** that automatically manages your environment configuration:
-
-#### **🧠 Setup Manager Features:**
-- ✅ **Analyzes .env completeness** (23 variables)
-- ✅ **Creates automatic backups** before changes
-- ✅ **Generates .env from template** if missing
-- ✅ **Validates all API keys** (required vs optional)
-- ✅ **Provides helpful reports** and next steps
-
-#### **🎯 Setup Modes:**
-
-| Situation | Action | Result |
-|-----------|--------|--------|
-| **No .env** | CREATE | Template copied |
-| **Empty .env** | CREATE | Overwritten with template |
-| **Incomplete .env** | REPAIR | Backup + template |
-| **Complete .env** | VALIDATE | Status report |
-
-### **🔑 Required API Keys (6)**
-
-| Variable | Service | Purpose |
-|----------|---------|---------|
-| `SUPABASE_URL` | Supabase | Database connection |
-| `SUPABASE_ANON_KEY` | Supabase | Database access |
-| `OPENAI_API_KEY` | OpenAI | GPT-4 + DALL-E 3 |
-| `ELEVENLABS_API_KEY` | ElevenLabs | Text-to-Speech |
-| `COINMARKETCAP_API_KEY` | CoinMarketCap | Crypto data |
-| `WEATHER_API_KEY` | OpenWeatherMap | Weather data |
-
-### **⚙️ Optional Keys (17)**
-
-#### **🎤 Voice Configuration:**
-```bash
-ELEVENLABS_MARCEL_VOICE_ID=your_marcel_voice_id
-ELEVENLABS_JARVIS_VOICE_ID=your_jarvis_voice_id
-```
-
-#### **🐦 Social Media Integration:**
-```bash
-TWITTER_BEARER_TOKEN=your_twitter_bearer
-X_CLIENT_ID=your_x_client_id
-# ... (12 more social media keys)
-```
-
-#### **🎵 Music Integration:**
-```bash
-SPOTIFY_CLIENT_ID=your_spotify_client_id
-SPOTIFY_CLIENT_SECRET=your_spotify_secret
+### Hot Reload Setup
+```yaml
+# docker-compose.override.yml (auto-loaded in development)
+version: '3.8'
+services:
+  content-service:
+    volumes:
+      - ./services/content-service:/app
+    environment:
+      - RELOAD=true
+    command: uvicorn main:app --host 0.0.0.0 --port 8002 --reload
 ```
 
 ---
 
-## 🏗️ Development Architecture
+## Testing
 
-### **📁 Project Structure (Updated v3.2)**
+### Unit Testing
+```bash
+# Test individual service
+cd services/content-service
+pytest tests/ -v --cov=.
 
-```
-radiox-backend/              # ✅ NEW: Root directory (was backend/)
-├── 🔑 .env                  # ✅ MOVED: Environment config (was ../env)
-├── 📋 requirements.txt      # ✅ UPDATED: Complete dependencies
-├── 🎯 main.py              # ✅ NEW: Main entry point
-├── 🎯 src/                 # Core business logic
-│   ├── services/           # Service layer
-│   │   ├── data/          # Data collection services
-│   │   ├── processing/    # Content processing
-│   │   ├── generation/    # Audio/Image generation
-│   │   ├── infrastructure/# Database & infrastructure
-│   │   └── utilities/     # Utility services
-│   ├── config/            # Configuration management
-│   ├── models/            # Data models
-│   ├── api/               # API layer
-│   └── utils/             # Utilities
-├── 🔧 cli/                # Development tools
-├── 🗄️ database/           # Database layer
-├── ⚙️ config/             # Global configuration
-├── 📁 output/             # Generated content
-├── 📁 outplay/            # Final audio files
-├── 📁 logs/               # Application logs
-└── 📁 temp/               # Temporary files
+# Test all services
+make test
+
+# Test with coverage
+make test-coverage
 ```
 
-#### **🔧 Path Corrections Applied:**
+### Integration Testing
+```bash
+# Start test environment
+docker-compose -f docker-compose.test.yml up
 
-| File | Old Path | New Path | Status |
-|------|----------|----------|--------|
-| `config/settings.py` | `parent.parent.parent` | `parent.parent` | ✅ Fixed |
-| Audio Generation Service | `parent.parent` | `parent.parent.parent` | ✅ Fixed |
-| Image Generation Service | `parent.parent` | `parent.parent.parent` | ✅ Fixed |
-| Broadcast Generation Service | `parent.parent` | `parent.parent.parent` | ✅ Fixed |
-| Supabase Service | `parent.parent` | `parent.parent.parent` | ✅ Fixed |
+# Run integration tests
+pytest tests/integration/ -v
 
-### **🎯 Service-Oriented Design**
+# End-to-end testing
+python main.py --test-mode --news-count 1
+```
 
-RadioX follows **strict architectural principles**:
+### Service Health Testing
+```bash
+# Quick health check
+make health
 
-```python
-# ✅ CORRECT: Extend existing services
-class AudioGenerationService:
-    async def new_audio_feature(self):
-        voice_service = get_voice_config_service()
-        voice_config = await voice_service.get_voice_config("marcel")
-
-# ❌ WRONG: Create helper scripts
-# def helper_function():  # NEVER!
+# Detailed service testing
+curl -X POST http://localhost:8002/content/script \
+  -H "Content-Type: application/json" \
+  -d '{"content": "Test news", "preset": "zurich"}'
 ```
 
 ---
 
-## 🎤 Voice Configuration System
+## Debugging
 
-### **🎯 Architecture Principle**
-
-```
-❌ WRONG: Hardcoded voice configurations
-✅ RIGHT: Supabase-based voice management
-```
-
-### **📊 Voice Database (Supabase)**
-
-```sql
--- Table: voice_configurations
--- Only 2 standard voices: marcel, jarvis
--- Direct API access (NO MCPs in production!)
--- ElevenLabs API v1 with latest models (v2, v2.5, v3)
-```
-
-### **🔧 Voice Service Integration**
-
-```python
-# ✅ CORRECT: Use Voice Configuration Service
-from src.services.voice_config_service import get_voice_config_service
-
-service = get_voice_config_service()
-voice_config = await service.get_voice_config("marcel")
-
-# ❌ WRONG: Hardcoded voices
-# voice_config = {"marcel": {"voice_id": "..."}}  # NEVER!
-```
-
-### **🖥️ Voice Management CLI**
-
+### Service Logs
 ```bash
-# Manage voice configurations
-python cli/cli_voice.py list        # Show all voices
-python cli/cli_voice.py stats       # Statistics
-python cli/cli_voice.py test marcel # Test voice
+# View all service logs
+make logs
 
-# ❌ WRONG: New voice scripts
-# python voice_helper.py  # NEVER!
+# View specific service
+make logs-service SERVICE=content-service
+
+# Follow logs in real-time
+docker-compose logs -f content-service
+
+# View last 100 lines
+docker-compose logs --tail=100 show-service
+```
+
+### Debug Mode
+```bash
+# Start services in debug mode
+DEBUG=true make up
+
+# Debug specific service
+cd services/audio-service
+DEBUG=true python -m uvicorn main:app --reload --port 8003
+```
+
+### Service Communication Debug
+```bash
+# Test inter-service communication
+docker-compose exec api-gateway curl http://content-service:8002/health
+docker-compose exec show-service curl http://audio-service:8003/voices
+
+# Network debugging
+docker network ls
+docker network inspect radiox_default
 ```
 
 ---
 
-## 🛡️ Code Quality Standards
+## Database Development
 
-### **❌ ABSOLUTE PROHIBITIONS - NEVER BREAK:**
-
-#### **🚫 Forbidden File Patterns:**
+### Supabase Setup
 ```bash
-# These patterns are ABSOLUTELY FORBIDDEN:
-helper_*.py          # Temporary helpers
-temp_*.py           # Temporary scripts  
-debug_*.py          # Debug scripts
-quick_*.py          # Quick-fix scripts
-test_*.py           # Ad-hoc tests (except official)
-fix_*.py            # Fix scripts
-patch_*.py          # Patch scripts
-experiment_*.py     # Experiment scripts
-random_*.py         # Random scripts
-util_*.py           # Utility scripts (except documented)
+# Database schema management
+python -c "from database.schema_manager import setup_database; setup_database()"
+
+# View database status
+curl http://localhost:8006/health
+
+# Manual database operations
+python -c "
+from database.supabase_client import get_supabase_client
+client = get_supabase_client()
+result = client.table('show_presets').select('*').execute()
+print(result.data)
+"
 ```
 
-#### **🚫 Forbidden Practices:**
-- Temporary scripts for "quick tests"
-- Helper functions in separate files
-- Code duplication instead of service extension
-- Hardcoded paths or values
-- Unclean files after development
-
-### **✅ ALLOWED DEVELOPMENT PATTERNS**
-
-#### **📁 Use Existing Architecture:**
-
+### Redis Development
 ```bash
-# ✅ Existing CLI Scripts (only these):
-cli_master.py       # Master control
-cli_audio.py        # Audio testing
-cli_image.py        # Image testing
-cli_logging.py      # Logging management
-cli_overview.py     # System overview
-cli_weather.py      # Weather testing
-cli_voice.py        # Voice configuration management
-```
+# Connect to Redis
+docker-compose exec redis redis-cli
 
-#### **🔧 Extend Core Services:**
-```bash
-src/services/
-├── audio_generation.py     # Audio logic
-├── content_combiner.py     # Final assembly
-├── content_logging.py      # Logging system
-├── image_generation.py     # Cover art
-├── news_aggregation.py     # News collection
-├── weather_service.py      # Weather data
-└── voice_config_service.py # Voice configuration (Supabase)
+# View cached data
+redis-cli KEYS "*"
+redis-cli GET "content:news:latest"
+
+# Clear cache
+redis-cli FLUSHALL
 ```
 
 ---
 
-## 🎯 Development Workflows
+## Performance Development
 
-### **1. Testing New Features**
-
+### Profiling
 ```bash
-# ✅ CORRECT: Use existing test infrastructure
-python cli/cli_master.py test
-python cli/cli_audio.py --action test
-python cli/cli_voice.py test
-python cli/cli_logging.py --action workflow
+# Profile service performance
+cd services/content-service
+python -m cProfile -o profile.stats main.py
 
-# ❌ WRONG: New test scripts
-# python test_my_feature.py  # NEVER!
+# Memory profiling
+pip install memory-profiler
+python -m memory_profiler main.py
 ```
 
-### **2. Voice Development**
-
+### Load Testing
 ```bash
-# ✅ CORRECT: Extend voice service
-python cli/cli_voice.py list
-python cli/cli_voice.py test marcel
+# Install load testing tools
+pip install locust
 
-# ❌ WRONG: Voice helpers
-# python voice_debug.py  # NEVER!
+# Run load tests
+locust -f tests/load/locustfile.py --host=http://localhost:8000
 ```
 
-### **3. Debugging**
-
+### Monitoring in Development
 ```bash
-# ✅ CORRECT: Use existing debug tools
-python cli/cli_master.py --action status
-python cli/cli_overview.py
-python cli/cli_voice.py stats
-python cli/cli_logging.py --action reports
+# Start with monitoring stack
+docker-compose -f docker-compose.monitoring.yml up
 
-# ❌ WRONG: Debug helpers
-# python debug_issue.py  # NEVER!
-```
-
-### **4. Feature Development**
-
-```python
-# ✅ CORRECT: Extend service
-class AudioGenerationService:
-    async def new_audio_feature(self):
-        """New function in existing service"""
-        # Use Voice Configuration Service
-        voice_service = get_voice_config_service()
-        voice_config = await voice_service.get_voice_config("marcel")
-
-# ❌ WRONG: New script
-# def helper_function():  # NEVER!
+# Access monitoring
+open http://localhost:9090    # Prometheus
+open http://localhost:3000    # Grafana
+open http://localhost:8080    # Service dashboards
 ```
 
 ---
 
-## 🧪 Testing & Validation
+## CLI Development
 
-### **🔬 Testing Strategy**
-
+### Main CLI Client
 ```bash
-# Level 1: Individual service tests
-python cli/cli_audio.py test
-python cli/cli_crypto.py test
-python cli/cli_rss.py test
+# CLI client development (main.py)
+# This is now an HTTP client that communicates with microservices
 
-# Level 2: Integration tests
-python cli/cli_master.py test
+# Basic usage
+python main.py --help
+python main.py --news-count 3
+python main.py --preset basel --no-audio
 
-# Level 3: System tests
-python production/radiox_master.py --action test_services
-
-# Level 4: Production validation
-python production/radiox_master.py --action system_status
+# Development modes
+python main.py --debug
+python main.py --test-services
+python main.py --health-check
 ```
 
-### **🛡️ Quality Enforcement**
-
-#### **Before Every Change:**
-1. **Check:** Which existing service is responsible?
-2. **Voice-Check:** Does the code use Voice Configuration Service?
-3. **Extend:** Extend service with new functionality
-4. **Test:** Test with existing CLI tools
-5. **Document:** Document changes
-
-#### **After Every Change:**
-1. **Cleanup:** Delete all temporary files
-2. **Voice-Validation:** Check voice configurations via CLI
-3. **Validate:** Check architectural integrity
-4. **Test:** Ensure complete functionality
-5. **Commit:** Clean commits with clear messages
-
-### **🔍 Code Review Checklist**
-- [ ] No temporary scripts created
-- [ ] Existing architecture followed
-- [ ] Voice Configuration Service used (not hardcoded)
-- [ ] Services extended instead of new files
-- [ ] CLI structure respected
-- [ ] Documentation updated
-- [ ] Tests with existing tools
-- [ ] Cleaned up after development
-
----
-
-## ⚠️ Important: MCP vs. Production
-
-### **🏠 Local Development (Cursor)**
+### Service-Specific CLI Tools
 ```bash
-# MCPs allowed for rapid development
-# Supabase MCP for quick DB operations in Cursor
-```
+# Content service testing
+curl http://localhost:8002/content/news | jq .
 
-### **🚀 Production System**
-```bash
-# Only direct API access
-# All services use supabase_client.py for DB connections
-# NO MCP dependencies in production code!
+# Audio service testing
+curl -X POST http://localhost:8003/generate \
+  -H "Content-Type: application/json" \
+  -d '{"text": "Test audio", "voice_id": "marcel"}'
+
+# Show generation testing
+curl -X POST http://localhost:8001/generate \
+  -H "Content-Type: application/json" \
+  -d '{"preset_name": "zurich", "news_count": 2}'
 ```
 
 ---
 
-## 🔗 Related Guides
+## IDE Setup
 
-- **🏗️ [Architecture](architecture.md)** - System design and components
-- **🧪 [Testing](testing.md)** - Testing strategies and tools
-- **🤝 [Contributing](contributing.md)** - Code standards and workflow
-- **🚀 [Production](../deployment/production.md)** - Deploy your changes
+### VS Code Configuration
+```json
+// .vscode/settings.json
+{
+    "python.defaultInterpreterPath": "./venv/bin/python",
+    "python.formatting.provider": "black",
+    "python.linting.enabled": true,
+    "python.linting.pylintEnabled": true,
+    "files.exclude": {
+        "**/__pycache__": true,
+        "**/venv": true,
+        "**/.pytest_cache": true
+    },
+    "docker.commands.build": "${workspaceFolder}/Makefile",
+    "docker.commands.compose": "${workspaceFolder}/docker-compose.yml"
+}
+```
+
+### Debug Configuration
+```json
+// .vscode/launch.json
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Debug Content Service",
+            "type": "python",
+            "request": "launch",
+            "program": "services/content-service/main.py",
+            "cwd": "${workspaceFolder}/services/content-service",
+            "env": {
+                "DEBUG": "true"
+            }
+        },
+        {
+            "name": "Debug CLI Client",
+            "type": "python",
+            "request": "launch",
+            "program": "main.py",
+            "args": ["--news-count", "2", "--debug"],
+            "cwd": "${workspaceFolder}"
+        }
+    ]
+}
+```
+
+---
+
+## Makefile Commands
+
+### Available Commands
+```bash
+# Service Management
+make up              # Start all services
+make down            # Stop all services
+make restart         # Restart all services
+make build           # Build all Docker images
+make clean           # Remove containers and volumes
+
+# Development
+make dev             # Start with hot reload
+make logs            # View all logs
+make health          # Check service health
+make test            # Run all tests
+
+# Individual Services
+make up-service SERVICE=content-service
+make logs-service SERVICE=show-service
+make restart-service SERVICE=audio-service
+
+# Database
+make db-setup        # Initialize database
+make db-reset        # Reset database
+make db-backup       # Backup database
+
+# Utilities
+make format          # Format code with black
+make lint            # Run linting
+make docs            # Generate documentation
+```
+
+### Custom Development Commands
+```bash
+# Add to your ~/.bashrc or ~/.zshrc
+alias radiox-start='cd ~/radiox-backend && make up'
+alias radiox-stop='cd ~/radiox-backend && make down'
+alias radiox-logs='cd ~/radiox-backend && make logs'
+alias radiox-health='cd ~/radiox-backend && make health'
+alias radiox-generate='cd ~/radiox-backend && python main.py --news-count 3'
+```
+
+---
+
+## Troubleshooting
+
+### Common Issues
+
+#### Services Not Starting
+```bash
+# Check Docker daemon
+docker --version
+docker-compose --version
+
+# Check ports availability
+lsof -i :8000-8007
+
+# Reset Docker environment
+make clean
+docker system prune -f
+make build
+make up
+```
+
+#### Database Connection Issues
+```bash
+# Check Supabase configuration
+curl -H "apikey: $SUPABASE_KEY" "$SUPABASE_URL/rest/v1/"
+
+# Test database service
+curl http://localhost:8006/health
+
+# Reset database connection
+make restart-service SERVICE=data-service
+```
+
+#### API Key Issues
+```bash
+# Verify environment variables
+docker-compose exec api-gateway env | grep API_KEY
+
+# Test external APIs
+curl -H "Authorization: Bearer $OPENAI_API_KEY" \
+  https://api.openai.com/v1/models
+
+curl -H "Authorization: Bearer $ELEVENLABS_API_KEY" \
+  https://api.elevenlabs.io/v1/voices
+```
+
+### Performance Issues
+```bash
+# Check resource usage
+docker stats
+
+# Check service health
+make health
+
+# View detailed logs
+make logs-service SERVICE=audio-service | grep ERROR
+
+# Monitor network traffic
+docker-compose exec api-gateway netstat -tuln
+```
+
+---
+
+## Related Documentation
+
+- **[🏗️ Architecture](architecture.md)** - System design overview
+- **[🔧 Services](services.md)** - Detailed service documentation
+- **[🧪 Testing](testing.md)** - Testing strategies and tools
+- **[🚀 Production](../deployment/production.md)** - Production deployment
 
 ---
 
 <div align="center">
 
-**🛠️ Ready to develop like a pro!**
+**🛠️ Development environment optimized for productivity**
 
-[🏠 Documentation](../) • [🏗️ Architecture](architecture.md) • [💬 Get Help](../README.md#-support)
+[🏗️ View Architecture](architecture.md) • [🔧 Explore Services](services.md) • [🧪 Run Tests](testing.md)
 
 </div> 

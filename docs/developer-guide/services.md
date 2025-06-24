@@ -1,810 +1,832 @@
-# 🔧 Service Documentation
+# 8 Microservices Documentation
 
 <div align="center">
 
-![Developer Guide](https://img.shields.io/badge/guide-developer-purple)
-![Difficulty](https://img.shields.io/badge/difficulty-intermediate-yellow)
-![Time](https://img.shields.io/badge/time-25%20min-orange)
+![Microservices](https://img.shields.io/badge/microservices-8-blue)
+![Docker](https://img.shields.io/badge/docker-compose-2496ED)
+![FastAPI](https://img.shields.io/badge/FastAPI-009688)
 
-**⚙️ Complete guide to RadioX microservices architecture**
+**Complete guide to RadioX 8-service architecture**
 
-[🏠 Documentation](../) • [👨‍💻 Developer Guides](../README.md#-developer-guides) • [🏗️ Architecture](architecture.md) • [🔧 Development](development.md)
+[🏠 Documentation](../) • [🏗️ Architecture](architecture.md) • [🛠️ Development](development.md) • [🚀 Deployment](../deployment/)
 
 </div>
 
 ---
 
-## 🎯 Overview
+## Service Overview
 
-RadioX implements a **microservices architecture** with specialized services for data collection, content processing, and media generation. Each service is designed for **independence**, **scalability**, and **maintainability**.
+RadioX operates **8 specialized microservices** orchestrated via Docker Compose, each handling specific business domains with clean API boundaries.
 
-### ✨ **Service Principles**
-- 🔄 **Single Responsibility** - Each service has one clear purpose
-- 🔗 **Loose Coupling** - Minimal dependencies between services
-- 📦 **High Cohesion** - Related functionality grouped together
-- 🚀 **Production Ready** - Enterprise-grade error handling and logging
+### Service Registry
+
+| Port | Service | Responsibility | Technology Stack |
+|------|---------|---------------|-----------------|
+| **8000** | **API Gateway** | Central routing, service discovery | FastAPI + Redis |
+| **8001** | **Show Service** | Show generation orchestration | FastAPI + Celery |
+| **8002** | **Content Service** | News collection, GPT processing | FastAPI + OpenAI |
+| **8003** | **Audio Service** | TTS, audio mixing, jingles | FastAPI + ElevenLabs |
+| **8004** | **Media Service** | File management, cover art | FastAPI + DALL-E |
+| **8005** | **Speaker Service** | Voice configuration | FastAPI + Supabase |
+| **8006** | **Data Service** | Database operations | FastAPI + PostgreSQL |
+| **8007** | **Analytics Service** | Metrics, monitoring | FastAPI + Prometheus |
 
 ---
 
-## 💰 Bitcoin Service
+## 🌐 API Gateway (Port 8000)
 
-### **🎯 Purpose**
-Provides real-time Bitcoin price data, market analysis, and radio-ready announcements using CoinMarketCap API.
+### Purpose
+**Central entry point** providing service discovery, request routing, and cross-cutting concerns.
 
-### **📁 Files**
-- `src/services/bitcoin_service.py` - Core service implementation
-- `cli/cli_bitcoin.py` - CLI testing interface
+### Container Configuration
+```dockerfile
+# services/api-gateway/Dockerfile
+FROM python:3.9-slim
 
-### **🔧 Configuration**
-```bash
-# .env file
-COINMARKETCAP_API_KEY=your_api_key_here
+WORKDIR /app
+COPY requirements.txt .
+RUN pip install -r requirements.txt
+
+COPY main.py .
+EXPOSE 8000
+
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
 ```
 
-### **📊 Features**
-- ✅ **Real-time Bitcoin Price** - Current USD price with high precision
-- ✅ **Multi-timeframe Changes** - 1h, 24h, 7d, 30d, 60d, 90d percentage changes
-- ✅ **Market Data** - Market cap, 24h volume, circulating supply
-- ✅ **Trend Analysis** - Intelligent trend detection and descriptions
-- ✅ **Radio Announcements** - Professional, time-aware announcements
-- ✅ **Caching System** - 5-minute cache to optimize API calls
-- ✅ **Error Handling** - Graceful fallbacks and comprehensive logging
+### Key Responsibilities
+- **Service Discovery** - Dynamic service registry and health monitoring
+- **Request Routing** - Intelligent routing to appropriate microservices
+- **Authentication** - JWT token validation and user session management
+- **Rate Limiting** - Per-client request throttling and abuse prevention
+- **CORS Handling** - Cross-origin request policy enforcement
+- **API Documentation** - OpenAPI spec generation and Swagger UI
 
-### **🏗️ Architecture**
-
+### API Endpoints
 ```python
-class BitcoinService:
-    def __init__(self):
-        self.api_key = os.getenv('COINMARKETCAP_API_KEY')
-        self.base_url = "https://pro-api.coinmarketcap.com/v1"
-        self.cache = {}
-        self.cache_duration = 300  # 5 minutes
-    
-    async def get_bitcoin_data(self) -> Dict[str, Any]
-    async def get_radio_announcement(self, time_period: str = "24h") -> str
-    def _analyze_trend(self, change_24h: float, change_7d: float) -> str
-    def _format_large_number(self, number: float) -> str
+# Core Gateway Endpoints
+GET  /health                    # Gateway health check
+GET  /services/status           # All services health
+GET  /services/discovery        # Service registry
+POST /api/v1/auth/login        # Authentication
+POST /api/v1/*                 # Route to services
+
+# Service Proxying
+POST /api/v1/shows/generate    # → Show Service (8001)
+GET  /api/v1/content/news      # → Content Service (8002)
+POST /api/v1/audio/generate    # → Audio Service (8003)
 ```
 
-### **📡 API Reference**
+### Dependencies
+```yaml
+External:
+  - Redis (session storage)
+  - Service discovery mechanism
 
-#### **get_bitcoin_data()**
-Returns comprehensive Bitcoin market data.
-
-**Returns:**
-```python
-{
-    "price": 105503.45,
-    "changes": {
-        "1h": 0.2,
-        "24h": 0.6,
-        "7d": -2.1,
-        "30d": 15.8,
-        "60d": 45.2,
-        "90d": 78.9
-    },
-    "market_cap": 2087234567890.12,
-    "volume_24h": 45678901234.56,
-    "circulating_supply": 19789456.78,
-    "last_updated": "2024-12-19T10:30:00Z",
-    "trend": "slightly_up",
-    "trend_description": "showing modest gains"
-}
-```
-
-#### **get_radio_announcement(time_period)**
-Generates professional radio announcement.
-
-**Parameters:**
-- `time_period` (str): "1h", "24h", "7d", "30d", "60d", "90d"
-
-**Returns:**
-```python
-"Bitcoin is trading at 105,503 dollars and is up 0.6 percent in the last 24 hours, showing modest gains with a market cap of 2.09 trillion dollars."
-```
-
-### **🎙️ Radio Announcement Examples**
-
-```python
-# Positive trend (24h)
-"Bitcoin is trading at 105,503 dollars and is up 0.6 percent in the last 24 hours, showing modest gains with a market cap of 2.09 trillion dollars."
-
-# Negative trend (7d)
-"Bitcoin is trading at 98,234 dollars and is down 2.1 percent over the last 7 days, experiencing some volatility with a market cap of 1.94 trillion dollars."
-
-# Strong positive (30d)
-"Bitcoin is trading at 112,890 dollars and is up 15.8 percent over the last 30 days, showing strong bullish momentum with a market cap of 2.23 trillion dollars."
-```
-
-### **🔄 Trend Analysis Logic**
-
-```python
-def _analyze_trend(self, change_24h: float, change_7d: float) -> Tuple[str, str]:
-    """Intelligent trend analysis based on multiple timeframes"""
-    
-    if change_24h > 5:
-        return "strongly_up", "surging with strong bullish momentum"
-    elif change_24h > 2:
-        return "up", "showing solid gains"
-    elif change_24h > 0:
-        return "slightly_up", "showing modest gains"
-    elif change_24h > -2:
-        return "slightly_down", "experiencing minor declines"
-    elif change_24h > -5:
-        return "down", "facing selling pressure"
-    else:
-        return "strongly_down", "under significant bearish pressure"
-```
-
-### **🧪 CLI Usage**
-
-```bash
-# Basic test (default 24h timeframe)
-python cli_bitcoin.py
-
-# Specific timeframe
-python cli_bitcoin.py --timeframe 7d
-
-# Output example:
-💰 BITCOIN SERVICE
-📈 PRICE: $105,503.45 (+0.6% 24h, -2.1% 7d)
-📊 MARKET: $2.09T cap, $45.68B volume
-🕐 UPDATED: 2024-12-19 10:30:00 UTC
-✅ API: Connected, ⚡ CACHE: Active (3m remaining)
-📈 TREND: Slightly up - showing modest gains
-🎙️ RADIO: Bitcoin is trading at 105,503 dollars...
+Internal:
+  - All 7 business services (8001-8007)
 ```
 
 ---
 
-## 🌤️ Weather Service
+## 🎭 Show Service (Port 8001)
 
-### **🎯 Purpose**
-Provides current weather conditions and intelligent forecasts for Swiss cities using OpenWeatherMap API with smart time-based outlook logic.
+### Purpose
+**Orchestration hub** for complete radio show generation workflows.
 
-### **📁 Files**
-- `src/services/weather_service.py` - Core service implementation
-- `cli/cli_weather.py` - CLI testing interface
+### Container Configuration
+```dockerfile
+# services/show-service/Dockerfile
+FROM python:3.9-slim
 
-### **🔧 Configuration**
-```bash
-# .env file
-OPENWEATHERMAP_API_KEY=your_api_key_here
+WORKDIR /app
+COPY requirements.txt .
+RUN pip install -r requirements.txt
+
+COPY main.py .
+EXPOSE 8001
+
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8001"]
 ```
 
-### **📊 Features**
-- ✅ **Multi-city Support** - All major Swiss cities (Zürich, Basel, Geneva, Bern, Lausanne, Winterthur, Lucerne, St. Gallen)
-- ✅ **Current Weather** - Temperature, conditions, humidity, wind speed
-- ✅ **Smart Outlook** - Time-aware forecasting logic
-- ✅ **5-day Forecast** - Extended weather predictions
-- ✅ **Radio Announcements** - Professional weather reports
-- ✅ **Precipitation Probability** - Rain/snow likelihood
-- ✅ **Emoji Integration** - Visual weather representation
+### Key Responsibilities
+- **Workflow Orchestration** - Coordinate multi-service show generation
+- **State Management** - Track show generation progress and status
+- **Business Logic** - Show configuration and preset management
+- **Error Handling** - Graceful failure recovery and rollback
+- **Dashboard Generation** - HTML dashboard with show metadata
 
-### **🏗️ Architecture**
-
+### API Endpoints
 ```python
-class WeatherService:
-    def __init__(self):
-        self.api_key = os.getenv('OPENWEATHERMAP_API_KEY')
-        self.base_url = "http://api.openweathermap.org/data/2.5"
-        self.swiss_cities = [
-            "Zürich", "Basel", "Geneva", "Bern", 
-            "Lausanne", "Winterthur", "Lucerne", "St. Gallen"
-        ]
+# Show Management
+POST /generate                 # Generate complete radio show
+GET  /shows/{show_id}         # Retrieve show details
+GET  /shows                   # List all shows
+DELETE /shows/{show_id}       # Delete show
+
+# Dashboard & UI
+GET  /dashboard/{show_id}     # Show dashboard HTML
+GET  /status/{show_id}        # Generation status
+
+# Configuration
+GET  /presets                 # Available show presets
+POST /presets                 # Create show preset
+```
+
+### Workflow Example
+```python
+async def generate_complete_show(preset_name: str, news_count: int) -> ShowResponse:
+    """Complete show generation orchestration"""
     
-    async def get_current_weather(self, city: str = "Zürich") -> Dict[str, Any]
-    async def get_smart_outlook(self, city: str = "Zürich") -> Dict[str, Any]
-    async def get_5day_forecast(self, city: str = "Zürich") -> List[Dict[str, Any]]
-    async def get_radio_announcement(self, city: str = "Zürich") -> str
-```
-
-### **📡 API Reference**
-
-#### **get_current_weather(city)**
-Returns current weather conditions for specified city.
-
-**Parameters:**
-- `city` (str): Swiss city name (default: "Zürich")
-
-**Returns:**
-```python
-{
-    "city": "Zürich",
-    "temperature": 15.6,
-    "feels_like": 14.2,
-    "humidity": 88,
-    "wind_speed": 4.8,
-    "wind_direction": 240,
-    "description": "Heavy Rain",
-    "emoji": "🌧️",
-    "pressure": 1013.2,
-    "visibility": 8.5,
-    "timestamp": "2024-12-19T20:00:00Z"
-}
-```
-
-#### **get_smart_outlook(city)**
-Provides intelligent time-based weather outlook.
-
-**Smart Logic:**
-- **00:00-18:00**: Next 2 hours forecast with precipitation probability
-- **18:00-23:59**: Current weather + tomorrow forecast
-
-**Returns:**
-```python
-{
-    "type": "next_hours",  # or "tomorrow"
-    "time": "20:00",
-    "temperature": 16.9,
-    "description": "Light Rain",
-    "precipitation_probability": 100,
-    "announcement": "Weather outlook for Zürich - next few hours: Light rain expected around 20:00 with temperatures around 17 degrees and 100 percent chance of rain."
-}
-```
-
-#### **get_5day_forecast(city)**
-Returns 5-day weather forecast with daily summaries.
-
-**Returns:**
-```python
-[
-    {
-        "date": "2024-12-20",
-        "day": "Friday",
-        "temp_min": 12.3,
-        "temp_max": 18.7,
-        "description": "Partly Cloudy",
-        "emoji": "⛅",
-        "precipitation_probability": 20,
-        "humidity": 65,
-        "wind_speed": 3.2
-    },
-    # ... 4 more days
-]
-```
-
-### **🧠 Smart Outlook Logic**
-
-```python
-async def get_smart_outlook(self, city: str = "Zürich") -> Dict[str, Any]:
-    """Time-aware weather outlook logic"""
+    # 1. Get configuration from Data Service
+    config = await data_client.get_preset(preset_name)
     
-    current_hour = datetime.now().hour
+    # 2. Collect content from Content Service
+    content = await content_client.get_recent_news(news_count)
     
-    if 0 <= current_hour < 18:
-        # Morning/Afternoon: Next 2 hours forecast
-        forecast = await self._get_hourly_forecast(city, hours=2)
-        return {
-            "type": "next_hours",
-            "time": forecast["time"],
-            "temperature": forecast["temperature"],
-            "description": forecast["description"],
-            "precipitation_probability": forecast["precipitation_probability"],
-            "announcement": f"Weather outlook for {city} - next few hours: {forecast['description']} expected around {forecast['time']} with temperatures around {forecast['temperature']:.0f} degrees and {forecast['precipitation_probability']} percent chance of rain."
-        }
-    else:
-        # Evening/Night: Tomorrow forecast
-        tomorrow = await self._get_tomorrow_forecast(city)
-        return {
-            "type": "tomorrow",
-            "date": tomorrow["date"],
-            "temp_min": tomorrow["temp_min"],
-            "temp_max": tomorrow["temp_max"],
-            "description": tomorrow["description"],
-            "announcement": f"Weather outlook for {city} - tomorrow: {tomorrow['description']} with temperatures between {tomorrow['temp_min']:.0f} and {tomorrow['temp_max']:.0f} degrees."
-        }
+    # 3. Generate script via Content Service
+    script = await content_client.generate_script(content, config)
+    
+    # 4. Parallel media generation
+    audio_task = audio_client.generate_audio(script, config.voices)
+    cover_task = media_client.generate_cover(script.summary)
+    
+    audio, cover = await asyncio.gather(audio_task, cover_task)
+    
+    # 5. Persist show data
+    show = await data_client.create_show(script, audio, cover)
+    
+    return ShowResponse(
+        show_id=show.id,
+        status="completed",
+        audio_url=audio.url,
+        cover_url=cover.url,
+        dashboard_url=f"/dashboard/{show.id}"
+    )
 ```
 
-### **🎙️ Radio Announcement Examples**
-
-```python
-# Morning/Afternoon (Next 2 hours)
-"Weather outlook for Zürich - next few hours: Light rain expected around 20:00 with temperatures around 17 degrees and 100 percent chance of rain."
-
-# Evening/Night (Tomorrow)
-"Weather outlook for Zürich - tomorrow: Partly cloudy with temperatures between 12 and 19 degrees."
-
-# Current weather
-"Current weather in Zürich: 16 degrees with heavy rain, humidity at 88 percent and wind at 5 kilometers per hour."
-```
-
-### **🌍 Supported Swiss Cities**
-
-| 🏙️ City | 🗺️ Region | 📍 Coordinates |
-|----------|-----------|----------------|
-| **Zürich** | German-speaking | 47.3769°N, 8.5417°E |
-| **Basel** | German-speaking | 47.5596°N, 7.5886°E |
-| **Geneva** | French-speaking | 46.2044°N, 6.1432°E |
-| **Bern** | German-speaking | 46.9481°N, 7.4474°E |
-| **Lausanne** | French-speaking | 46.5197°N, 6.6323°E |
-| **Winterthur** | German-speaking | 47.5034°N, 8.7240°E |
-| **Lucerne** | German-speaking | 47.0502°N, 8.3093°E |
-| **St. Gallen** | German-speaking | 47.4245°N, 9.3767°E |
-
-### **🧪 CLI Usage**
-
-```bash
-# Basic test (Zürich, current + smart outlook)
-python cli_weather.py
-
-# Specific city
-python cli_weather.py --city Basel
-
-# All cities overview
-python cli_weather.py --all-cities
-
-# Output example:
-🌤️ WEATHER SERVICE
-🌡️ CURRENT: 15.6°C - Heavy Rain, 💨 4.8 km/h, 💧 88%
-🕐 OUTLOOK: 20:00: 16.9°C - Light Rain, 100% rain
-🎙️ RADIO: Weather outlook for Zürich - next few hours...
+### Dependencies
+```yaml
+Internal Services:
+  - Content Service (8002) - News and script generation
+  - Audio Service (8003) - Audio production
+  - Media Service (8004) - Cover art generation
+  - Data Service (8006) - Configuration and persistence
 ```
 
 ---
 
-## 📰 RSS Service
+## 📰 Content Service (Port 8002)
 
-### **🎯 Purpose**
-Comprehensive RSS feed management and news aggregation system with professional HTML dashboard, real-time filtering, and intelligent content processing.
+### Purpose
+**Content aggregation and AI processing** for news collection and script generation.
 
-### **📁 Files**
-- `src/services/rss_service.py` - Core RSS service implementation
-- `cli/cli_rss.py` - CLI interface with HTML dashboard generation
+### Key Responsibilities
+- **RSS Feed Aggregation** - 25+ Swiss and international news sources
+- **Content Filtering** - Deduplication and quality filtering
+- **GPT-4 Integration** - Professional radio script generation
+- **News Categorization** - Automatic content classification
+- **Caching Layer** - Redis-based content caching for performance
 
-### **🔧 Configuration**
-```bash
-# Database connection via Supabase
-# RSS feeds managed in rss_feed_preferences table
+### API Endpoints
+```python
+# Content Collection
+GET  /content/news             # Recent news articles
+GET  /content/feeds            # RSS feed status
+POST /content/refresh          # Force content refresh
+
+# Script Generation
+POST /content/script           # Generate radio script
+POST /content/process          # Process raw content
+
+# Configuration
+GET  /sources                  # Available news sources
+POST /sources                  # Add news source
 ```
 
-### **📊 Features**
-- ✅ **30+ RSS Feeds** - Swiss & international news sources
-- ✅ **11 Active Sources** - NZZ, 20min, Heise, SRF, Tagesanzeiger, etc.
-- ✅ **Professional Dashboard** - Modern HTML interface with tables
-- ✅ **Live Filtering** - Category-based filtering with JavaScript
-- ✅ **Smart Sorting** - Latest, Priority, Source, Category sorting
-- ✅ **Dual Links** - Article links + RSS feed links in each row
-- ✅ **Real-time Analytics** - 98+ articles with live statistics
-- ✅ **Category Management** - 12 categories (news, wirtschaft, zurich, tech, etc.)
-- ✅ **Duplicate Removal** - 80% similarity threshold for clean results
-- ✅ **Enterprise Design** - Professional blue/gray color scheme
-
-### **🏗️ Architecture**
-
+### RSS Sources Integration
 ```python
-class RSSService:
-    def __init__(self):
-        self._supabase = None  # Lazy loading
-    
-    async def get_all_active_feeds(self) -> List[Dict[str, Any]]
-    async def get_all_recent_news(self, max_age_hours: int = 12) -> List[RSSNewsItem]
-    async def _fetch_feed(self, url: str, source: str, category: str, ...) -> List[RSSNewsItem]
-    def _parse_feed_content(self, content: str, ...) -> List[RSSNewsItem]
-    def _remove_duplicates(self, news_items: List[RSSNewsItem]) -> List[RSSNewsItem]
-```
-
-### **📡 API Reference**
-
-#### **get_all_active_feeds()**
-Returns all active RSS feed configurations from database.
-
-**Returns:**
-```python
-[
-    {
-        "id": "nzz_zurich",
-        "source_name": "nzz",
-        "feed_category": "zurich", 
-        "feed_url": "https://www.nzz.ch/zuerich.rss",
+ACTIVE_RSS_SOURCES = {
+    "nzz": {
+        "feeds": ["zurich", "schweiz", "wirtschaft", "international"],
         "priority": 10,
         "weight": 3.0,
-        "is_active": True
+        "language": "de"
     },
-    # ... 29 more feeds
-]
+    "srf": {
+        "feeds": ["news", "schweiz", "international", "wirtschaft"],
+        "priority": 9,
+        "weight": 2.0,
+        "language": "de"
+    },
+    "20min": {
+        "feeds": ["weather", "zurich", "crypto", "tech"],
+        "priority": 10,
+        "weight": 0.8,
+        "language": "de"
+    }
+    # ... 22 more sources
+}
 ```
 
-#### **get_all_recent_news(max_age_hours)**
-Collects recent news from ALL active feeds.
-
-**Parameters:**
-- `max_age_hours` (int): Maximum age of articles in hours (default: 12)
-
-**Returns:**
+### GPT-4 Script Generation
 ```python
-[
-    RSSNewsItem(
-        title="Kampfjets fangen Hobbypilot ab",
-        summary="Ein E-Flugzeug wurde von Kampfjets abgefangen...",
-        link="https://www.20min.ch/story/...",
-        published=datetime(2024, 12, 19, 14, 30),
-        source="20min",
-        category="zurich",
-        priority=10,
-        weight=2.5
-    ),
-    # ... 97 more articles
-]
+async def generate_radio_script(content: List[NewsItem], config: ShowConfig) -> RadioScript:
+    """Generate professional radio script using GPT-4"""
+    
+    prompt = f"""
+    Create a professional Swiss radio show script for {config.preset_name}.
+    
+    Style: {config.show_behavior}
+    Duration: {config.duration_minutes} minutes
+    Speakers: {config.primary_speaker}, {config.secondary_speaker}
+    
+    News Content:
+    {format_news_for_prompt(content)}
+    
+    Requirements:
+    - Natural dialogue between speakers
+    - Swiss German cultural references
+    - Professional radio broadcasting style
+    - Include weather and crypto updates
+    """
+    
+    response = await openai_client.chat.completions.create(
+        model="gpt-4",
+        messages=[{"role": "user", "content": prompt}],
+        temperature=0.7,
+        max_tokens=2000
+    )
+    
+    return RadioScript(
+        content=response.choices[0].message.content,
+        metadata={
+            "model": "gpt-4",
+            "tokens_used": response.usage.total_tokens,
+            "generation_time": datetime.now(),
+            "news_sources": [item.source for item in content]
+        }
+    )
 ```
 
-### **🎨 HTML Dashboard Features**
+### Dependencies
+```yaml
+External APIs:
+  - OpenAI GPT-4 API
+  - 25+ RSS feed endpoints
 
-#### **📊 Professional Design**
-- **Modern Business Colors** - Blue (#3498db), Gray (#2c3e50), Orange (#e67e22)
-- **Responsive Tables** - Works on desktop and mobile
-- **Sticky Headers** - Column headers stay visible while scrolling
-- **Hover Effects** - Interactive row highlighting
-
-#### **🏷️ Live Filtering System**
-```javascript
-// Category filter tags
-<a href="#" class="filter-tag active" data-category="all">All</a>
-<a href="#" class="filter-tag" data-category="news">news (24)</a>
-<a href="#" class="filter-tag" data-category="wirtschaft">wirtschaft (22)</a>
-<a href="#" class="filter-tag" data-category="zurich">zurich (13)</a>
-// ... more categories
-
-// JavaScript event listeners
-filterTags.forEach(tag => {
-    tag.addEventListener('click', function(e) {
-        e.preventDefault();
-        filterByCategory(this.dataset.category);
-    });
-});
-```
-
-#### **🔄 Smart Sorting Options**
-- **Latest First** - Newest articles at top (default)
-- **Oldest First** - Historical articles first
-- **Priority High→Low** - P10, P9, P8 priority sorting
-- **Source A→Z** - Alphabetical by news source
-- **Category A→Z** - Alphabetical by category
-
-#### **🔗 Dual Link System**
-Each table row contains both:
-```html
-<div class="link-group">
-    <a href="article_url" class="external-link">📰 Article</a>
-    <a href="rss_feed_url" class="rss-link">📡 RSS Feed</a>
-</div>
-```
-
-### **📈 Current Statistics**
-- **30 Total Feeds** configured in database
-- **98 Articles** collected in last 12 hours
-- **11 Active Sources** providing content
-- **12 Categories** with balanced distribution
-
-### **📊 Category Distribution**
-```
-news: 24 articles          wirtschaft: 22 articles
-zurich: 13 articles         tech: 11 articles  
-schweiz: 8 articles         international: 8 articles
-crypto: 4 articles          bitcoin: 3 articles
-weather: 2 articles         latest: 1 article
-science: 1 article          lifestyle: 1 article
-```
-
-### **🏢 Active News Sources**
-```
-📰 nzz: P10, W3.0 (zurich, schweiz, wirtschaft, international)
-📰 20min: P10, W0.8 (weather, zurich, schweiz, wirtschaft, crypto, science, tech, lifestyle)  
-📰 heise: P9, W1.5 (news, tech)
-📰 srf: P9, W2.0 (news, schweiz, international, wirtschaft)
-📰 tagesanzeiger: P8, W3.0 (zurich, schweiz, wirtschaft)
-📰 cointelegraph: P8, W2.0 (bitcoin, crypto)
-📰 cash: P7, W1.5 (wirtschaft)
-📰 techcrunch: P7, W1.3 (latest)
-📰 bbc: P7, W1.5 (tech, wirtschaft, international)
-📰 theverge: P6, W1.2 (tech)
-📰 rt: P6, W1.0 (international)
-```
-
-### **🧪 CLI Usage**
-
-```bash
-# Basic RSS collection and dashboard
-python cli_rss.py
-
-# Limit CLI output, generate full dashboard
-python cli_rss.py --limit 5
-
-# Custom time range
-python cli_rss.py --hours 24
-
-# Skip HTML generation
-python cli_rss.py --no-html
-
-# Output example:
-📰 RSS SERVICE
-==============================
-📡 FEEDS: 30 total configured
-📰 NEWS: 98 articles collected (12h)
-🔗 SOURCES: 11 active
-
-🎯 TOP 5 NEWS:
- 1. [zurich] Kampfjets fangen Hobbypilot ab...
-    📰 20min | ⏰ 5h | 🎯 P10 | ⚖️ W2.5
- 2. [news] Diese Juni-Regenwetterquiz...
-    📰 srf | ⏰ 2h | 🎯 P9 | ⚖️ W2.0
-
-🎨 Generating HTML dashboard...
-✅ HTML dashboard created: /outplay/rss.html
-🌐 Open in browser: file:///path/to/rss.html
-```
-
-### **🌐 HTML Dashboard Output**
-The CLI automatically generates a professional HTML dashboard at `/outplay/rss.html` with:
-
-- **Statistics Cards** - Total feeds, articles, sources, categories
-- **Filter Controls** - Category tags and sort dropdown
-- **News Table** - All articles with dual links
-- **RSS Sources Table** - Feed management overview
-- **Responsive Design** - Works on all devices
-- **Live JavaScript** - No page reloads needed
-
-### **🔧 Integration Example**
-
-```python
-from src.services.rss_service import RSSService
-
-# Initialize service
-rss_service = RSSService()
-
-# Get all active feeds
-feeds = await rss_service.get_all_active_feeds()
-print(f"Found {len(feeds)} active RSS feeds")
-
-# Collect recent news
-news = await rss_service.get_all_recent_news(max_age_hours=6)
-print(f"Collected {len(news)} recent articles")
-
-# Process by category
-categories = {}
-for article in news:
-    if article.category not in categories:
-        categories[article.category] = []
-    categories[article.category].append(article)
-
-print(f"Categories: {list(categories.keys())}")
+Internal Services:
+  - Data Service (8006) - RSS configuration
+  - Redis - Content caching
 ```
 
 ---
 
-## 🔗 Service Integration
+## 🎤 Audio Service (Port 8003)
 
-### **📊 Data Collection Integration**
+### Purpose
+**Professional audio production** with ElevenLabs TTS and advanced mixing.
 
-Both services integrate seamlessly with the main `DataCollectionService`:
+### Key Responsibilities
+- **Text-to-Speech** - ElevenLabs V3 API integration
+- **Voice Management** - Multiple speaker voice profiles
+- **Audio Mixing** - Professional 3-phase jingle system
+- **FFmpeg Processing** - Audio mastering and format conversion
+- **MP3 Generation** - Final audio file assembly with metadata
 
+### API Endpoints
 ```python
-class DataCollectionService:
-    def __init__(self):
-        self.bitcoin_service = BitcoinService()
-        self.weather_service = WeatherService()
+# Audio Generation
+POST /generate                 # Generate audio from script
+GET  /voices                   # Available voice models
+POST /process                  # Audio post-processing
+
+# Queue Management
+GET  /status                   # Generation queue status
+GET  /jobs/{job_id}           # Job status and progress
+```
+
+### 3-Phase Audio System
+```python
+class AudioMixer:
+    """Professional 3-phase jingle integration system"""
     
-    async def collect_all_data(self) -> Dict[str, Any]:
-        # Parallel data collection for optimal performance
-        bitcoin_data, weather_data = await asyncio.gather(
-            self.bitcoin_service.get_bitcoin_data(),
-            self.weather_service.get_current_weather("Zürich")
+    async def create_professional_audio(self, segments: List[AudioSegment], jingle_path: str) -> AudioFile:
+        """
+        PHASE 1 - INTRO (0-12s):
+        - 0-3s: 100% pure jingle (powerful intro)
+        - 3-13s: Ultra-smooth fade 100% → 10%
+        
+        PHASE 2 - BACKGROUND (12s-End-7s):
+        - Speech: 100% volume (dominant)
+        - Jingle: 10% volume (subtle backing)
+        
+        PHASE 3 - OUTRO (Last 7s):
+        - Ultra-smooth ramp-up 10% → 100%
+        """
+        
+        # Load jingle and speech audio
+        jingle = AudioSegment.from_file(jingle_path)
+        speech_audio = await self.combine_speech_segments(segments)
+        
+        # Phase 1: Pure jingle intro (3s) + fade to 10% (10s)
+        intro_jingle = jingle[:3000]  # First 3 seconds at 100%
+        fade_jingle = jingle[3000:13000].apply_gain(-20)  # Fade to 10%
+        
+        # Phase 2: 10% backing jingle + 100% speech
+        backing_duration = len(speech_audio) - 7000  # All except last 7s
+        backing_jingle = jingle[:backing_duration].apply_gain(-20)  # 10% volume
+        
+        # Phase 3: Ramp up to 100% outro
+        outro_jingle = jingle[-7000:].fade_in(7000)  # 7s fade-in to 100%
+        
+        # Combine all phases
+        final_audio = intro_jingle + fade_jingle + backing_jingle.overlay(speech_audio[:-7000]) + outro_jingle
+        
+        return AudioFile(
+            content=final_audio.export(format="mp3", bitrate="192k"),
+            duration_seconds=len(final_audio) / 1000,
+            metadata=self.generate_metadata()
+        )
+```
+
+### ElevenLabs Integration
+```python
+async def generate_speech_segment(self, text: str, voice_id: str, settings: VoiceSettings) -> bytes:
+    """Generate speech using ElevenLabs V3 TTS"""
+    
+    url = "https://api.elevenlabs.io/v1/text-to-speech"
+    headers = {"Authorization": f"Bearer {self.api_key}"}
+    
+    payload = {
+        "text": text,
+        "voice_id": voice_id,
+        "model": "eleven_turbo_v2",
+        "voice_settings": {
+            "stability": settings.stability,
+            "similarity_boost": settings.similarity_boost,
+            "style": settings.style,
+            "use_speaker_boost": settings.use_speaker_boost
+        }
+    }
+    
+    async with httpx.AsyncClient() as client:
+        response = await client.post(url, headers=headers, json=payload)
+        response.raise_for_status()
+        return response.content
+```
+
+### Dependencies
+```yaml
+External APIs:
+  - ElevenLabs V3 TTS API
+
+Internal Services:
+  - Speaker Service (8005) - Voice configurations
+  - Media Service (8004) - File storage
+
+System Dependencies:
+  - FFmpeg for audio processing
+  - Pydub for audio manipulation
+```
+
+---
+
+## 📁 Media Service (Port 8004)
+
+### Purpose
+**File management and visual content generation** for cover art and media storage.
+
+### Key Responsibilities
+- **File Storage** - Supabase Storage integration
+- **Cover Art Generation** - DALL-E 3 AI-generated images
+- **Archive Management** - Automatic file archiving and cleanup
+- **Static File Serving** - HTTP file delivery with streaming
+- **Metadata Management** - File indexing and search
+
+### API Endpoints
+```python
+# File Management
+POST /upload                   # File upload handler
+GET  /files/{file_id}         # File retrieval
+DELETE /files/{file_id}       # File deletion
+
+# Cover Art Generation
+POST /generate/cover          # Generate cover art
+GET  /covers/{show_id}        # Retrieve cover image
+
+# Archive Management
+GET  /archive                 # List archived files
+POST /archive/{file_id}       # Archive specific file
+```
+
+### DALL-E Cover Generation
+```python
+async def generate_cover_art(self, script_summary: str, style: str = "professional") -> CoverImage:
+    """Generate AI cover art using DALL-E 3"""
+    
+    prompt = f"""
+    Create a professional radio show cover image.
+    
+    Content: {script_summary}
+    Style: Modern, clean, broadcast-quality
+    Colors: Professional blue and white theme
+    Elements: Radio waves, Swiss elements, modern typography
+    Format: Square aspect ratio, high resolution
+    
+    The image should convey trust, professionalism, and Swiss radio broadcasting.
+    No text or words in the image - pure visual design.
+    """
+    
+    response = await openai_client.images.generate(
+        model="dall-e-3",
+        prompt=prompt,
+        size="1024x1024",
+        quality="standard",
+        n=1
+    )
+    
+    # Download and store image
+    image_url = response.data[0].url
+    image_data = await self.download_image(image_url)
+    
+    # Store in Supabase Storage
+    file_path = f"covers/radiox_{datetime.now().strftime('%y%m%d_%H%M')}.png"
+    storage_url = await self.supabase_storage.upload(file_path, image_data)
+    
+    return CoverImage(
+        url=storage_url,
+        path=file_path,
+        size_bytes=len(image_data),
+        generated_at=datetime.now(),
+        prompt_used=prompt
+    )
+```
+
+### Dependencies
+```yaml
+External APIs:
+  - OpenAI DALL-E 3 API
+  - Supabase Storage
+
+Internal Services:
+  - Data Service (8006) - File metadata storage
+```
+
+---
+
+## 🗣️ Speaker Service (Port 8005)
+
+### Purpose
+**Voice configuration and speaker profile management** for consistent audio quality.
+
+### Key Responsibilities
+- **Voice Profile Management** - ElevenLabs voice configurations
+- **Speaker Registry** - Available speakers and their characteristics
+- **Voice Quality Optimization** - TTS parameter tuning
+- **Multi-language Support** - German and English voice models
+
+### API Endpoints
+```python
+# Speaker Management
+GET  /speakers                 # List available speakers
+POST /speakers                 # Create speaker profile
+PUT  /speakers/{id}           # Update speaker configuration
+DELETE /speakers/{id}         # Remove speaker
+
+# Voice Configuration
+GET  /voices/{speaker_id}     # Get voice settings
+POST /voices/test             # Test voice generation
+```
+
+### Speaker Profiles
+```python
+SPEAKER_PROFILES = {
+    "marcel": {
+        "voice_id": "21m00Tcm4TlvDq8ikWAM",
+        "name": "Marcel",
+        "description": "Host, main presenter, energetic",
+        "language": "de",
+        "settings": {
+            "stability": 0.75,
+            "similarity_boost": 0.85,
+            "style": 0.65,
+            "use_speaker_boost": True
+        },
+        "use_cases": ["hosting", "main_presenter", "conversation"]
+    },
+    "jarvis": {
+        "voice_id": "EXAVITQu4vr4xnSDxMaL",
+        "name": "Jarvis",
+        "description": "AI assistant, technical content, precise",
+        "language": "en",
+        "settings": {
+            "stability": 0.80,
+            "similarity_boost": 0.90,
+            "style": 0.60,
+            "use_speaker_boost": True
+        },
+        "use_cases": ["ai_assistant", "technical_content", "precise_delivery"]
+    },
+    "lucy": {
+        "voice_id": "pNInz6obpgDQGcFmaJgB",
+        "name": "Lucy",
+        "description": "Weather reports, sultry delivery",
+        "language": "en",
+        "settings": {
+            "stability": 0.70,
+            "similarity_boost": 0.80,
+            "style": 0.75,
+            "use_speaker_boost": False
+        },
+        "use_cases": ["weather_reports", "atmospheric_content"]
+    }
+}
+```
+
+### Dependencies
+```yaml
+External APIs:
+  - ElevenLabs API (voice validation)
+
+Internal Services:
+  - Data Service (8006) - Profile persistence
+```
+
+---
+
+## 💾 Data Service (Port 8006)
+
+### Purpose
+**Database operations and configuration management** as single source of truth.
+
+### Key Responsibilities
+- **Supabase Integration** - PostgreSQL database operations
+- **Configuration Management** - Show presets and system settings
+- **Data Validation** - Pydantic schema validation
+- **Caching Strategies** - Redis integration for performance
+- **Schema Management** - Database migrations and updates
+
+### API Endpoints
+```python
+# Configuration
+GET  /config                   # System configuration
+GET  /presets                  # Show presets
+POST /presets                  # Create show preset
+
+# Data Operations
+POST /data                     # Store data
+GET  /data/{type}             # Retrieve data by type
+PUT  /data/{id}               # Update data
+DELETE /data/{id}             # Delete data
+
+# Health & Monitoring
+GET  /health                   # Database health
+GET  /metrics                 # Database metrics
+```
+
+### Database Schema
+```python
+# Supabase table definitions
+DATABASE_SCHEMA = {
+    "show_presets": {
+        "id": "uuid PRIMARY KEY",
+        "preset_name": "text UNIQUE",
+        "display_name": "text",
+        "city_focus": "text",
+        "news_categories": "jsonb",
+        "primary_speaker": "text",
+        "secondary_speaker": "text",
+        "weather_speaker": "text",
+        "is_duo_show": "boolean",
+        "duration_minutes": "integer",
+        "is_active": "boolean",
+        "created_at": "timestamptz",
+        "updated_at": "timestamptz"
+    },
+    "voice_configurations": {
+        "id": "uuid PRIMARY KEY",
+        "speaker_name": "text UNIQUE",
+        "voice_id": "text",
+        "language": "text",
+        "model": "text",
+        "stability": "decimal",
+        "similarity_boost": "decimal",
+        "style": "decimal",
+        "use_speaker_boost": "boolean",
+        "is_active": "boolean",
+        "created_at": "timestamptz"
+    },
+    "broadcast_scripts": {
+        "id": "uuid PRIMARY KEY",
+        "session_id": "text UNIQUE",
+        "preset_name": "text",
+        "radio_script": "text",
+        "selected_news": "jsonb",
+        "generation_metadata": "jsonb",
+        "created_at": "timestamptz",
+        "status": "text"
+    }
+}
+```
+
+### Dependencies
+```yaml
+External Services:
+  - Supabase PostgreSQL
+  - Redis cache
+
+Internal Services:
+  - All services (configuration provider)
+```
+
+---
+
+## 📊 Analytics Service (Port 8007)
+
+### Purpose
+**Metrics collection and system monitoring** for operational insights.
+
+### Key Responsibilities
+- **Prometheus Metrics** - Application and business metrics
+- **Performance Monitoring** - Service response times and throughput
+- **Usage Analytics** - Show generation patterns and trends
+- **Health Dashboards** - System health aggregation
+- **Alerting** - Automated notification system
+
+### API Endpoints
+```python
+# Metrics Collection
+GET  /metrics                  # Prometheus metrics format
+POST /events                   # Event tracking
+GET  /health                   # Service health aggregation
+
+# Analytics & Reporting
+GET  /analytics/shows         # Show generation analytics
+GET  /analytics/usage         # System usage reports
+GET  /analytics/performance   # Performance metrics
+```
+
+### Prometheus Integration
+```python
+from prometheus_client import Counter, Histogram, Gauge
+
+# Business metrics
+SHOWS_GENERATED = Counter('radiox_shows_generated_total', 'Total shows generated', ['preset', 'status'])
+GENERATION_DURATION = Histogram('radiox_show_generation_duration_seconds', 'Show generation time')
+ACTIVE_SESSIONS = Gauge('radiox_active_sessions', 'Current active sessions')
+
+# Service metrics
+SERVICE_REQUESTS = Counter('radiox_service_requests_total', 'Service requests', ['service', 'endpoint', 'status'])
+SERVICE_RESPONSE_TIME = Histogram('radiox_service_response_time_seconds', 'Service response time', ['service'])
+
+@app.middleware("http")
+async def metrics_middleware(request: Request, call_next):
+    """Collect metrics for all requests"""
+    start_time = time.time()
+    
+    response = await call_next(request)
+    
+    SERVICE_REQUESTS.labels(
+        service="analytics",
+        endpoint=request.url.path,
+        status=response.status_code
+    ).inc()
+    
+    SERVICE_RESPONSE_TIME.labels(service="analytics").observe(time.time() - start_time)
+    
+    return response
+```
+
+### Dependencies
+```yaml
+External Services:
+  - Prometheus (metrics collection)
+  - Grafana (visualization)
+
+Internal Services:
+  - All services (metrics aggregation)
+```
+
+---
+
+## Service Communication
+
+### HTTP Client Pattern
+```python
+class ServiceClient:
+    """Base class for inter-service communication"""
+    
+    def __init__(self, base_url: str, timeout: int = 30):
+        self.base_url = base_url
+        self.client = httpx.AsyncClient(
+            base_url=base_url,
+            timeout=timeout,
+            limits=httpx.Limits(max_keepalive_connections=5, max_connections=10)
+        )
+    
+    async def get(self, endpoint: str, **kwargs) -> Dict[str, Any]:
+        response = await self.client.get(endpoint, **kwargs)
+        response.raise_for_status()
+        return response.json()
+    
+    async def post(self, endpoint: str, **kwargs) -> Dict[str, Any]:
+        response = await self.client.post(endpoint, **kwargs)
+        response.raise_for_status()
+        return response.json()
+
+# Usage example
+content_client = ServiceClient("http://content-service:8002")
+news_data = await content_client.get("/content/news", params={"limit": 10})
+```
+
+### Error Handling & Resilience
+```python
+from tenacity import retry, stop_after_attempt, wait_exponential
+
+@retry(
+    stop=stop_after_attempt(3),
+    wait=wait_exponential(multiplier=1, min=4, max=10)
+)
+async def resilient_service_call(client: ServiceClient, endpoint: str, **kwargs):
+    """Resilient service call with exponential backoff"""
+    try:
+        return await client.get(endpoint, **kwargs)
+    except httpx.HTTPStatusError as e:
+        if e.response.status_code >= 500:
+            # Retry on server errors
+            raise
+        else:
+            # Don't retry on client errors
+            return {"error": f"Client error: {e.response.status_code}"}
+    except httpx.RequestError:
+        # Network errors - retry
+        raise
+```
+
+---
+
+## Development & Testing
+
+### Local Development
+```bash
+# Start specific service
+cd services/content-service
+python -m uvicorn main:app --reload --port 8002
+
+# Start all services
+docker-compose up
+
+# View service logs
+docker-compose logs -f content-service
+```
+
+### Service Testing
+```python
+# Unit testing with pytest
+@pytest.mark.asyncio
+async def test_content_service_news_collection():
+    """Test news collection functionality"""
+    async with httpx.AsyncClient(app=app, base_url="http://testserver") as client:
+        response = await client.get("/content/news?limit=5")
+        
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data) <= 5
+        assert all("title" in item for item in data)
+
+# Integration testing
+@pytest.mark.integration
+async def test_show_generation_workflow():
+    """Test complete show generation across services"""
+    # Mock external API calls
+    with patch('openai.ChatCompletion.create') as mock_openai:
+        mock_openai.return_value = {"choices": [{"message": {"content": "Mock script"}}]}
+        
+        # Test workflow
+        show_response = await show_service.generate_complete_show(
+            preset_name="zurich",
+            news_count=3
         )
         
-        return {
-            "bitcoin": bitcoin_data,
-            "weather": weather_data,
-            "timestamp": datetime.now().isoformat()
-        }
-```
-
-### **🎙️ Radio Integration**
-
-Services provide radio-ready announcements for broadcast generation:
-
-```python
-# Bitcoin announcement in broadcast
-bitcoin_announcement = await bitcoin_service.get_radio_announcement("24h")
-
-# Weather announcement in broadcast  
-weather_announcement = await weather_service.get_radio_announcement("Zürich")
-
-# Integrated into broadcast script
-broadcast_script = f"""
-Good morning! Here's your market update: {bitcoin_announcement}
-
-And now for the weather: {weather_announcement}
-"""
+        assert show_response.status == "completed"
+        assert show_response.audio_url is not None
 ```
 
 ---
 
-## 🚀 Performance Optimization
+## Related Documentation
 
-### **⚡ Caching Strategy**
-
-Both services implement intelligent caching:
-
-```python
-# Bitcoin Service - 5-minute cache
-if self._is_cache_valid("bitcoin", 300):
-    return self.cache["bitcoin"]["data"]
-
-# Weather Service - 10-minute cache  
-if self._is_cache_valid("weather", 600):
-    return self.cache["weather"]["data"]
-```
-
-### **🔄 Async Operations**
-
-All API calls are asynchronous for optimal performance:
-
-```python
-async with aiohttp.ClientSession() as session:
-    async with session.get(url, headers=headers) as response:
-        data = await response.json()
-        return self._process_response(data)
-```
-
-### **📊 Error Handling**
-
-Comprehensive error handling with graceful fallbacks:
-
-```python
-try:
-    data = await self._fetch_api_data()
-    return self._process_data(data)
-except aiohttp.ClientError as e:
-    logger.warning(f"API request failed: {e}")
-    return self._get_cached_data_or_fallback()
-except Exception as e:
-    logger.error(f"Unexpected error: {e}")
-    return self._get_emergency_fallback()
-```
+- **[🏗️ Architecture Overview](architecture.md)** - System design and patterns
+- **[🛠️ Development Setup](development.md)** - Local environment setup
+- **[🚀 Deployment Guide](../deployment/production.md)** - Production deployment
+- **[📊 Monitoring](../deployment/monitoring.md)** - Service monitoring
 
 ---
 
-## 🧪 Testing
+<div align="center">
 
-### **🔧 Unit Testing**
+**🔧 8 microservices working in perfect harmony**
 
-```bash
-# Test individual services
-python cli_bitcoin.py --test
-python cli_weather.py --test
+[🛠️ Setup Development](development.md) • [🏗️ View Architecture](architecture.md) • [🚀 Deploy Production](../deployment/production.md)
 
-# Test with specific parameters
-python cli_bitcoin.py --timeframe 7d
-python cli_weather.py --city Geneva
-```
-
-### **📊 Integration Testing**
-
-```bash
-# Test data collection integration
-python cli_master.py test --services bitcoin,weather
-
-# Test radio announcement generation
-python cli_master.py test --radio-announcements
-```
-
-### **🚀 Production Testing**
-
-```bash
-# Full system test with real APIs
-python production/radiox_master.py --action system_status
-
-# Generate test broadcast with services
-python production/radiox_master.py --action generate_broadcast --test-mode
-```
-
----
-
-## 📈 Monitoring & Logging
-
-### **📊 Service Metrics**
-
-Both services provide comprehensive metrics:
-
-```python
-{
-    "service": "bitcoin",
-    "status": "healthy",
-    "api_calls_today": 245,
-    "cache_hit_rate": 0.78,
-    "average_response_time": 0.234,
-    "last_successful_call": "2024-12-19T20:00:00Z",
-    "errors_last_24h": 2
-}
-```
-
-### **🔍 Logging Strategy**
-
-Minimalistic logging focused on essential information:
-
-```python
-# Only warnings and errors are logged
-logger.warning("API rate limit approaching")
-logger.error("Failed to fetch data after 3 retries")
-
-# Debug messages removed for production clarity
-# logger.info() calls eliminated
-```
-
----
-
-## 🔧 Configuration Management
-
-### **⚙️ Environment Variables**
-
-```bash
-# Required for Bitcoin Service
-COINMARKETCAP_API_KEY=your_coinmarketcap_key
-
-# Required for Weather Service  
-OPENWEATHERMAP_API_KEY=your_openweather_key
-
-# Optional: Cache settings
-BITCOIN_CACHE_DURATION=300  # 5 minutes
-WEATHER_CACHE_DURATION=600  # 10 minutes
-```
-
-### **🎛️ Service Configuration**
-
-```python
-# Bitcoin Service Configuration
-BITCOIN_CONFIG = {
-    "cache_duration": 300,
-    "supported_timeframes": ["1h", "24h", "7d", "30d", "60d", "90d"],
-    "default_timeframe": "24h",
-    "api_timeout": 10
-}
-
-# Weather Service Configuration
-WEATHER_CONFIG = {
-    "cache_duration": 600,
-    "default_city": "Zürich",
-    "supported_cities": ["Zürich", "Basel", "Geneva", "Bern", "Lausanne", "Winterthur", "Lucerne", "St. Gallen"],
-    "api_timeout": 15,
-    "smart_outlook_threshold": 18  # Hour to switch from next_hours to tomorrow
-}
-```
-
----
-
-## 🎯 Best Practices
-
-### **✅ Service Development**
-
-1. **Single Responsibility** - Each service handles one domain
-2. **Async by Default** - All I/O operations are asynchronous
-3. **Comprehensive Error Handling** - Graceful fallbacks for all scenarios
-4. **Intelligent Caching** - Optimize API calls without sacrificing freshness
-5. **Professional Logging** - Minimal, actionable log messages
-6. **Radio-Ready Output** - All announcements are broadcast-quality
-
-### **🔧 Integration Guidelines**
-
-1. **Loose Coupling** - Services don't depend on each other
-2. **Standardized Interfaces** - Consistent method signatures
-3. **Parallel Execution** - Use `asyncio.gather()` for concurrent calls
-4. **Graceful Degradation** - System continues working if one service fails
-5. **Comprehensive Testing** - Both unit and integration tests
-
-### **🚀 Production Deployment**
-
-1. **Environment Validation** - Check all required API keys
-2. **Health Checks** - Regular service health monitoring
-3. **Rate Limiting** - Respect API rate limits with caching
-4. **Error Monitoring** - Track and alert on service failures
-5. **Performance Metrics** - Monitor response times and success rates
-
----
-
-## 📚 Additional Resources
-
-- [🏗️ Architecture Overview](architecture.md)
-- [🔧 Development Setup](development.md)
-- [🧪 Testing Guide](testing.md)
-- [🚀 Production Deployment](../deployment/production.md)
-- [📊 Monitoring Setup](../deployment/monitoring.md) 
+</div> 
