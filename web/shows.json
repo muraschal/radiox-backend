@@ -1,7 +1,19 @@
 {
-  "lastUpdated": "2025-06-24T15:19:14.558588",
-  "totalShows": 5,
+  "lastUpdated": "2025-06-24T15:34:03.900784",
+  "totalShows": 6,
   "shows": [
+    {
+      "timestamp": "250624_1534",
+      "htmlFile": "radiox_250624_1534.html",
+      "mp3File": "radiox_250624_1534.mp3",
+      "pngFile": "radiox_250624_1534.png",
+      "size": 10421,
+      "audioSize": 4631681,
+      "coverSize": 1814505,
+      "type": "Zurich Local News",
+      "system": "Jinja2",
+      "created": "2025-06-24T15:34:03.859042"
+    },
     {
       "timestamp": "250624_1519",
       "htmlFile": "radiox_250624_1519.html",
