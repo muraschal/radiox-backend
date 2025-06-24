@@ -82,6 +82,29 @@ python main.py --data-only     # Data collection only
 python main.py --health-check  # Service health check
 ```
 
+## Production Deployment
+
+### Prerequisites
+1. **[Cloudflare Setup](docs/deployment/cloudflare-setup.md)** - Domain & Tunnel konfigurieren
+2. **Proxmox LXC** mit Docker installiert
+
+### Deployment
+```bash
+# Setup Cloudflare Tunnel (once)
+make setup-tunnel               # Creates https://api.radiox.cloud
+
+# Deploy to Proxmox LXC
+LXC_IP=192.168.1.100 make deploy-proxmox
+
+# Complete production deployment
+LXC_IP=192.168.1.100 make deploy-production
+
+# Production management
+make prod-up                    # Start production services
+make prod-logs                  # View production logs
+make prod-status                # Check service status
+```
+
 ## Contributing
 
 1. Read [Contributing Guide](docs/developer-guide/contributing.md)

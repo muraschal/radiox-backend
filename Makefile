@@ -155,4 +155,50 @@ urls:
 	@echo "Services Status:  http://localhost:8000/services/status"
 
 # Quick development workflow
-dev: build up health urls 
+dev: build up health urls
+
+# Production deployment commands
+prod-build:
+	@echo "🔨 Building production images..."
+	docker-compose -f docker-compose.production.yml build --no-cache
+
+prod-up:
+	@echo "🚀 Starting production services..."
+	docker-compose -f docker-compose.production.yml up -d
+	@echo "✅ Production services started!"
+	@echo "🌐 API Gateway: http://localhost:8000 (via Cloudflare Tunnel)"
+
+prod-down:
+	@echo "🛑 Stopping production services..."
+	docker-compose -f docker-compose.production.yml down
+
+prod-logs:
+	@echo "📋 Production logs..."
+	docker-compose -f docker-compose.production.yml logs -f
+
+prod-status:
+	@echo "📊 Production service status..."
+	docker-compose -f docker-compose.production.yml ps
+
+# Cloudflare Tunnel Setup
+setup-tunnel:
+	@echo "🌐 Setting up Cloudflare Tunnel for api.radiox.cloud..."
+	@echo "📋 Prerequisites: docs/deployment/cloudflare-setup.md"
+	chmod +x scripts/setup-cloudflare-tunnel.sh
+	./scripts/setup-cloudflare-tunnel.sh
+
+# Proxmox LXC Deployment  
+deploy-proxmox:
+	@echo "🚀 Deploying to Proxmox LXC..."
+	chmod +x scripts/deploy-to-proxmox.sh
+	./scripts/deploy-to-proxmox.sh
+
+# Complete production deployment workflow
+deploy-production:
+	@echo "🎯 Complete production deployment..."
+	@echo "1. Setting up Cloudflare Tunnel..."
+	@make setup-tunnel
+	@echo "2. Deploying to Proxmox LXC..."
+	@make deploy-proxmox
+	@echo "✅ Production deployment complete!"
+	@echo "🌐 API live at: https://api.radiox.cloud" 

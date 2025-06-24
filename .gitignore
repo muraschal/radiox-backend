@@ -83,4 +83,10 @@ util_*.py
 # Ausnahmen für offizielle Scripts
 !test_official.py
 !util_official.py
-!sync_web_shows.py 
+!sync_web_shows.py
+
+# Archive files (deployment packages)
+*.tar.gz
+*.zip
+*.tar
+radiox-backend-deploy.tar.gz 

@@ -1,0 +1,210 @@
+version: '3.8'
+
+services:
+  # Cloudflare Tunnel für externe Erreichbarkeit
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: radiox-tunnel
+    restart: unless-stopped
+    command: tunnel run
+    environment:
+      - TUNNEL_TOKEN=${CLOUDFLARE_TUNNEL_TOKEN}
+    depends_on:
+      - api-gateway
+    networks:
+      - radiox-network
+
+  # Core Infrastructure
+  redis:
+    image: redis:7-alpine
+    container_name: radiox-redis
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:6379:6379"  # Nur lokal erreichbar
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    networks:
+      - radiox-network
+
+  # API Gateway - Einziger nach außen exponierter Service
+  api-gateway:
+    build:
+      context: ./services/api-gateway
+      dockerfile: Dockerfile
+    container_name: radiox-api-gateway
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8000:8000"  # Nur für Cloudflare Tunnel
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_KEY=${SUPABASE_KEY}
+      - ENVIRONMENT=production
+    depends_on:
+      - redis
+    volumes:
+      - ./logs:/app/logs
+    networks:
+      - radiox-network
+
+  # Show Service
+  show-service:
+    build:
+      context: ./services/show-service
+      dockerfile: Dockerfile
+    container_name: radiox-show-service
+    restart: unless-stopped
+    expose:
+      - "8000"  # Nur intern verfügbar
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_KEY=${SUPABASE_KEY}
+      - ENVIRONMENT=production
+    depends_on:
+      - redis
+    volumes:
+      - ./logs:/app/logs
+    networks:
+      - radiox-network
+
+  # Content Service
+  content-service:
+    build:
+      context: ./services/content-service
+      dockerfile: Dockerfile
+    container_name: radiox-content-service
+    restart: unless-stopped
+    expose:
+      - "8000"
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_KEY=${SUPABASE_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - ENVIRONMENT=production
+    depends_on:
+      - redis
+    volumes:
+      - ./logs:/app/logs
+    networks:
+      - radiox-network
+
+  # Audio Service
+  audio-service:
+    build:
+      context: ./services/audio-service
+      dockerfile: Dockerfile
+    container_name: radiox-audio-service
+    restart: unless-stopped
+    expose:
+      - "8000"
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_KEY=${SUPABASE_KEY}
+      - SUPABASE_SERVICE_KEY=${SUPABASE_SERVICE_KEY}
+      - ELEVENLABS_API_KEY=${ELEVENLABS_API_KEY}
+      - ENVIRONMENT=production
+    depends_on:
+      - redis
+    volumes:
+      - ./logs:/app/logs
+      - ./temp:/app/temp
+      - ./jingles:/app/jingles
+    networks:
+      - radiox-network
+
+  # Media Service
+  media-service:
+    build:
+      context: ./services/media-service
+      dockerfile: Dockerfile
+    container_name: radiox-media-service
+    restart: unless-stopped
+    expose:
+      - "8000"
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_KEY=${SUPABASE_KEY}
+      - ENVIRONMENT=production
+    depends_on:
+      - redis
+    volumes:
+      - ./logs:/app/logs
+      - ./web:/app/web
+      - ./outplay:/app/outplay
+    networks:
+      - radiox-network
+
+  # Speaker Service
+  speaker-service:
+    build:
+      context: ./services/speaker-service
+      dockerfile: Dockerfile
+    container_name: radiox-speaker-service
+    restart: unless-stopped
+    expose:
+      - "8000"
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_KEY=${SUPABASE_KEY}
+      - ENVIRONMENT=production
+    depends_on:
+      - redis
+    volumes:
+      - ./logs:/app/logs
+    networks:
+      - radiox-network
+
+  # Data Service
+  data-service:
+    build:
+      context: ./services/data-service
+      dockerfile: Dockerfile
+    container_name: radiox-data-service
+    restart: unless-stopped
+    expose:
+      - "8000"
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_KEY=${SUPABASE_KEY}
+      - ENVIRONMENT=production
+    depends_on:
+      - redis
+    volumes:
+      - ./logs:/app/logs
+    networks:
+      - radiox-network
+
+  # Analytics Service
+  analytics-service:
+    build:
+      context: ./services/analytics-service
+      dockerfile: Dockerfile
+    container_name: radiox-analytics-service
+    restart: unless-stopped
+    expose:
+      - "8000"
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_KEY=${SUPABASE_KEY}
+      - ENVIRONMENT=production
+    depends_on:
+      - redis
+    volumes:
+      - ./logs:/app/logs
+    networks:
+      - radiox-network
+
+volumes:
+  redis_data:
+
+networks:
+  radiox-network:
+    driver: bridge 
