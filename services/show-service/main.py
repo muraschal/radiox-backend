@@ -725,6 +725,68 @@ async def generate_show(request: ShowRequest):
     """Generate complete radio show"""
     return await show_service.generate_show(request)
 
+# Shows List - NEW ENDPOINT
+@app.get("/shows")
+async def list_shows(limit: int = 10, offset: int = 0):
+    """List all generated shows with pagination"""
+    try:
+        if not redis_client:
+            raise HTTPException(status_code=503, detail="Redis cache not available")
+        
+        # Get all show keys from Redis
+        show_keys = await redis_client.keys("show:*")
+        
+        if not show_keys:
+            return {
+                "shows": [],
+                "total": 0,
+                "limit": limit,
+                "offset": offset
+            }
+        
+        # Sort keys by creation time (newest first)
+        show_keys.sort(reverse=True)
+        
+        # Apply pagination
+        paginated_keys = show_keys[offset:offset + limit]
+        
+        # Load show data for paginated keys
+        shows = []
+        for key in paginated_keys:
+            try:
+                show_data = await redis_client.get(key)
+                if show_data:
+                    parsed_show = json.loads(show_data)
+                    # Add essential frontend info
+                    show_summary = {
+                        "id": parsed_show.get("session_id"),
+                        "title": f"{parsed_show.get('broadcast_style', 'Show')} - {parsed_show.get('channel', 'Default').title()}",
+                        "created_at": parsed_show.get("created_at"),
+                        "channel": parsed_show.get("channel"),
+                        "language": parsed_show.get("language"),
+                        "news_count": parsed_show.get("news_count", 0),
+                        "broadcast_style": parsed_show.get("broadcast_style"),
+                        "script_preview": (parsed_show.get("script_content", "")[:200] + "...") if len(parsed_show.get("script_content", "")) > 200 else parsed_show.get("script_content", "")
+                    }
+                    shows.append(show_summary)
+            except Exception as e:
+                logger.warning(f"⚠️ Failed to load show {key}: {str(e)}")
+                continue
+        
+        logger.info(f"📋 Listed {len(shows)} shows (total: {len(show_keys)})")
+        
+        return {
+            "shows": shows,
+            "total": len(show_keys),
+            "limit": limit,
+            "offset": offset,
+            "has_more": offset + limit < len(show_keys)
+        }
+        
+    except Exception as e:
+        logger.error(f"❌ List shows failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to list shows: {str(e)}")
+
 @app.get("/shows/{session_id}")
 async def get_show(session_id: str):
     """Get show by session ID"""
