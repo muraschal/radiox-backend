@@ -10,7 +10,7 @@
 
 > 8 specialized microservices for automated radio production with GPT-4, ElevenLabs TTS, and professional audio engineering
 
-[🚀 Quick Start](#quick-start) • [📚 Documentation](docs/) • [🏗️ Architecture](docs/developer-guide/architecture.md) • [🌐 Live Demo](https://radiox.cloud)
+[🚀 Quick Start](#quick-start) • [📚 Documentation](docs/) • [🏗️ Architecture](docs/developer-guide/architecture.md) • [🌐 Production API](https://api.radiox.cloud) • [📊 Live Status](https://api.radiox.cloud/health)
 
 </div>
 
@@ -66,6 +66,21 @@ Frontend (radiox.cloud) → API Gateway (8000) → 8 Microservices → Supabase
 | **[User Guide](docs/user-guide/)** | Content Creators | Show generation, voice setup |
 | **[Developer Guide](docs/developer-guide/)** | Engineers | Architecture, development |
 | **[Deployment Guide](docs/deployment/)** | DevOps | Production setup, monitoring |
+
+## Production Environment
+
+**🌐 Live API**: [`https://api.radiox.cloud`](https://api.radiox.cloud)
+
+```bash
+# Production Health Checks
+curl https://api.radiox.cloud/health           # API Health Status
+curl https://api.radiox.cloud/services/status  # All Microservices Status
+
+# API Documentation
+open https://api.radiox.cloud/docs             # Interactive Swagger UI
+```
+
+**📊 [Production Status](docs/deployment/production-status.md)** - Complete deployment details
 
 ## Development Commands
 
