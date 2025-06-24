@@ -1,7 +1,19 @@
 {
-  "lastUpdated": "2025-06-24T15:34:03.900784",
-  "totalShows": 6,
+  "lastUpdated": "2025-06-24T15:37:37.241574",
+  "totalShows": 7,
   "shows": [
+    {
+      "timestamp": "250624_1537",
+      "htmlFile": "radiox_250624_1537.html",
+      "mp3File": "radiox_250624_1537.mp3",
+      "pngFile": "radiox_250624_1537.png",
+      "size": 10872,
+      "audioSize": 3239877,
+      "coverSize": 1321632,
+      "type": "Global News Hot",
+      "system": "Jinja2",
+      "created": "2025-06-24T15:37:37.196208"
+    },
     {
       "timestamp": "250624_1534",
       "htmlFile": "radiox_250624_1534.html",
