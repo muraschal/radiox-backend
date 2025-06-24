@@ -71,6 +71,8 @@ Frontend (radiox.cloud) → API Gateway (8000) → 8 Microservices → Supabase
 | 📖 Guide | 🎯 Audience | 📝 Content |
 |----------|-------------|-------------|
 | **[User Guide](docs/user-guide/)** | Content Creators | Show generation, voice setup |
+| • **[Frontend API Integration](docs/user-guide/frontend-api-integration.md)** | Frontend Devs | Complete API documentation + examples |
+| • **[Frontend Quick Reference](docs/user-guide/frontend-quick-reference.md)** | Frontend Devs | Copy-paste ready code snippets |
 | **[Developer Guide](docs/developer-guide/)** | Engineers | Architecture, development |
 | • **[Tech Stack](docs/developer-guide/tech-stack.md)** | Tech Teams | Complete technology overview |
 | • **[AI Pipeline](docs/developer-guide/ai-pipeline.md)** | AI Engineers | GPT-4, TTS, ML integration |
