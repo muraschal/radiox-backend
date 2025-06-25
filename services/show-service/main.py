@@ -28,7 +28,7 @@ redis_client: Optional[redis.Redis] = None
 @app.on_event("startup")
 async def startup_event():
     global redis_client
-    redis_url = os.getenv("REDIS_URL", "redis://localhost:6379")
+    redis_url = os.getenv("REDIS_URL", "redis://redis:6379")
     redis_client = redis.from_url(redis_url, decode_responses=True)
     logger.info("Show Service started successfully")
 
@@ -139,7 +139,7 @@ class GPTScriptGenerator:
         
         try:
             async with httpx.AsyncClient(timeout=5.0) as client:
-                response = await client.get("http://data-service:8000/config")
+                response = await client.get("http://172.18.0.10:8006/config")
                 if response.status_code == 200:
                     config = response.json()
                     self.openai_api_key = config.get("api_keys", {}).get("openai")
@@ -607,18 +607,26 @@ class ShowOrchestrationService:
     ):
         """Store show data using Clean Architecture - Google Style"""
         try:
-            # Prepare clean show data model
+            # Prepare clean show data model - Match Data Service ShowRecord
             show_data = {
                 "session_id": session_id,
+                "title": f"{broadcast_style['name']} - {request.channel.title()}",
                 "script_content": script,
+                "script_preview": script[:200] + "..." if len(script) > 200 else script,
                 "broadcast_style": broadcast_style["name"],
                 "channel": request.channel,
                 "language": request.language,
                 "news_count": len(content.get("news", [])),
                 "estimated_duration_minutes": self._estimate_duration(script),
-                "created_at": datetime.now().isoformat(),
                 "audio_url": audio_result.get("audio_url") if audio_result else None,
-                "audio_duration_seconds": audio_result.get("duration_seconds") if audio_result else None
+                "audio_duration_seconds": audio_result.get("duration_seconds") if audio_result else None,
+                "created_at": datetime.now().isoformat(),
+                "metadata": {
+                    "content_sources": len(content.get("news", [])),
+                    "has_weather": bool(content.get("weather")),
+                    "has_bitcoin": bool(content.get("bitcoin")),
+                    "generation_timestamp": datetime.now().isoformat()
+                }
             }
             
             # Store in Redis cache for immediate access (Performance Layer)
@@ -633,7 +641,7 @@ class ShowOrchestrationService:
             # Store in Data Service using Clean Architecture - Single Source of Truth
             async with httpx.AsyncClient(timeout=10.0) as client:
                 response = await client.post(
-                    f"{self.api_gateway_url}/data/shows",
+                    "http://172.18.0.10:8006/shows",
                     json=show_data
                 )
                 
@@ -665,7 +673,7 @@ class ShowOrchestrationService:
                 }
                 
                 response = await client.post(
-                    "http://audio-service:8000/script",
+                    "http://audio-service:8003/script",
                     json=audio_request
                 )
                 
@@ -738,7 +746,7 @@ async def list_shows(limit: int = 10, offset: int = 0):
         # Use Data Service as Single Source of Truth
         async with httpx.AsyncClient(timeout=10.0) as client:
             response = await client.get(
-                f"{show_service.api_gateway_url}/data/shows",
+                "http://172.18.0.10:8006/shows",
                 params={"limit": limit, "offset": offset}
             )
             

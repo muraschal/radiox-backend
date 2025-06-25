@@ -33,10 +33,10 @@ supabase_client: Optional[Client] = None
 
 @app.on_event("startup")
 async def startup_event():
-    global redis_client, supabase_client
+    global redis_client, supabase_client, data_service
     
     # Initialize Redis
-    redis_url = os.getenv("REDIS_URL", "redis://localhost:6379")
+    redis_url = os.getenv("REDIS_URL", "redis://redis:6379")
     redis_client = redis.from_url(redis_url, decode_responses=True)
     
     # Initialize Supabase
@@ -46,6 +46,11 @@ async def startup_event():
     if supabase_url and supabase_key:
         supabase_client = create_client(supabase_url, supabase_key)
         logger.info("✅ Supabase client initialized")
+        
+        # Initialize Show Storage Interface AFTER Supabase is ready
+        if supabase_client:
+            data_service.show_storage = SupabaseShowStorage(supabase_client)
+            logger.info("✅ Show storage interface initialized after Supabase connection")
     else:
         logger.warning("⚠️ Supabase credentials not found - running in mock mode")
     
@@ -480,8 +485,33 @@ class DataService:
 
     async def store_show_data(self, show_data: Dict[str, Any]) -> bool:
         """Store show data using clean architecture - Single Responsibility"""
+        logger.info(f"🔍 store_show_data called, current show_storage: {self.show_storage}")
+        
+        # ALWAYS try to initialize show_storage if it's None
         if not self.show_storage:
-            logger.error("❌ Show storage not available")
+            logger.info("🔄 Attempting lazy initialization of show storage")
+            supabase_url = os.getenv("SUPABASE_URL")
+            supabase_key = os.getenv("SUPABASE_KEY")
+            
+            logger.info(f"🔑 Supabase URL exists: {bool(supabase_url)}, Key exists: {bool(supabase_key)}")
+            
+            if supabase_url and supabase_key:
+                try:
+                    from supabase import create_client
+                    local_supabase_client = create_client(supabase_url, supabase_key)
+                    self.show_storage = SupabaseShowStorage(local_supabase_client)
+                    logger.info("✅ Show storage initialized lazily with direct credentials")
+                except Exception as e:
+                    logger.error(f"❌ Failed to create Supabase client: {str(e)}")
+                    return False
+            else:
+                logger.error("❌ Supabase credentials not available for show storage")
+                return False
+        else:
+            logger.info("ℹ️ Show storage already exists")
+        
+        if not self.show_storage:
+            logger.error("❌ Show storage still not available after lazy initialization")
             return False
         
         try:
@@ -586,6 +616,7 @@ class DataService:
             logger.error(f"❌ Shows listing failed: {str(e)}")
             return {"shows": [], "total": 0, "limit": limit, "offset": offset}
 
+# Global data service instance - initialized after class definition
 data_service = DataService()
 
 # Health Check
