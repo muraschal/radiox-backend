@@ -685,7 +685,7 @@ class ShowOrchestrationService:
                 }
                 
                 response = await client.post(
-                    "http://audio-service:8003/script",
+                    "http://audio-service:8000/script",
                     json=audio_request
                 )
                 
