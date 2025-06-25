@@ -22,18 +22,36 @@ get_service_status() {
     local service=$1
     local port=$2
     
-    if curl -s -m 2 "http://localhost:$port/health" > /dev/null 2>&1; then
+    # Check Docker health status first
+    local health_status=$(docker inspect --format='{{.State.Health.Status}}' radiox-$service 2>/dev/null)
+    
+    if [ "$health_status" = "healthy" ]; then
         echo -e "${GREEN}●${NC}"
-    else
+    elif [ "$health_status" = "unhealthy" ]; then
         echo -e "${RED}●${NC}"
+    else
+        # Fallback to port check for services without health check
+        if curl -s -m 2 "http://localhost:$port/health" > /dev/null 2>&1; then
+            echo -e "${YELLOW}●${NC}"
+        else
+            echo -e "${RED}●${NC}"
+        fi
     fi
 }
 
 # Function to get API stats
 get_api_stats() {
-    local stats=$(curl -s -m 3 "https://api.radiox.cloud/api/v1/shows?limit=1" 2>/dev/null)
-    if [ $? -eq 0 ]; then
-        local total=$(echo "$stats" | python3 -c "import json,sys; data=json.load(sys.stdin); print(data.get('total', 0))" 2>/dev/null || echo "0")
+    local stats=$(curl -s -m 3 "http://localhost:8000/api/v1/shows?limit=100" 2>/dev/null)
+    if [ $? -eq 0 ] && [ -n "$stats" ]; then
+        local total=$(echo "$stats" | python3 -c "
+import json, sys
+try:
+    data = json.load(sys.stdin)
+    shows = data.get('shows', [])
+    print(len(shows))
+except:
+    print(0)
+" 2>/dev/null || echo "0")
         echo "$total"
     else
         echo "?"
@@ -42,18 +60,21 @@ get_api_stats() {
 
 # Function to get latest show info
 get_latest_show() {
-    local show_data=$(curl -s -m 3 "https://api.radiox.cloud/api/v1/shows?limit=1" 2>/dev/null)
+    local show_data=$(curl -s -m 3 "http://localhost:8000/api/v1/shows?limit=1" 2>/dev/null)
     if [ $? -eq 0 ] && [ -n "$show_data" ]; then
         echo "$show_data" | python3 -c "
 import json, sys
 try:
     data = json.load(sys.stdin)
-    if data.get('shows') and len(data['shows']) > 0:
-        show = data['shows'][0]
-        print(f\"{show.get('title', 'Unknown')[:30]} ({show.get('created_at', '')[:16]})\")
+    shows = data.get('shows', [])
+    if shows and len(shows) > 0:
+        show = shows[0]
+        title = show.get('title', 'Unknown')[:30]
+        created = show.get('created_at', '')[:16]
+        print(title + ' (' + created + ')')
     else:
         print('No shows available')
-except:
+except Exception as e:
     print('Error parsing show data')
 " 2>/dev/null || echo "Error getting show data"
     else
