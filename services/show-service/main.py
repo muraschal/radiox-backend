@@ -605,8 +605,9 @@ class ShowOrchestrationService:
         request: ShowRequest,
         audio_result: Optional[Dict[str, Any]] = None
     ):
-        """Store show data in Data Service"""
+        """Store show data using Clean Architecture - Google Style"""
         try:
+            # Prepare clean show data model
             show_data = {
                 "session_id": session_id,
                 "script_content": script,
@@ -614,41 +615,38 @@ class ShowOrchestrationService:
                 "channel": request.channel,
                 "language": request.language,
                 "news_count": len(content.get("news", [])),
-                "created_at": datetime.now().isoformat()
+                "estimated_duration_minutes": self._estimate_duration(script),
+                "created_at": datetime.now().isoformat(),
+                "audio_url": audio_result.get("audio_url") if audio_result else None,
+                "audio_duration_seconds": audio_result.get("duration_seconds") if audio_result else None
             }
             
-            # Store in Redis cache
+            # Store in Redis cache for immediate access (Performance Layer)
             if redis_client:
                 await redis_client.setex(
                     f"show:{session_id}",
                     3600,  # 1 hour TTL
                     json.dumps(show_data, default=str)
                 )
+                logger.info(f"✅ Show {session_id} cached in Redis")
             
-            # Try to store in Data Service
+            # Store in Data Service using Clean Architecture - Single Source of Truth
             async with httpx.AsyncClient(timeout=10.0) as client:
-                await client.post(
+                response = await client.post(
                     f"{self.api_gateway_url}/data/shows",
                     json=show_data
                 )
                 
-            # Store audio info
-            if audio_result:
-                audio_data = {
-                    "session_id": session_id,
-                    "audio_file": audio_result.get("audio_file"),
-                    "audio_url": audio_result.get("audio_url"),
-                    "duration_seconds": audio_result.get("duration_seconds"),
-                    "created_at": datetime.now().isoformat()
-                }
-                
-                await client.post(
-                    f"{self.api_gateway_url}/data/audios",
-                    json=audio_data
-                )
+                if response.status_code == 200:
+                    logger.info(f"✅ Show {session_id} stored in database via Data Service")
+                else:
+                    logger.error(f"❌ Data Service storage failed: {response.status_code} - {response.text}")
+                    # Don't fail the whole operation if database storage fails
+                    # Redis cache ensures immediate availability
                 
         except Exception as e:
-            logger.warning(f"⚠️ Show data storage failed: {str(e)}")
+            logger.error(f"❌ Show data storage failed: {str(e)}")
+            # Don't raise exception - show generation should continue even if storage fails
     
     async def _generate_audio(self, session_id: str, script: str, request: ShowRequest) -> Optional[Dict[str, Any]]:
         """Generate audio via Audio Service"""
@@ -725,13 +723,44 @@ async def generate_show(request: ShowRequest):
     """Generate complete radio show"""
     return await show_service.generate_show(request)
 
-# Shows List - NEW ENDPOINT
+# Shows List - Updated to use Clean Architecture
 @app.get("/shows")
 async def list_shows(limit: int = 10, offset: int = 0):
-    """List all generated shows with pagination"""
+    """List all generated shows using Clean Architecture - Google Style"""
+    try:
+        # Validate parameters - Fail Fast
+        if limit < 1 or limit > 100:
+            raise HTTPException(status_code=400, detail="Limit must be between 1 and 100")
+        
+        if offset < 0:
+            raise HTTPException(status_code=400, detail="Offset must be non-negative")
+        
+        # Use Data Service as Single Source of Truth
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            response = await client.get(
+                f"{show_service.api_gateway_url}/data/shows",
+                params={"limit": limit, "offset": offset}
+            )
+            
+            if response.status_code == 200:
+                data = response.json()
+                logger.info(f"📋 Listed {len(data.get('shows', []))} shows via Data Service")
+                return data
+            else:
+                logger.error(f"❌ Data Service failed: {response.status_code}")
+                # Fallback to Redis if Data Service fails
+                return await _fallback_list_from_redis(limit, offset)
+                
+    except Exception as e:
+        logger.error(f"❌ List shows failed: {str(e)}")
+        # Fallback to Redis for resilience
+        return await _fallback_list_from_redis(limit, offset)
+
+async def _fallback_list_from_redis(limit: int = 10, offset: int = 0):
+    """Fallback method using Redis - Resilience Pattern"""
     try:
         if not redis_client:
-            raise HTTPException(status_code=503, detail="Redis cache not available")
+            raise HTTPException(status_code=503, detail="No storage available")
         
         # Get all show keys from Redis
         show_keys = await redis_client.keys("show:*")
@@ -741,7 +770,9 @@ async def list_shows(limit: int = 10, offset: int = 0):
                 "shows": [],
                 "total": 0,
                 "limit": limit,
-                "offset": offset
+                "offset": offset,
+                "has_more": False,
+                "source": "redis_fallback"
             }
         
         # Sort keys by creation time (newest first)
@@ -773,19 +804,20 @@ async def list_shows(limit: int = 10, offset: int = 0):
                 logger.warning(f"⚠️ Failed to load show {key}: {str(e)}")
                 continue
         
-        logger.info(f"📋 Listed {len(shows)} shows (total: {len(show_keys)})")
+        logger.warning(f"⚠️ Using Redis fallback: {len(shows)} shows loaded")
         
         return {
             "shows": shows,
             "total": len(show_keys),
             "limit": limit,
             "offset": offset,
-            "has_more": offset + limit < len(show_keys)
+            "has_more": offset + limit < len(show_keys),
+            "source": "redis_fallback"
         }
         
     except Exception as e:
-        logger.error(f"❌ List shows failed: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Failed to list shows: {str(e)}")
+        logger.error(f"❌ Redis fallback failed: {str(e)}")
+        raise HTTPException(status_code=503, detail="All storage systems unavailable")
 
 @app.get("/shows/{session_id}")
 async def get_show(session_id: str):

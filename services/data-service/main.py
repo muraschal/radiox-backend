@@ -13,6 +13,7 @@ from loguru import logger
 from pydantic import BaseModel
 from supabase import create_client, Client
 from dataclasses import dataclass, asdict
+import asyncio
 
 # Import shared services (will be extracted from monolith)
 import sys
@@ -79,7 +80,20 @@ class NewsContentCreate(BaseModel):
     metadata: Dict[str, Any]
 
 class DataService:
-    """Handles database operations and configuration management"""
+    """Enhanced DataService with Clean Architecture - Google Style"""
+    
+    def __init__(self):
+        self.config_cache = {}
+        self.config_cache_timestamp = 0
+        
+        # Initialize clean storage interface
+        global supabase_client
+        if supabase_client:
+            self.show_storage = SupabaseShowStorage(supabase_client)
+            logger.info("✅ Clean show storage initialized")
+        else:
+            self.show_storage = None
+            logger.warning("⚠️ Show storage unavailable - Supabase not connected")
     
     async def get_configuration(self) -> Dict[str, Any]:
         """Get complete system configuration"""
@@ -464,6 +478,114 @@ class DataService:
             }
         ]
 
+    async def store_show_data(self, show_data: Dict[str, Any]) -> bool:
+        """Store show data using clean architecture - Single Responsibility"""
+        if not self.show_storage:
+            logger.error("❌ Show storage not available")
+            return False
+        
+        try:
+            # Convert to clean data model
+            show_record = ShowRecord(
+                session_id=show_data["session_id"],
+                title=f"{show_data.get('broadcast_style', 'Show')} - {show_data.get('channel', 'Default').title()}",
+                script_content=show_data["script_content"],
+                script_preview="",  # Will be auto-generated in __post_init__
+                broadcast_style=show_data["broadcast_style"],
+                channel=show_data["channel"],
+                language=show_data["language"],
+                news_count=show_data["news_count"],
+                estimated_duration_minutes=show_data.get("estimated_duration_minutes", 0),
+                metadata={
+                    "created_at": show_data["created_at"],
+                    "generation_source": "show_service"
+                }
+            )
+            
+            # Store with clean interface - Fail Fast
+            success = await self.show_storage.store_show(show_record)
+            
+            if success:
+                logger.info(f"✅ Show {show_record.session_id} stored successfully")
+            else:
+                logger.error(f"❌ Failed to store show {show_record.session_id}")
+            
+            return success
+            
+        except Exception as e:
+            logger.error(f"❌ Show storage failed: {str(e)}")
+            return False
+    
+    async def get_show_data(self, session_id: str) -> Optional[Dict[str, Any]]:
+        """Get show data using clean architecture"""
+        if not self.show_storage:
+            return None
+        
+        try:
+            show_record = await self.show_storage.get_show(session_id)
+            
+            if show_record:
+                # Convert back to API format
+                return {
+                    "session_id": show_record.session_id,
+                    "title": show_record.title,
+                    "script_content": show_record.script_content,
+                    "script_preview": show_record.script_preview,
+                    "broadcast_style": show_record.broadcast_style,
+                    "channel": show_record.channel,
+                    "language": show_record.language,
+                    "news_count": show_record.news_count,
+                    "estimated_duration_minutes": show_record.estimated_duration_minutes,
+                    "audio_url": show_record.audio_url,
+                    "audio_duration_seconds": show_record.audio_duration_seconds,
+                    "metadata": show_record.metadata,
+                    "created_at": show_record.created_at
+                }
+            
+            return None
+            
+        except Exception as e:
+            logger.error(f"❌ Show retrieval failed: {str(e)}")
+            return None
+    
+    async def list_shows_data(self, limit: int = 10, offset: int = 0) -> Dict[str, Any]:
+        """List shows using clean architecture"""
+        if not self.show_storage:
+            return {"shows": [], "total": 0, "limit": limit, "offset": offset}
+        
+        try:
+            # Get shows and count in parallel for performance
+            shows_task = self.show_storage.list_shows(limit, offset)
+            count_task = self.show_storage.get_shows_count()
+            
+            shows, total_count = await asyncio.gather(shows_task, count_task)
+            
+            # Convert to API format
+            show_list = []
+            for show in shows:
+                show_list.append({
+                    "id": show.session_id,
+                    "title": show.title,
+                    "script_preview": show.script_preview,
+                    "channel": show.channel,
+                    "language": show.language,
+                    "news_count": show.news_count,
+                    "broadcast_style": show.broadcast_style,
+                    "created_at": show.created_at
+                })
+            
+            return {
+                "shows": show_list,
+                "total": total_count,
+                "limit": limit,
+                "offset": offset,
+                "has_more": offset + limit < total_count
+            }
+            
+        except Exception as e:
+            logger.error(f"❌ Shows listing failed: {str(e)}")
+            return {"shows": [], "total": 0, "limit": limit, "offset": offset}
+
 data_service = DataService()
 
 # Health Check
@@ -576,6 +698,284 @@ async def clear_cache():
         return {"message": "Cache cleared successfully"}
     return {"message": "Redis not available"}
 
+# Add clean data models and interfaces at the top after imports
+
+# Clean Data Models - Google Style
+@dataclass
+class ShowRecord:
+    """Clean data model for Show storage - Single Responsibility"""
+    session_id: str
+    title: str
+    script_content: str
+    script_preview: str
+    broadcast_style: str
+    channel: str
+    language: str
+    news_count: int
+    estimated_duration_minutes: int
+    audio_url: Optional[str] = None
+    audio_duration_seconds: Optional[int] = None
+    metadata: Optional[Dict[str, Any]] = None
+    created_at: Optional[str] = None
+    
+    def __post_init__(self):
+        if self.metadata is None:
+            self.metadata = {}
+        if self.created_at is None:
+            self.created_at = datetime.utcnow().isoformat()
+        if not self.script_preview:
+            self.script_preview = self.script_content[:200] + "..." if len(self.script_content) > 200 else self.script_content
+
+@dataclass 
+class ShowSummary:
+    """Lightweight show summary for listings - Performance Optimized"""
+    id: str
+    session_id: str
+    title: str
+    script_preview: str
+    channel: str
+    language: str
+    news_count: int
+    broadcast_style: str
+    created_at: str
+
+class ShowStorageInterface:
+    """Clean interface for show storage - Separation of Concerns"""
+    
+    async def store_show(self, show: ShowRecord) -> bool:
+        """Store show with transaction consistency"""
+        raise NotImplementedError
+    
+    async def get_show(self, session_id: str) -> Optional[ShowRecord]:
+        """Get single show by session_id"""
+        raise NotImplementedError
+    
+    async def list_shows(self, limit: int = 10, offset: int = 0) -> List[ShowSummary]:
+        """List shows with pagination"""
+        raise NotImplementedError
+    
+    async def get_shows_count(self) -> int:
+        """Get total shows count"""
+        raise NotImplementedError
+
+class SupabaseShowStorage(ShowStorageInterface):
+    """Google-Style Implementation: Single Responsibility + Fail Fast"""
+    
+    def __init__(self, supabase_client: Client):
+        self.client = supabase_client
+        self.table_name = "shows"
+    
+    async def store_show(self, show: ShowRecord) -> bool:
+        """Store show with proper error handling and transaction consistency"""
+        try:
+            # Prepare record for database
+            show_dict = {
+                "session_id": show.session_id,
+                "title": show.title,
+                "script_content": show.script_content,
+                "script_preview": show.script_preview,
+                "broadcast_style": show.broadcast_style,
+                "channel": show.channel,
+                "language": show.language,
+                "news_count": show.news_count,
+                "estimated_duration_minutes": show.estimated_duration_minutes,
+                "audio_url": show.audio_url,
+                "audio_duration_seconds": show.audio_duration_seconds,
+                "metadata": show.metadata,
+                "created_at": show.created_at
+            }
+            
+            # Atomic operation - Fail Fast
+            result = await asyncio.to_thread(
+                lambda: self.client.table(self.table_name).upsert(show_dict).execute()
+            )
+            
+            if result.data:
+                logger.info(f"✅ Show {show.session_id} stored successfully")
+                return True
+            else:
+                logger.error(f"❌ Failed to store show {show.session_id}: No data returned")
+                return False
+                
+        except Exception as e:
+            logger.error(f"❌ Show storage failed: {str(e)}")
+            return False
+    
+    async def get_show(self, session_id: str) -> Optional[ShowRecord]:
+        """Get show with proper error handling"""
+        try:
+            result = await asyncio.to_thread(
+                lambda: self.client.table(self.table_name)
+                .select("*")
+                .eq("session_id", session_id)
+                .single()
+                .execute()
+            )
+            
+            if result.data:
+                return ShowRecord(
+                    session_id=result.data["session_id"],
+                    title=result.data["title"],
+                    script_content=result.data["script_content"],
+                    script_preview=result.data["script_preview"],
+                    broadcast_style=result.data["broadcast_style"],
+                    channel=result.data["channel"],
+                    language=result.data["language"],
+                    news_count=result.data["news_count"],
+                    estimated_duration_minutes=result.data["estimated_duration_minutes"],
+                    audio_url=result.data.get("audio_url"),
+                    audio_duration_seconds=result.data.get("audio_duration_seconds"),
+                    metadata=result.data.get("metadata", {}),
+                    created_at=result.data["created_at"]
+                )
+            
+            return None
+            
+        except Exception as e:
+            logger.error(f"❌ Show retrieval failed: {str(e)}")
+            return None
+    
+    async def list_shows(self, limit: int = 10, offset: int = 0) -> List[ShowSummary]:
+        """Efficient show listing with pagination"""
+        try:
+            result = await asyncio.to_thread(
+                lambda: self.client.table(self.table_name)
+                .select("session_id, title, script_preview, channel, language, news_count, broadcast_style, created_at")
+                .order("created_at", desc=True)
+                .range(offset, offset + limit - 1)
+                .execute()
+            )
+            
+            shows = []
+            for row in result.data:
+                shows.append(ShowSummary(
+                    id=row["session_id"],
+                    session_id=row["session_id"], 
+                    title=row["title"],
+                    script_preview=row["script_preview"],
+                    channel=row["channel"],
+                    language=row["language"],
+                    news_count=row["news_count"],
+                    broadcast_style=row["broadcast_style"],
+                    created_at=row["created_at"]
+                ))
+            
+            return shows
+            
+        except Exception as e:
+            logger.error(f"❌ Shows listing failed: {str(e)}")
+            return []
+    
+    async def get_shows_count(self) -> int:
+        """Get total shows count efficiently"""
+        try:
+            result = await asyncio.to_thread(
+                lambda: self.client.table(self.table_name)
+                .select("session_id")
+                .execute()
+            )
+            
+            return result.count if result.count else 0
+            
+        except Exception as e:
+            logger.error(f"❌ Shows count failed: {str(e)}")
+            return 0
+
+# Add clean API endpoints at the end
+
+# ================================
+# CLEAN API ENDPOINTS - Google Style
+# ================================
+
+@app.post("/shows")
+async def store_show(show_data: Dict[str, Any]):
+    """Store show data with clean architecture - Single Responsibility"""
+    try:
+        success = await data_service.store_show_data(show_data)
+        
+        if success:
+            return {"success": True, "message": "Show stored successfully"}
+        else:
+            raise HTTPException(status_code=500, detail="Failed to store show")
+    
+    except Exception as e:
+        logger.error(f"❌ Store show endpoint failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Store show failed: {str(e)}")
+
+@app.get("/shows")
+async def list_shows(limit: int = 10, offset: int = 0):
+    """List shows with clean architecture and pagination"""
+    try:
+        # Validate parameters - Fail Fast
+        if limit < 1 or limit > 100:
+            raise HTTPException(status_code=400, detail="Limit must be between 1 and 100")
+        
+        if offset < 0:
+            raise HTTPException(status_code=400, detail="Offset must be non-negative")
+        
+        result = await data_service.list_shows_data(limit, offset)
+        return result
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"❌ List shows endpoint failed: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to list shows")
+
+@app.get("/shows/{session_id}")
+async def get_show(session_id: str):
+    """Get single show with clean architecture"""
+    try:
+        # Validate session_id - Fail Fast
+        if not session_id or len(session_id) < 10:
+            raise HTTPException(status_code=400, detail="Invalid session_id")
+        
+        show_data = await data_service.get_show_data(session_id)
+        
+        if show_data:
+            return {"success": True, "show": show_data}
+        else:
+            raise HTTPException(status_code=404, detail="Show not found")
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"❌ Get show endpoint failed: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to get show")
+
+@app.get("/shows/stats")
+async def get_shows_stats():
+    """Get show statistics with clean architecture"""
+    try:
+        if not data_service.show_storage:
+            raise HTTPException(status_code=503, detail="Show storage not available")
+        
+        total_count = await data_service.show_storage.get_shows_count()
+        
+        # Get recent shows for additional stats
+        recent_shows = await data_service.show_storage.list_shows(limit=5, offset=0)
+        
+        # Calculate basic stats
+        channels = set()
+        languages = set()
+        for show in recent_shows:
+            channels.add(show.channel)
+            languages.add(show.language)
+        
+        return {
+            "total_shows": total_count,
+            "recent_shows_count": len(recent_shows),
+            "active_channels": list(channels),
+            "active_languages": list(languages),
+            "last_generated": recent_shows[0].created_at if recent_shows else None
+        }
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"❌ Show stats endpoint failed: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to get show statistics")
+
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000) 
+    uvicorn.run(app, host="0.0.0.0", port=8006) 
