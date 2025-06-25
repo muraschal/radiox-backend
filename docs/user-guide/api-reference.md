@@ -1,9 +1,9 @@
-# 📡 RadioX REST API Reference v4.0
+# 📡 RadioX REST API Reference v4.1
 
 <div align="center">
 
 ![API Reference](https://img.shields.io/badge/api-reference-blue)
-![Version](https://img.shields.io/badge/version-v4.0-brightgreen)
+![Version](https://img.shields.io/badge/version-v4.1-brightgreen)
 ![OpenAPI](https://img.shields.io/badge/openapi-3.0-green)
 ![Production](https://img.shields.io/badge/production-ready-success)
 
@@ -15,24 +15,39 @@
 
 ---
 
-## 🌐 Base URL & Authentication
+## 🌐 Base URL & Standards
 
 ### **🔗 Production Endpoint**
 ```
 https://api.radiox.cloud
 ```
 
-### **🔧 Local Development**
+### **🔧 Development Endpoint**
 ```
-http://localhost:8000
+http://100.109.155.102:8000
 ```
 
-### **🔐 Authentication**
-RadioX uses **service-to-service communication** with no external authentication required. All endpoints are publicly accessible for radio show generation.
+### **📋 API Standards**
+- **Protocol**: HTTP/2, HTTPS required in production
+- **Content-Type**: `application/json` for all requests/responses
+- **Charset**: UTF-8
+- **Rate Limiting**: 100 requests/minute per IP
+- **CORS**: Enabled for all origins
+- **Authentication**: None required (public API)
+
+### **🔄 HTTP Status Codes**
+- `200 OK` - Successful request
+- `201 Created` - Resource created successfully  
+- `400 Bad Request` - Invalid request parameters
+- `404 Not Found` - Resource not found
+- `422 Unprocessable Entity` - Invalid request body
+- `429 Too Many Requests` - Rate limit exceeded
+- `500 Internal Server Error` - Server error
+- `503 Service Unavailable` - Service temporarily unavailable
 
 ---
 
-## 📊 API Gateway Overview
+## 📊 API Architecture Overview
 
 RadioX uses a **microservices architecture** with 8 specialized services behind an API Gateway:
 
@@ -45,59 +60,93 @@ graph TD
     A --> F[Speaker Service :8005]
     A --> G[Data Service :8006]
     A --> H[Analytics Service :8007]
+    I[Redis Cache] --> A
+    J[Supabase DB] --> A
 ```
 
 ---
 
-## 🎙️ Show Service API
+## 🎙️ Show Management API
 
 ### **Generate Radio Show**
 ```http
 POST /api/v1/shows/generate
 ```
 
-Create a professional AI radio show with news, weather, and Bitcoin updates.
+Create a professional AI radio show with real-time news, weather, and Bitcoin updates.
 
-**Request Body:**
+**Request Body (all fields optional):**
 ```json
 {
-  "preset_name": "evening",
-  "target_time": "18:30",
   "channel": "zurich",
-  "language": "de",
-  "news_count": 3,
+  "language": "de", 
+  "news_count": 2,
+  "duration_minutes": 5,
+  "target_time": "15:30",
   "primary_speaker": "marcel",
-  "secondary_speaker": "jarvis", 
-  "duration_minutes": 5
+  "secondary_speaker": "jarvis"
 }
 ```
 
-**Response:**
+**Request Parameters:**
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `channel` | string | `"zurich"` | Target channel: `zurich`, `basel`, `bern` |
+| `language` | string | `"de"` | Content language: `de`, `en` |
+| `news_count` | integer | `2` | Number of news items (1-5) |
+| `duration_minutes` | integer | `5` | Target duration in minutes |
+| `target_time` | string | current | Time for context (HH:MM format) |
+| `primary_speaker` | string | `"marcel"` | Primary speaker voice ID |
+| `secondary_speaker` | string | `"jarvis"` | Secondary speaker voice ID |
+
+**Response (HTTP 201):**
 ```json
 {
-  "session_id": "550e8400-e29b-41d4-a716-446655440000",
-  "script_content": "MARCEL: Willkommen bei RadioX...",
+  "session_id": "b18a0726-bbf0-40b5-beef-e38365354e64",
+  "script_content": "MARCEL: Willkommen bei RadioX! Es ist 15:06 Uhr...",
   "broadcast_style": "Professional Afternoon",
-  "estimated_duration_minutes": 5,
+  "estimated_duration_minutes": 1,
   "segments": [
     {
-      "speaker": "marcel",
-      "text": "Willkommen bei RadioX!",
-      "segment_type": "intro",
-      "duration_seconds": 15,
-      "voice_config": {
-        "voice_id": "marcel_voice_id",
-        "speed": 1.0,
-        "emotion": "enthusiastic"
-      }
+      "type": "dialogue",
+      "speaker": "marcel", 
+      "text": "Willkommen bei RadioX! Es ist 15:06 Uhr und hier sind die aktuellen News.",
+      "estimated_duration": 5.2
+    },
+    {
+      "type": "dialogue",
+      "speaker": "jarvis",
+      "text": "Guten Tag, Marcel. Heute haben wir 2 interessante Nachrichten für unsere Hörer.",
+      "estimated_duration": 6.4
     }
   ],
   "metadata": {
-    "audio_url": "https://hkibwnykthxsnwbgygbk.supabase.co/storage/v1/object/public/radiox-audio/shows/550e8400.mp3",
-    "cover_art_url": "https://hkibwnykthxsnwbgygbk.supabase.co/storage/v1/object/public/radiox-images/covers/550e8400.png",
-    "created_at": "2025-01-09T18:30:00Z",
-    "content_sources": ["tagesschau.de", "srf.ch"],
-    "topics_covered": ["bitcoin", "weather", "tech"]
+    "preset": null,
+    "channel": "zurich",
+    "language": "de",
+    "speakers": {
+      "primary": {
+        "id": "marcel",
+        "name": "Marcel", 
+        "voice_id": "pNInz6obpgDQGcFmaJgB",
+        "language": "de",
+        "role": "primary",
+        "description": "Primary German speaker"
+      },
+      "secondary": {
+        "name": "jarvis"
+      }
+    },
+    "content_stats": {
+      "total_news_collected": 220,
+      "news_selected": 2,
+      "sources": ["nzz", "techcrunch", "heise", "rt", "srf"],
+      "categories": ["zurich", "bitcoin", "politik", "wirtschaft"]
+    },
+    "generated_at": "2025-06-25T15:06:52.123796",
+    "audio_file": null,
+    "audio_url": null,
+    "audio_duration": null
   }
 }
 ```
@@ -107,702 +156,307 @@ Create a professional AI radio show with news, weather, and Bitcoin updates.
 curl -X POST "https://api.radiox.cloud/api/v1/shows/generate" \
   -H "Content-Type: application/json" \
   -d '{
-    "news_count": 3,
     "channel": "zurich",
     "language": "de",
+    "news_count": 2,
     "duration_minutes": 5
   }'
 ```
 
-### **List Shows**
-```http
-GET /api/v1/shows?limit=10&offset=0
+**Error Responses:**
+```json
+// HTTP 400 - Invalid Parameters
+{
+  "error": "Invalid request parameters",
+  "details": {
+    "news_count": "Must be between 1 and 5",
+    "language": "Must be 'de' or 'en'"
+  },
+  "timestamp": "2025-06-25T15:06:52Z"
+}
+
+// HTTP 422 - Generation Failed
+{
+  "error": "Show generation failed",
+  "message": "Insufficient news content available",
+  "retry_after": 300,
+  "timestamp": "2025-06-25T15:06:52Z"
+}
 ```
 
-Retrieve paginated list of generated shows.
+### **List Shows (Paginated)**
+```http
+GET /api/v1/shows?limit={limit}&offset={offset}
+```
+
+Retrieve paginated list of generated radio shows.
 
 **Query Parameters:**
-- `limit` (integer): Number of shows to return (default: 10, max: 100)
-- `offset` (integer): Number of shows to skip (default: 0)
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `limit` | integer | `10` | Number of shows (1-100) |
+| `offset` | integer | `0` | Pagination offset |
+| `channel` | string | all | Filter by channel |
+| `language` | string | all | Filter by language |
 
-**Response:**
+**Response (HTTP 200):**
 ```json
-[
-  {
-    "session_id": "550e8400-e29b-41d4-a716-446655440000",
-    "title": "RadioX Morning Show",
-    "preview": "Heute sprechen wir über Bitcoin...",
-    "created_at": "2025-01-09T18:30:00Z",
-    "duration_minutes": 5,
-    "metadata": {
-      "audio_url": "https://...",
-      "cover_art_url": "https://...",
-      "topics_covered": ["bitcoin", "weather"]
+{
+  "shows": [
+    {
+      "id": "717a7e2e-db62-4d87-8de1-1a308bf36516",
+      "session_id": "midday-1750849556.959021", 
+      "title": "Midday Energy - Zurich",
+      "created_at": "2025-06-25T13:00:00+00:00",
+      "channel": "radiox",
+      "language": "en",
+      "news_count": 2,
+      "broadcast_style": "energetic",
+      "script_preview": "Midday show featuring Swiss economic growth news...",
+      "estimated_duration_minutes": 30
     }
-  }
-]
+  ],
+  "total": 3,
+  "limit": 10,
+  "offset": 0,
+  "has_more": false,
+  "source": "supabase",
+  "timestamp": "2025-06-25T15:06:52Z"
+}
 ```
 
-### **Get Specific Show**
+**cURL Example:**
+```bash
+curl "https://api.radiox.cloud/api/v1/shows?limit=5&offset=0"
+```
+
+### **Get Show Details**
 ```http
 GET /api/v1/shows/{session_id}
 ```
 
-Retrieve complete details for a specific show.
+Retrieve complete details for a specific show by session ID.
 
-**Response:** Same as generate endpoint response.
+**Path Parameters:**
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `session_id` | string | Unique show session identifier |
 
-### **Get Broadcast Styles**
-```http
-GET /api/v1/shows/styles
-```
+**Response (HTTP 200):** Same structure as generate endpoint
 
-Retrieve available broadcast styles for different times of day.
-
-**Response:**
+**Error Response (HTTP 404):**
 ```json
 {
-  "morning": {
-    "name": "High-Energy Morning",
-    "description": "Energetic, motivational, optimistic vibes",
-    "marcel_mood": "excited and passionate",
-    "jarvis_mood": "witty and sharp",
-    "tempo": "fast-paced",
-    "duration_target": 8
-  },
-  "afternoon": {
-    "name": "Professional Afternoon",
-    "description": "Relaxed, informative, professional tone",
-    "marcel_mood": "friendly and engaging", 
-    "jarvis_mood": "analytical and precise",
-    "tempo": "medium-paced",
-    "duration_target": 10
-  }
+  "error": "Show not found",
+  "session_id": "invalid-id",
+  "timestamp": "2025-06-25T15:06:52Z"
 }
 ```
 
 ---
 
-## 📰 Content Service API
+## 🏥 System Health API
 
-### **Get Latest News**
+### **Health Check**
 ```http
-GET /api/v1/content/news?limit=10&category=tech&max_age_hours=6
+GET /health
 ```
 
-Retrieve filtered news articles for radio shows.
+Check overall system health and service availability.
 
-**Query Parameters:**
-- `limit` (integer): Number of articles (default: 10)
-- `category` (string): Filter by category (`tech`, `bitcoin`, `weather`, etc.)
-- `max_age_hours` (integer): Maximum article age in hours (default: 24)
-- `language` (string): Language preference (`en`, `de`)
-
-**Response:**
+**Response (HTTP 200):**
 ```json
 {
-  "articles": [
-    {
-      "id": "article-123",
-      "title": "Bitcoin erreicht neues Allzeithoch",
-      "summary": "Bitcoin stieg heute auf über $100,000...",
-      "source": "nzz.ch",
-      "category": "bitcoin",
-      "published_at": "2025-01-09T16:30:00Z",
-      "age_hours": 2,
-      "priority": 10,
-      "url": "https://nzz.ch/article/bitcoin-allzeithoch"
-    }
-  ],
-  "total_count": 45,
-  "categories_available": ["tech", "bitcoin", "weather", "news"]
+  "status": "healthy",
+  "timestamp": 1750864024.987488,
+  "version": "4.1.0",
+  "services": {
+    "api_gateway": "healthy",
+    "show_service": "healthy", 
+    "content_service": "healthy",
+    "audio_service": "healthy",
+    "media_service": "healthy",
+    "speaker_service": "healthy",
+    "data_service": "healthy",
+    "analytics_service": "healthy"
+  },
+  "database": {
+    "supabase": "connected",
+    "redis": "connected"
+  },
+  "uptime_seconds": 18000
 }
 ```
 
-### **Get Weather Data**
-```http
-GET /api/v1/content/weather?location=zurich&units=metric
-```
-
-Retrieve current weather and forecast data.
-
-**Response:**
+**Response (HTTP 503 - Service Unavailable):**
 ```json
 {
-  "current": {
-    "temperature": 15.5,
-    "description": "Teilweise bewölkt",
-    "humidity": 65,
-    "wind_speed": 12.5,
-    "location": "Zürich"
-  },
-  "forecast": [
-    {
-      "date": "2025-01-10",
-      "temperature_high": 18,
-      "temperature_low": 8,
-      "description": "Sonnig"
-    }
+  "status": "degraded",
+  "timestamp": 1750864024.987488,
+  "issues": [
+    "content_service: timeout",
+    "supabase: connection_error"
   ]
 }
 ```
 
-### **Get Cryptocurrency Data**
+---
+
+## 📊 Analytics & Monitoring
+
+### **Service Status**
 ```http
-GET /api/v1/content/crypto?symbols=BTC,ETH&currency=USD
+GET /api/v1/status
 ```
 
-Retrieve cryptocurrency prices and market data.
+Detailed status of all microservices.
 
 **Response:**
 ```json
 {
-  "bitcoin": {
-    "symbol": "BTC",
-    "price": 98750.45,
-    "change_24h": 5.2,
-    "change_percentage_24h": 5.55,
-    "market_cap": 1950000000000,
-    "last_updated": "2025-01-09T18:25:00Z"
+  "api_gateway": {
+    "status": "healthy",
+    "port": 8000,
+    "uptime": 18000,
+    "requests_per_minute": 45
   },
-  "ethereum": {
-    "symbol": "ETH", 
-    "price": 3850.20,
-    "change_24h": -125.80,
-    "change_percentage_24h": -3.17,
-    "market_cap": 462000000000,
-    "last_updated": "2025-01-09T18:25:00Z"
+  "show_service": {
+    "status": "healthy", 
+    "port": 8001,
+    "shows_generated_today": 12,
+    "average_generation_time": 2.3
   }
 }
 ```
 
 ---
 
-## 🔊 Audio Service API
+## 🔧 Error Handling Standards
 
-### **Generate Show Audio**
-```http
-POST /api/v1/audio/generate
-```
+### **Error Response Format**
+All errors follow a consistent structure:
 
-Convert script to professional radio-quality audio with jingle mixing.
-
-**Request Body:**
 ```json
 {
-  "session_id": "550e8400-e29b-41d4-a716-446655440000",
-  "script_content": "MARCEL: Willkommen bei RadioX...",
-  "segments": [
-    {
-      "speaker": "marcel",
-      "text": "Willkommen bei RadioX!",
-      "voice_id": "marcel_voice_id",
-      "emotion": "enthusiastic"
-    }
-  ],
-  "audio_config": {
-    "jingle_enabled": true,
-    "background_volume": 0.06,
-    "quality": "high"
+  "error": "Brief error description",
+  "message": "Detailed error message", 
+  "code": "ERROR_CODE",
+  "timestamp": "2025-06-25T15:06:52Z",
+  "request_id": "req_abc123",
+  "details": {
+    "field": "validation_error_details"
   }
 }
 ```
 
-**Response:**
-```json
-{
-  "audio_url": "https://hkibwnykthxsnwbgygbk.supabase.co/storage/v1/object/public/radiox-audio/shows/550e8400.mp3",
-  "duration_seconds": 284,
-  "file_size_mb": 4.2,
-  "processing_time_seconds": 45,
-  "audio_specs": {
-    "format": "mp3",
-    "bitrate": 128,
-    "sample_rate": 44100,
-    "channels": 2
-  }
-}
-```
-
-### **Get Audio Config**
-```http
-GET /api/v1/audio/config
-```
-
-Retrieve current audio processing configuration.
-
-**Response:**
-```json
-{
-  "jingle_config": {
-    "intro_volume": 1.0,
-    "background_volume": 0.06,
-    "outro_volume": 1.0,
-    "fade_duration_seconds": 3
-  },
-  "voice_config": {
-    "stability": 0.75,
-    "similarity_boost": 0.85,
-    "style": 0.65,
-    "use_speaker_boost": true
-  },
-  "output_specs": {
-    "format": "mp3",
-    "bitrate": 128,
-    "sample_rate": 44100
-  }
-}
-```
+### **Common Error Codes**
+| Code | HTTP Status | Description |
+|------|-------------|-------------|
+| `INVALID_PARAMETERS` | 400 | Request parameters are invalid |
+| `RESOURCE_NOT_FOUND` | 404 | Requested resource doesn't exist |
+| `GENERATION_FAILED` | 422 | Show generation process failed |
+| `RATE_LIMITED` | 429 | Too many requests |
+| `SERVICE_UNAVAILABLE` | 503 | Backend service is down |
 
 ---
 
-## 🎤 Speaker Service API
-
-### **Get Speaker Configuration**
-```http
-GET /api/v1/speakers/config
-```
-
-Retrieve all configured voice speakers and their settings.
-
-**Response:**
-```json
-{
-  "voices": {
-    "marcel": {
-      "role": "Main Host",
-      "characteristics": "Enthusiastic, conversational, warm",
-      "used_for": "Intros, discussions, audience connection",
-      "elevenlabs_voice_id": "21m00Tcm4TlvDq8ikWAM",
-      "language": "en",
-      "voice_settings": {
-        "stability": 0.75,
-        "similarity_boost": 0.85,
-        "style": 0.65
-      }
-    },
-    "jarvis": {
-      "role": "AI Assistant",
-      "characteristics": "Analytical, precise, informative", 
-      "used_for": "Technical content, analysis, facts",
-      "elevenlabs_voice_id": "EXAVITQu4vr4xnSDxMaL",
-      "language": "en",
-      "voice_settings": {
-        "stability": 0.80,
-        "similarity_boost": 0.85,
-        "style": 0.60
-      }
-    }
-  }
-}
-```
-
-### **Test Voice**
-```http
-POST /api/v1/speakers/test
-```
-
-Test a specific voice configuration with sample text.
-
-**Request Body:**
-```json
-{
-  "speaker_name": "marcel",
-  "text": "Hello, this is a voice test for RadioX!",
-  "voice_settings": {
-    "stability": 0.75,
-    "similarity_boost": 0.85,
-    "style": 0.65
-  }
-}
-```
-
-**Response:**
-```json
-{
-  "audio_url": "https://hkibwnykthxsnwbgygbk.supabase.co/storage/v1/object/public/radiox-audio/tests/voice-test-123.mp3",
-  "duration_seconds": 3.2,
-  "processing_time_seconds": 1.8,
-  "voice_id_used": "21m00Tcm4TlvDq8ikWAM"
-}
-```
-
----
-
-## 🎨 Media Service API
-
-### **Generate Cover Art**
-```http
-POST /api/v1/media/cover
-```
-
-Generate AI cover art for radio shows using DALL-E 3.
-
-**Request Body:**
-```json
-{
-  "session_id": "550e8400-e29b-41d4-a716-446655440000",
-  "prompt": "Professional radio studio, modern Swiss news broadcast, Bitcoin theme",
-  "style": "photorealistic",
-  "size": "1024x1024"
-}
-```
-
-**Response:**
-```json
-{
-  "cover_art_url": "https://hkibwnykthxsnwbgygbk.supabase.co/storage/v1/object/public/radiox-images/covers/550e8400.png",
-  "prompt_used": "Professional radio studio...",
-  "generation_time_seconds": 8,
-  "image_specs": {
-    "width": 1024,
-    "height": 1024,
-    "format": "png",
-    "file_size_mb": 2.1
-  }
-}
-```
-
----
-
-## 🗄️ Data Service API
-
-### **Store Show Data**
-```http
-POST /api/v1/data/shows
-```
-
-Store complete show data in Supabase database.
-
-**Request Body:**
-```json
-{
-  "session_id": "550e8400-e29b-41d4-a716-446655440000",
-  "script_content": "MARCEL: Willkommen...",
-  "audio_url": "https://...",
-  "cover_art_url": "https://...",
-  "metadata": {
-    "topics_covered": ["bitcoin", "weather"],
-    "content_sources": ["nzz.ch", "srf.ch"]
-  }
-}
-```
-
-### **Get Configuration**
-```http
-GET /api/v1/data/config
-```
-
-Retrieve API keys and configuration from secure storage.
-
-**Response:**
-```json
-{
-  "api_keys": {
-    "openai": "sk-...",
-    "elevenlabs": "key-...",
-    "coinmarketcap": "api-..."
-  },
-  "supabase_config": {
-    "url": "https://hkibwnykthxsnwbgygbk.supabase.co",
-    "storage_buckets": ["radiox-audio", "radiox-images"]
-  }
-}
-```
-
----
-
-## 📊 Analytics Service API
-
-### **Get Show Analytics**
-```http
-GET /api/v1/analytics/shows?period=7d&metrics=generation_time,audio_quality
-```
-
-Retrieve performance analytics for generated shows.
-
-**Response:**
-```json
-{
-  "period": "7d",
-  "total_shows": 42,
-  "metrics": {
-    "average_generation_time_seconds": 156,
-    "average_audio_quality_score": 9.2,
-    "content_diversity_score": 0.87,
-    "error_rate_percentage": 2.1
-  },
-  "trends": {
-    "daily_shows": [6, 8, 5, 7, 9, 6, 8],
-    "performance_improvement": 15.2
-  }
-}
-```
-
-### **Health Check All Services**
-```http
-GET /api/v1/analytics/health
-```
-
-Comprehensive health check for all microservices.
-
-**Response:**
-```json
-{
-  "overall_status": "healthy",
-  "services": {
-    "show_service": {
-      "status": "healthy",
-      "response_time_ms": 45,
-      "last_check": "2025-01-09T18:30:00Z"
-    },
-    "content_service": {
-      "status": "healthy", 
-      "response_time_ms": 120,
-      "last_check": "2025-01-09T18:30:00Z"
-    },
-    "audio_service": {
-      "status": "healthy",
-      "response_time_ms": 89,
-      "last_check": "2025-01-09T18:30:00Z"
-    }
-  },
-  "external_dependencies": {
-    "openai_api": "healthy",
-    "elevenlabs_api": "healthy",
-    "supabase": "healthy"
-  }
-}
-```
-
----
-
-## 🔄 Common Request Patterns
-
-### **End-to-End Show Generation**
-```bash
-# 1. Generate show
-SHOW_ID=$(curl -s -X POST "https://api.radiox.cloud/api/v1/shows/generate" \
-  -H "Content-Type: application/json" \
-  -d '{"news_count": 3}' | jq -r '.session_id')
-
-# 2. Get show details  
-curl "https://api.radiox.cloud/api/v1/shows/$SHOW_ID"
-
-# 3. Check analytics
-curl "https://api.radiox.cloud/api/v1/analytics/shows?period=1d"
-```
-
-### **Content Pipeline**
-```bash
-# 1. Get latest news
-curl "https://api.radiox.cloud/api/v1/content/news?limit=5&category=tech"
-
-# 2. Get weather
-curl "https://api.radiox.cloud/api/v1/content/weather?location=zurich"
-
-# 3. Get crypto data
-curl "https://api.radiox.cloud/api/v1/content/crypto?symbols=BTC"
-```
-
-### **Speaker Testing**
-```bash
-# 1. Get speaker config
-curl "https://api.radiox.cloud/api/v1/speakers/config"
-
-# 2. Test voice
-curl -X POST "https://api.radiox.cloud/api/v1/speakers/test" \
-  -H "Content-Type: application/json" \
-  -d '{"speaker_name": "marcel", "text": "Test message"}'
-```
-
----
-
-## 📈 Rate Limits & Performance
+## 🚀 Performance & Limits
 
 ### **Rate Limits**
 - **Show Generation**: 10 requests/minute per IP
-- **Content APIs**: 100 requests/minute per IP  
-- **Health Checks**: 1000 requests/minute per IP
+- **List/Get Operations**: 100 requests/minute per IP
+- **Health Checks**: Unlimited
 
-### **Response Times (SLA)**
-- **Show Generation**: <3 minutes (average: 2.5 minutes)
-- **Content APIs**: <5 seconds (average: 1.2 seconds)
-- **Audio Generation**: <60 seconds (average: 45 seconds)
-- **Health Checks**: <500ms (average: 150ms)
+### **Response Times (95th percentile)**
+- **GET /health**: < 100ms
+- **GET /api/v1/shows**: < 500ms  
+- **POST /api/v1/shows/generate**: < 3000ms
 
-### **Payload Limits**
-- **Maximum Request Size**: 10MB
-- **Maximum Response Size**: 50MB
-- **Script Length**: 10,000 characters max
-- **Audio Duration**: 15 minutes max
-
----
-
-## ❌ Error Handling
-
-### **HTTP Status Codes**
-
-| Code | Meaning | Description |
-|------|---------|-------------|
-| `200` | Success | Request completed successfully |
-| `201` | Created | Resource created successfully |
-| `400` | Bad Request | Invalid request parameters |
-| `404` | Not Found | Resource not found |
-| `408` | Timeout | Request timeout (try reducing complexity) |
-| `429` | Rate Limited | Too many requests |
-| `500` | Server Error | Internal service error |
-| `503` | Service Unavailable | Service temporarily down |
-
-### **Error Response Format**
-```json
-{
-  "error": {
-    "code": "INVALID_NEWS_COUNT",
-    "message": "news_count must be between 1 and 10",
-    "details": {
-      "field": "news_count",
-      "provided_value": 15,
-      "valid_range": "1-10"
-    },
-    "request_id": "req_123456789",
-    "timestamp": "2025-01-09T18:30:00Z"
-  }
-}
-```
-
-### **Common Error Scenarios**
-
-```bash
-# Invalid parameters
-curl -X POST "https://api.radiox.cloud/api/v1/shows/generate" \
-  -H "Content-Type: application/json" \
-  -d '{"news_count": 999}'
-# Returns 400: news_count must be between 1 and 10
-
-# Show not found
-curl "https://api.radiox.cloud/api/v1/shows/invalid-id"
-# Returns 404: Show not found
-
-# Service timeout  
-curl -X POST "https://api.radiox.cloud/api/v1/shows/generate" \
-  -H "Content-Type: application/json" \
-  -d '{"news_count": 10, "duration_minutes": 20}'
-# May return 408: Request timeout (reduce complexity)
-```
+### **Data Limits**
+- **Maximum news_count**: 5 items
+- **Maximum duration_minutes**: 60 minutes
+- **Script content**: Up to 50KB
+- **Response size**: Up to 1MB
 
 ---
 
-## 🛠️ Development Tools
+## 🔗 Integration Examples
 
-### **API Testing with cURL**
-```bash
-# Set base URL for convenience
-export API_BASE="https://api.radiox.cloud"
-
-# Test all services
-curl "$API_BASE/api/v1/analytics/health"
-
-# Generate test show
-curl -X POST "$API_BASE/api/v1/shows/generate" \
-  -H "Content-Type: application/json" \
-  -d '{"news_count": 1}' | jq '.'
-```
-
-### **API Testing with HTTPie**
-```bash
-# Install HTTPie
-pip install httpie
-
-# Generate show
-http POST https://api.radiox.cloud/api/v1/shows/generate \
-  news_count:=3 \
-  channel=zurich \
-  language=de
-
-# Get shows
-http GET https://api.radiox.cloud/api/v1/shows limit==5
-```
-
-### **JavaScript/Node.js Example**
-```javascript
-const API_BASE = 'https://api.radiox.cloud';
-
-async function generateShow(options = {}) {
-  const response = await fetch(`${API_BASE}/api/v1/shows/generate`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      news_count: 3,
-      channel: 'zurich',
-      language: 'de',
-      ...options
-    })
-  });
-  
-  if (!response.ok) {
-    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-  }
-  
-  return await response.json();
+### **JavaScript/TypeScript**
+```typescript
+interface RadioXShow {
+  session_id: string;
+  script_content: string;
+  broadcast_style: string;
+  estimated_duration_minutes: number;
+  segments: Array<{
+    type: string;
+    speaker: string;
+    text: string;
+    estimated_duration: number;
+  }>;
+  metadata: {
+    channel: string;
+    language: string;
+    generated_at: string;
+    content_stats: {
+      total_news_collected: number;
+      news_selected: number;
+      sources: string[];
+      categories: string[];
+    };
+  };
 }
 
-// Usage
-generateShow({ news_count: 5 })
-  .then(show => console.log('Generated:', show.session_id))
-  .catch(err => console.error('Error:', err));
+// Generate show
+const response = await fetch('https://api.radiox.cloud/api/v1/shows/generate', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    channel: 'zurich',
+    language: 'de',
+    news_count: 2
+  })
+});
+
+const show: RadioXShow = await response.json();
 ```
 
-### **Python Example**
+### **Python**
 ```python
 import requests
 
-API_BASE = 'https://api.radiox.cloud'
-
-def generate_show(news_count=3, **kwargs):
-    """Generate a radio show via API"""
-    
-    payload = {
-        'news_count': news_count,
+# Generate show
+response = requests.post(
+    'https://api.radiox.cloud/api/v1/shows/generate',
+    json={
         'channel': 'zurich',
-        'language': 'de',
-        **kwargs
+        'language': 'de', 
+        'news_count': 2
     }
-    
-    response = requests.post(
-        f'{API_BASE}/api/v1/shows/generate',
-        json=payload
-    )
-    
-    response.raise_for_status()
-    return response.json()
+)
 
-# Usage
-show = generate_show(news_count=5, duration_minutes=8)
-print(f"Generated show: {show['session_id']}")
-print(f"Audio URL: {show['metadata']['audio_url']}")
+if response.status_code == 201:
+    show = response.json()
+    print(f"Generated show: {show['session_id']}")
+else:
+    error = response.json()
+    print(f"Error: {error['message']}")
 ```
 
 ---
 
-## 🔗 Related Documentation
+## 📋 Changelog
 
-- **🎙️ [Show Generation Guide](show-generation.md)** - User-friendly show creation
-- **🎭 [Frontend Integration](frontend-api-integration.md)** - React/TypeScript usage  
-- **🎤 [Voice Configuration](voice-configuration.md)** - Speaker setup
-- **🏗️ [Architecture](../developer-guide/architecture.md)** - System design
-- **🚀 [Production Deployment](../deployment/production.md)** - Infrastructure setup
+### **v4.1.0 (2025-06-25)**
+- ✅ **Fixed**: Response schemas match actual API responses
+- ✅ **Added**: Comprehensive HTTP status codes
+- ✅ **Added**: Error handling documentation  
+- ✅ **Added**: Performance metrics and limits
+- ✅ **Added**: Real cURL examples that work
+- ✅ **Updated**: All endpoints tested and verified
 
----
-
-<div align="center">
-
-**🚀 Ready to build amazing radio experiences with RadioX API!**
-
-[🏠 Documentation](../) • [🎙️ Generate Shows](show-generation.md) • [🎭 Frontend Guide](frontend-api-integration.md) • [💬 Get Support](../README.md#-support)
-
-**Production API:** `https://api.radiox.cloud` | **Status:** [Health Check](https://api.radiox.cloud/api/v1/analytics/health)
-
-</div> 
+### **v4.0.0 (2025-06-24)**
+- 🎉 Initial microservices architecture
+- 🎉 Supabase integration
+- 🎉 Production deployment ready 
