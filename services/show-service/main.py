@@ -653,7 +653,7 @@ class ShowOrchestrationService:
             # Store in Data Service using Clean Architecture - Single Source of Truth
             async with httpx.AsyncClient(timeout=10.0) as client:
                 response = await client.post(
-                    "http://172.18.0.10:8006/shows",
+                    "http://data-service:8000/shows",
                     json=show_data
                 )
                 
