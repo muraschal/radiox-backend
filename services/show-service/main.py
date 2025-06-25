@@ -16,6 +16,7 @@ import os
 from loguru import logger
 from pydantic import BaseModel
 from supabase import create_client, Client
+import pytz
 
 app = FastAPI(
     title="RadioX Show Service", 
@@ -265,8 +266,9 @@ class GPTScriptGenerator:
             bitcoin = content["bitcoin"]
             bitcoin_context = f"₿ Bitcoin: ${bitcoin['price']:,.2f} ({bitcoin['change_24h']:+.1f}%)"
         
-        # Current time
-        current_time = datetime.now()
+        # Current time in Zurich timezone
+        zurich_tz = pytz.timezone('Europe/Zurich')
+        current_time = datetime.now(zurich_tz)
         time_context = f"⏰ Zeit: {current_time.strftime('%H:%M')}, {current_time.strftime('%A')}, {current_time.strftime('%d.%m.%Y')}"
         
         # Location context

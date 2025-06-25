@@ -144,6 +144,12 @@ async def generate_show(request: Request):
     data = await request.json()
     return await proxy.forward_request("show", "/generate", "POST", data)
 
+@app.post("/shows/generate")
+async def generate_show_simple(request: Request):
+    """Generate a new radio show (simple route)"""
+    data = await request.json()
+    return await proxy.forward_request("show", "/generate", "POST", data)
+
 @app.get("/api/v1/shows/{show_id}")
 async def get_show(show_id: str):
     """Get show details"""
@@ -152,6 +158,12 @@ async def get_show(show_id: str):
 @app.get("/api/v1/shows")
 async def list_shows(limit: int = 10, offset: int = 0):
     """List shows"""
+    params = {"limit": str(limit), "offset": str(offset)}
+    return await proxy.forward_request("show", "/shows", "GET", params=params)
+
+@app.get("/shows")
+async def list_shows_simple(limit: int = 10, offset: int = 0):
+    """List shows (simple route)"""
     params = {"limit": str(limit), "offset": str(offset)}
     return await proxy.forward_request("show", "/shows", "GET", params=params)
 

@@ -621,7 +621,7 @@ class AudioProcessingService:
                     "segments_count": show_data.get("segments_count", 0),
                     "format": show_data.get("format", "mp3"),
                     "generated_at": show_data.get("generated_at"),
-                    "speakers": show_data.get("speakers", {})
+                    "speakers": list(show_data.get("speakers", set())) if isinstance(show_data.get("speakers"), set) else show_data.get("speakers", [])
                 }
             }
             
