@@ -15,6 +15,7 @@ from typing import Dict, Any, Optional, List
 import os
 from loguru import logger
 from pydantic import BaseModel
+from supabase import create_client, Client
 
 app = FastAPI(
     title="RadioX Show Service", 
@@ -24,12 +25,23 @@ app = FastAPI(
 
 # Redis Connection
 redis_client: Optional[redis.Redis] = None
+supabase_client: Optional[Client] = None
 
 @app.on_event("startup")
 async def startup_event():
-    global redis_client
+    global redis_client, supabase_client
     redis_url = os.getenv("REDIS_URL", "redis://redis:6379")
     redis_client = redis.from_url(redis_url, decode_responses=True)
+    
+    # Initialize Supabase client
+    supabase_url = os.getenv("SUPABASE_URL")
+    supabase_key = os.getenv("SUPABASE_ANON_KEY") or os.getenv("SUPABASE_KEY")
+    if supabase_url and supabase_key:
+        supabase_client = create_client(supabase_url, supabase_key)
+        logger.info("✅ Supabase client initialized")
+    else:
+        logger.warning("⚠️ Supabase credentials missing")
+    
     logger.info("Show Service started successfully")
 
 @app.on_event("shutdown")
@@ -731,10 +743,10 @@ async def generate_show(request: ShowRequest):
     """Generate complete radio show"""
     return await show_service.generate_show(request)
 
-# Shows List - Updated to use Clean Architecture
+# Shows List - Updated to use Supabase directly
 @app.get("/shows")
 async def list_shows(limit: int = 10, offset: int = 0):
-    """List all generated shows using Clean Architecture - Google Style"""
+    """List all generated shows using Supabase as primary source"""
     try:
         # Validate parameters - Fail Fast
         if limit < 1 or limit > 100:
@@ -743,7 +755,61 @@ async def list_shows(limit: int = 10, offset: int = 0):
         if offset < 0:
             raise HTTPException(status_code=400, detail="Offset must be non-negative")
         
-        # Use Data Service as Single Source of Truth
+        # Try Supabase first
+        if supabase_client:
+            try:
+                import asyncio
+                import functools
+                
+                # Run Supabase query in thread pool since it's sync
+                loop = asyncio.get_event_loop()
+                response = await loop.run_in_executor(
+                    None, 
+                    functools.partial(
+                        lambda: supabase_client.table("shows").select("*").order("created_at", desc=True).range(offset, offset + limit - 1).execute()
+                    )
+                )
+                
+                if response.data:
+                    shows = []
+                    for show in response.data:
+                        show_summary = {
+                            "id": show.get("id"),
+                            "session_id": show.get("session_id"),
+                            "title": show.get("title"),
+                            "created_at": show.get("created_at"),
+                            "channel": show.get("channel"),
+                            "language": show.get("language"),
+                            "news_count": show.get("news_count", 0),
+                            "broadcast_style": show.get("broadcast_style"),
+                            "script_preview": show.get("script_preview"),
+                            "estimated_duration_minutes": show.get("estimated_duration_minutes")
+                        }
+                        shows.append(show_summary)
+                    
+                    # Get total count for pagination
+                    count_response = await loop.run_in_executor(
+                        None, 
+                        functools.partial(
+                            lambda: supabase_client.table("shows").select("id").execute()
+                        )
+                    )
+                    total = len(count_response.data) if count_response.data else len(shows)
+                    
+                    logger.info(f"📋 Listed {len(shows)} shows via Supabase")
+                    return {
+                        "shows": shows,
+                        "total": total,
+                        "limit": limit,
+                        "offset": offset,
+                        "has_more": offset + limit < total,
+                        "source": "supabase"
+                    }
+                
+            except Exception as e:
+                logger.error(f"❌ Supabase query failed: {str(e)}")
+        
+        # Fallback to Data Service
         async with httpx.AsyncClient(timeout=10.0) as client:
             response = await client.get(
                 "http://172.18.0.10:8006/shows",
