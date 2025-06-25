@@ -557,14 +557,57 @@ Internal Services:
 ## 💾 Data Service (Port 8006)
 
 ### Purpose
-**Database operations and configuration management** as single source of truth.
+**Database operations and configuration management** with **Clean Architecture patterns** as single source of truth.
 
 ### Key Responsibilities
-- **Supabase Integration** - PostgreSQL database operations
+- **Supabase Integration** - PostgreSQL database operations with clean interfaces
 - **Configuration Management** - Show presets and system settings
-- **Data Validation** - Pydantic schema validation
-- **Caching Strategies** - Redis integration for performance
+- **Show Storage** - Clean Architecture implementation for show persistence
+- **Data Validation** - Pydantic schema validation with fail-fast patterns
+- **Caching Strategies** - Redis integration for performance layer
 - **Schema Management** - Database migrations and updates
+
+### Clean Architecture Implementation
+```python
+# Clean Data Models - Google Style
+@dataclass
+class ShowRecord:
+    """Clean data model for Show storage - Single Responsibility"""
+    session_id: str
+    title: str
+    script_content: str
+    script_preview: str
+    broadcast_style: str
+    channel: str
+    language: str
+    news_count: int
+    estimated_duration_minutes: int
+    audio_url: Optional[str] = None
+    audio_duration_seconds: Optional[int] = None
+    metadata: Optional[Dict[str, Any]] = None
+    created_at: Optional[str] = None
+
+class ShowStorageInterface:
+    """Clean interface for show storage - Separation of Concerns"""
+    async def store_show(self, show: ShowRecord) -> bool: ...
+    async def get_show(self, session_id: str) -> Optional[ShowRecord]: ...
+    async def list_shows(self, limit: int = 10, offset: int = 0) -> List[ShowSummary]: ...
+    async def get_shows_count(self) -> int: ...
+
+class SupabaseShowStorage(ShowStorageInterface):
+    """Google-Style Implementation: Single Responsibility + Fail Fast"""
+    
+    async def store_show(self, show: ShowRecord) -> bool:
+        """Store show with proper error handling and transaction consistency"""
+        try:
+            result = await asyncio.to_thread(
+                lambda: self.client.table("shows").upsert(show_dict).execute()
+            )
+            return bool(result.data)
+        except Exception as e:
+            logger.error(f"❌ Show storage failed: {str(e)}")
+            return False
+```
 
 ### API Endpoints
 ```python
@@ -573,14 +616,20 @@ GET  /config                   # System configuration
 GET  /presets                  # Show presets
 POST /presets                  # Create show preset
 
-# Data Operations
+# Clean Show Storage API
+POST /shows                    # Store show data (Clean Architecture)
+GET  /shows                    # List shows with pagination
+GET  /shows/{session_id}       # Get single show
+GET  /shows/stats              # Show statistics
+
+# Legacy Data Operations
 POST /data                     # Store data
 GET  /data/{type}             # Retrieve data by type
 PUT  /data/{id}               # Update data
 DELETE /data/{id}             # Delete data
 
 # Health & Monitoring
-GET  /health                   # Database health
+GET  /health                   # Database health with detailed status
 GET  /metrics                 # Database metrics
 ```
 

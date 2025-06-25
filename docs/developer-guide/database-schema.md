@@ -68,6 +68,7 @@ python cli/cli_schema.py migrate
 | **rss_feed_preferences** | RSS feed configurations for news collection | None (Base table) |
 | **show_presets** | Flexible show configuration templates | voice_configurations |
 | **broadcast_scripts** | Generated radio scripts with metadata | show_presets |
+| **shows** | Clean Architecture show storage | None (Independent) |
 | **used_news** | Tracking of used news articles | broadcast_scripts |
 | **broadcast_logs** | System logs for broadcast generation | broadcast_scripts |
 
@@ -216,6 +217,46 @@ CREATE TABLE show_presets (
 - City-specific content focus
 - Automated scheduling support
 - Comprehensive content mix controls
+
+### **🎵 Shows (Clean Architecture)**
+
+```sql
+CREATE TABLE shows (
+    session_id TEXT PRIMARY KEY,
+    title TEXT NOT NULL,
+    script_content TEXT NOT NULL,
+    script_preview TEXT,
+    broadcast_style TEXT NOT NULL,
+    channel TEXT NOT NULL,
+    language TEXT NOT NULL DEFAULT 'de',
+    news_count INTEGER NOT NULL,
+    estimated_duration_minutes INTEGER,
+    audio_url TEXT,
+    audio_duration_seconds INTEGER,
+    metadata JSONB DEFAULT '{}',
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Indexes for performance
+CREATE INDEX idx_shows_created_at ON shows(created_at DESC);
+CREATE INDEX idx_shows_channel ON shows(channel);
+CREATE INDEX idx_shows_broadcast_style ON shows(broadcast_style);
+```
+
+**Purpose:** Clean Architecture implementation for show storage with Single Responsibility pattern.
+
+**Key Features:**
+- **Google Design Principles** - Clean data models and interfaces
+- **Single Source of Truth** - Centralized show storage
+- **Performance Optimized** - Indexed for fast queries
+- **Resilience Pattern** - Works with Redis fallback when Supabase unavailable
+- **Fail Fast Implementation** - Proper validation and error handling
+
+**Integration:**
+- Used by **Data Service (8006)** via `ShowStorageInterface`
+- Accessed by **Show Service (8001)** for show retrieval
+- Supports pagination and filtering for dashboard display
 
 ### **📻 Broadcast Scripts**
 

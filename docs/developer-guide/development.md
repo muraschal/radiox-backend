@@ -314,6 +314,20 @@ locust -f tests/load/locustfile.py --host=http://localhost:8000
 ```
 
 ### Monitoring in Development
+
+#### Live Monitoring Dashboard
+```bash
+# RadioX Live Monitoring Dashboard - Real-time service status
+./scripts/monitor-radiox.sh
+
+# Features:
+# - Real-time service health (8 microservices)
+# - Production API stats
+# - Live activity logs
+# - Interactive commands: [r] Restart | [l] Live Logs | [s] Status | [q] Quit
+```
+
+#### Traditional Monitoring Stack
 ```bash
 # Start with monitoring stack
 docker-compose -f docker-compose.monitoring.yml up
@@ -322,6 +336,20 @@ docker-compose -f docker-compose.monitoring.yml up
 open http://localhost:9090    # Prometheus
 open http://localhost:3000    # Grafana
 open http://localhost:8080    # Service dashboards
+```
+
+#### Remote LXC Monitoring
+```bash
+# Monitor RadioX on remote LXC container
+ssh root@radiox-backend
+cd /opt/radiox-backend
+./scripts/monitor-radiox.sh
+
+# Features live status of:
+# ✅ API Gateway (8000)      ✅ Show Service (8001) 
+# ✅ Content Service (8002)  ✅ Audio Service (8003)
+# ✅ Media Service (8004)    ✅ Speaker Service (8005)
+# ✅ Data Service (8006)     ✅ Analytics Service (8007)
 ```
 
 ---
