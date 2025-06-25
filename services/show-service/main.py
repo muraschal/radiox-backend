@@ -151,7 +151,7 @@ class GPTScriptGenerator:
         
         try:
             async with httpx.AsyncClient(timeout=5.0) as client:
-                response = await client.get("http://172.18.0.10:8006/config")
+                response = await client.get("http://data-service:8000/config")
                 if response.status_code == 200:
                     config = response.json()
                     self.openai_api_key = config.get("api_keys", {}).get("openai")
@@ -812,7 +812,7 @@ async def list_shows(limit: int = 10, offset: int = 0):
         # Fallback to Data Service
         async with httpx.AsyncClient(timeout=10.0) as client:
             response = await client.get(
-                "http://172.18.0.10:8006/shows",
+                "http://data-service:8000/shows",
                 params={"limit": limit, "offset": offset}
             )
             
