@@ -1,54 +1,55 @@
 # 🚀 RadioX Common Requirements - ULTIMATE OPTIMIZATION
 # Shared dependencies across all 8 microservices
 # Author: Marcel & Claude - Building the Next Unicorn 🦄
+# SECURITY UPDATED: 2025-01-06
 
 # ================================
 # CORE FRAMEWORK
 # ================================
-fastapi>=0.100.0
-uvicorn[standard]>=0.21.0
-pydantic>=2.0.0
-pydantic-settings==2.10.0
+fastapi>=0.115.0
+uvicorn[standard]>=0.32.0
+pydantic>=2.11.0
+pydantic-settings>=2.10.0
 
 # ================================
 # DATABASE & CACHING
 # ================================
-supabase>=1.0.0
-redis>=4.5.0
+supabase>=2.16.0
+redis>=5.2.0
 
 # ================================
 # HTTP CLIENT & NETWORKING
 # ================================
-httpx>=0.24.0
-aiohttp==3.12.13
-aiofiles==24.1.0
+httpx>=0.28.0
+aiohttp>=3.12.0
+aiofiles>=24.1.0
 
 # ================================
 # LOGGING & MONITORING
 # ================================
-loguru>=0.7.0
-psutil==7.0.0
+loguru>=0.7.3
+psutil>=7.0.0
 
 # ================================
 # DATA PROCESSING
 # ================================
-python-dateutil==2.9.0.post0
-python-dotenv>=1.0.0
-Pillow==11.2.1
+python-dateutil>=2.9.0
+python-dotenv>=1.1.0
+Pillow>=11.3.0
 
 # ================================
 # TESTING & DEVELOPMENT
 # ================================
-pytest==8.4.1
-pytest-mock==3.14.1
+pytest>=8.4.0
+pytest-mock>=3.14.0
 
 # ================================
 # UTILITIES
 # ================================
-requests==2.32.4
+requests>=2.32.0
 beautifulsoup4>=4.12.0
 feedparser>=6.0.10
-packaging==25.0
+packaging>=25.0
 
 # ================================
 # AUDIO/VIDEO PROCESSING

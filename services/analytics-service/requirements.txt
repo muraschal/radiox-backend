@@ -1,5 +1,5 @@
-fastapi==0.104.1
-uvicorn[standard]==0.24.0
-httpx==0.24.1
-loguru==0.7.2
-pydantic==2.5.0 
+fastapi>=0.115.0
+uvicorn[standard]>=0.32.0
+httpx>=0.28.0
+loguru>=0.7.3
+pydantic>=2.11.0 
