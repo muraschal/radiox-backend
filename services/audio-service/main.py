@@ -36,27 +36,78 @@ supabase_admin: Optional[Client] = None   # Admin operations (service key)
 @app.on_event("startup")
 async def startup_event():
     global redis_client, supabase_client, supabase_admin
-    redis_url = os.getenv("REDIS_URL", "redis://localhost:6379")
-    redis_client = redis.from_url(redis_url, decode_responses=True)
     
-    # Initialize Supabase for regular operations
+    logger.info("🚀 Audio Service startup - FAIL FAST MODE")
+    
+    # Initialize Redis - FAIL FAST
+    try:
+        redis_url = os.getenv("REDIS_URL", "redis://localhost:6379")
+        redis_client = redis.from_url(redis_url, decode_responses=True)
+        await redis_client.ping()  # Test connection immediately
+        logger.info("✅ Redis connection verified")
+    except Exception as e:
+        logger.error(f"❌ FAIL FAST: Redis connection failed: {e}")
+        raise Exception(f"Audio Service REQUIRES Redis connection: {e}")
+    
+    # FIXED: Load ElevenLabs API Key from Key Service - FAIL FAST
+    try:
+        key_service_url = os.getenv("KEY_SERVICE_URL", "http://localhost:8002")
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            # Test Key Service connection
+            health_response = await client.get(f"{key_service_url}/health")
+            if health_response.status_code != 200:
+                raise Exception(f"Key Service unhealthy: {health_response.status_code}")
+            
+            # Load ElevenLabs API key
+            key_response = await client.get(f"{key_service_url}/keys/elevenlabs_api_key")
+            if key_response.status_code != 200:
+                raise Exception(f"ElevenLabs API key not found: {key_response.status_code}")
+            
+            key_data = key_response.json()
+            elevenlabs_key = key_data.get("key_value")
+            if not elevenlabs_key:
+                raise Exception("ElevenLabs API key value is empty")
+            
+            # Set in environment for ElevenLabsService class to use
+            os.environ["ELEVENLABS_API_KEY"] = elevenlabs_key
+            logger.info("✅ ElevenLabs API key loaded from Key Service")
+            
+    except Exception as e:
+        logger.error(f"❌ FAIL FAST: Key Service connection failed: {e}")
+        raise Exception(f"Audio Service REQUIRES Key Service for ElevenLabs API key: {e}")
+    
+    # Initialize Supabase for regular operations - FAIL FAST
     supabase_url = os.getenv("SUPABASE_URL")
-    supabase_key = os.getenv("SUPABASE_KEY")
-    if supabase_url and supabase_key:
+    supabase_key = os.getenv("SUPABASE_ANON_KEY")
+    if not supabase_url or not supabase_key:
+        logger.error("❌ FAIL FAST: Supabase credentials missing")
+        raise Exception("Audio Service REQUIRES Supabase credentials (SUPABASE_URL, SUPABASE_ANON_KEY)")
+    
+    try:
         supabase_client = create_client(supabase_url, supabase_key)
-        logger.info("✅ Supabase (anon) connected")
-    else:
-        logger.warning("⚠️ Supabase anon credentials missing")
+        # Test connection immediately
+        test_response = supabase_client.table('shows').select('session_id').limit(1).execute()
+        logger.info("✅ Supabase (anon) connection verified")
+    except Exception as e:
+        logger.error(f"❌ FAIL FAST: Supabase connection failed: {e}")
+        raise Exception(f"Audio Service REQUIRES Supabase database connection: {e}")
     
-    # Initialize Supabase for admin operations (storage, etc.)
+    # Initialize Supabase for admin operations (storage) - FAIL FAST
     supabase_service_key = os.getenv("SUPABASE_SERVICE_KEY")
-    if supabase_url and supabase_service_key:
-        supabase_admin = create_client(supabase_url, supabase_service_key)
-        logger.info("✅ Supabase (admin) connected - Storage enabled")
-    else:
-        logger.warning("⚠️ Supabase service key missing - storage disabled")
+    if not supabase_service_key:
+        logger.error("❌ FAIL FAST: Supabase service key missing")
+        raise Exception("Audio Service REQUIRES SUPABASE_SERVICE_KEY for storage operations")
     
-    logger.info("Audio Service started successfully")
+    try:
+        supabase_admin = create_client(supabase_url, supabase_service_key)
+        # Test storage connection
+        storage = supabase_admin.storage.from_("radio-shows")
+        logger.info("✅ Supabase (admin) storage connection verified")
+    except Exception as e:
+        logger.error(f"❌ FAIL FAST: Supabase storage connection failed: {e}")
+        raise Exception(f"Audio Service REQUIRES Supabase storage connection: {e}")
+    
+    logger.info("✅ Audio Service startup complete - ALL DEPENDENCIES VERIFIED")
 
 @app.on_event("shutdown")
 async def shutdown_event():
@@ -84,7 +135,7 @@ class ElevenLabsService:
     def __init__(self):
         self.api_key = os.getenv("ELEVENLABS_API_KEY")
         self.base_url = "https://api.elevenlabs.io/v1"
-        self.data_service_url = os.getenv("DATA_SERVICE_URL", "http://data-service:8000")
+        self.database_service_url = os.getenv("DATABASE_SERVICE_URL", "http://localhost:8001")
         
         # Audio configuration
         self.config = {
@@ -97,7 +148,7 @@ class ElevenLabsService:
         """Get voice configuration from Data Service"""
         try:
             async with httpx.AsyncClient(timeout=10.0) as client:
-                response = await client.get(f"{self.data_service_url}/speakers/{speaker}")
+                response = await client.get(f"{self.database_service_url}/speakers/{speaker}")
                 
                 if response.status_code == 200:
                     voice_data = response.json()
@@ -644,8 +695,55 @@ audio_service = AudioProcessingService()
 # Health Check
 @app.get("/health")
 async def health_check():
-    """Health check endpoint"""
-    return {"status": "healthy", "service": "audio-service"}
+    """Enhanced health check with dependency validation"""
+    try:
+        # Test ElevenLabs API Key
+        elevenlabs_status = "configured" if os.getenv("ELEVENLABS_API_KEY") else "missing"
+        
+        # Test Redis connection
+        redis_status = "unknown"
+        if redis_client:
+            try:
+                await redis_client.ping()
+                redis_status = "healthy"
+            except:
+                redis_status = "unhealthy"
+        
+        # Test Supabase connection
+        supabase_status = "unknown"
+        if supabase_client:
+            try:
+                test_response = supabase_client.table('shows').select('session_id').limit(1).execute()
+                supabase_status = "healthy"
+            except:
+                supabase_status = "unhealthy"
+        else:
+            supabase_status = "not_configured"
+        
+        # FAIL FAST: Return unhealthy if critical dependencies fail
+        if elevenlabs_status == "missing":
+            raise HTTPException(status_code=503, detail="Audio Service: ElevenLabs API key missing")
+        
+        if supabase_status == "not_configured":
+            raise HTTPException(status_code=503, detail="Audio Service: Supabase not configured")
+        
+        if supabase_status == "unhealthy" or redis_status == "unhealthy":
+            raise HTTPException(status_code=503, detail="Audio Service: Critical dependencies unhealthy")
+        
+        return {
+            "status": "healthy",
+            "service": "audio-service", 
+            "dependencies": {
+                "elevenlabs_api": elevenlabs_status,
+                "redis": redis_status,
+                "supabase": supabase_status
+            },
+            "timestamp": datetime.now().isoformat()
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Audio Service health check failed: {str(e)}")
 
 # Audio Generation
 @app.post("/generate")
@@ -682,7 +780,7 @@ async def get_available_voices():
     """Get available voice configurations"""
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
-            response = await client.get(f"{audio_service.elevenlabs.data_service_url}/speakers")
+            response = await client.get(f"{audio_service.elevenlabs.database_service_url}/speakers")
             
             if response.status_code == 200:
                 speakers = response.json()
@@ -846,4 +944,5 @@ async def get_show(session_id: str):
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000) 
+    port = int(os.getenv("AUDIO_SERVICE_PORT", "8007"))
+    uvicorn.run(app, host="0.0.0.0", port=port) 

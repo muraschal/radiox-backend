@@ -1,162 +1,314 @@
-version: '3.8'
+# version: '3.8' # Removed - obsolete in Docker Compose v2
 
 services:
-  # Core Infrastructure
-  redis:
-    image: redis:7-alpine
-    container_name: radiox-redis
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis_data:/data
-    command: redis-server --appendonly yes
+  # 🚀 ULTIMATE BASE IMAGE BUILD - SHARED ACROSS ALL SERVICES
+  base-builder:
+    build:
+      context: .
+      dockerfile: Dockerfile.base
+      target: service-base
+    image: radiox-service-base:latest
+    command: "true"
+    
+  audio-base-builder:
+    build:
+      context: .
+      dockerfile: Dockerfile.base
+      target: audio-service-base
+    image: radiox-audio-base:latest
+    command: "true"
 
-  # API Gateway
+  # 🌐 API GATEWAY - CENTRAL ROUTING
   api-gateway:
     build:
       context: ./services/api-gateway
       dockerfile: Dockerfile
-    container_name: radiox-api-gateway
+    depends_on:
+      database-service:
+        condition: service_healthy
+      key-service:
+        condition: service_healthy
     ports:
       - "8000:8000"
     environment:
-      - REDIS_URL=redis://redis:6379
-      - SUPABASE_URL=${SUPABASE_URL}
-      - SUPABASE_KEY=${SUPABASE_KEY}
-    depends_on:
-      - redis
+      - ENVIRONMENT=development
+      - DATABASE_SERVICE_URL=http://database-service:8001
+      - KEY_SERVICE_URL=http://key-service:8002
+      - DATA_COLLECTOR_SERVICE_URL=http://data-collector-service:8004
+      - AUDIO_SERVICE_URL=http://audio-service:8005
+      - MEDIA_SERVICE_URL=http://media-service:8006
+      - SPEAKER_SERVICE_URL=http://speaker-service:8007
+      - SHOW_SERVICE_URL=http://show-service:8008
+      - ANALYTICS_SERVICE_URL=http://analytics-service:8009
+      - GATEWAY_PORT=8000
     volumes:
       - ./logs:/app/logs
+    networks:
+      - radiox-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
-  # Show Service
-  show-service:
+  # 🔑 KEY SERVICE - CENTRAL API KEY MANAGEMENT (INFRASTRUCTURE)
+  key-service:
     build:
-      context: ./services/show-service
+      context: ./services/key-service
       dockerfile: Dockerfile
-    container_name: radiox-show-service
-    ports:
-      - "8001:8000"
-    environment:
-      - REDIS_URL=redis://redis:6379
-      - SUPABASE_URL=${SUPABASE_URL}
-      - SUPABASE_KEY=${SUPABASE_KEY}
     depends_on:
-      - redis
+      database-service:
+        condition: service_healthy
+    ports:
+      - "8002:8002"
+    environment:
+      - ENVIRONMENT=development
+      - DATABASE_SERVICE_URL=http://database-service:8001
+      - KEY_SERVICE_PORT=8002
     volumes:
       - ./logs:/app/logs
+    networks:
+      - radiox-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8002/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
 
-  # Content Service
-  content-service:
+  # 💾 DATABASE SERVICE - PURE DATA ACCESS LAYER (INFRASTRUCTURE)
+  database-service:
     build:
-      context: ./services/content-service
+      context: ./services/database-service
       dockerfile: Dockerfile
-    container_name: radiox-content-service
+    depends_on:
+      redis:
+        condition: service_started
     ports:
-      - "8002:8000"
+      - "8001:8001"
     environment:
+      - ENVIRONMENT=development
       - REDIS_URL=redis://redis:6379
       - SUPABASE_URL=${SUPABASE_URL}
-      - SUPABASE_KEY=${SUPABASE_KEY}
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
-    depends_on:
-      - redis
+      - SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
+      - DATABASE_SERVICE_PORT=8001
     volumes:
       - ./logs:/app/logs
+    networks:
+      - radiox-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
 
-  # Audio Service
+  # 📊 DATA COLLECTOR SERVICE - EXTERNAL API DATA COLLECTION
+  data-collector-service:
+    build:
+      context: ./services/data-collector-service
+      dockerfile: Dockerfile
+    depends_on:
+      database-service:
+        condition: service_healthy
+      key-service:
+        condition: service_healthy
+    ports:
+      - "8004:8004"
+    environment:
+      - ENVIRONMENT=development
+      - REDIS_URL=redis://redis:6379
+      - DATABASE_SERVICE_URL=http://database-service:8001
+      - KEY_SERVICE_URL=http://key-service:8002
+      - DATA_COLLECTOR_SERVICE_PORT=8004
+    volumes:
+      - ./logs:/app/logs
+    networks:
+      - radiox-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8004/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # 🎵 AUDIO SERVICE - AUDIO PROCESSING
   audio-service:
     build:
-      context: ./services/audio-service
-      dockerfile: Dockerfile
-    container_name: radiox-audio-service
-    ports:
-      - "8003:8000"
-    environment:
-      - REDIS_URL=redis://redis:6379
-      - SUPABASE_URL=${SUPABASE_URL}
-      - SUPABASE_KEY=${SUPABASE_KEY}
-      - SUPABASE_SERVICE_KEY=${SUPABASE_SERVICE_KEY}
-      - ELEVENLABS_API_KEY=${ELEVENLABS_API_KEY}
+      context: .
+      dockerfile: services/audio-service/Dockerfile
     depends_on:
-      - redis
+      audio-base-builder:
+        condition: service_completed_successfully
+      database-service:
+        condition: service_healthy
+      key-service:
+        condition: service_healthy
+    ports:
+      - "8005:8005"
+    environment:
+      - ENVIRONMENT=development
+      - REDIS_URL=redis://redis:6379
+      - DATABASE_SERVICE_URL=http://database-service:8001
+      - KEY_SERVICE_URL=http://key-service:8002
+      - AUDIO_SERVICE_PORT=8005
     volumes:
       - ./logs:/app/logs
       - ./temp:/app/temp
-      - ./jingles:/app/jingles
+      - ./outplay:/app/outplay
+    networks:
+      - radiox-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8005/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
-  # Media Service
+  # 📸 MEDIA SERVICE - MEDIA MANAGEMENT
   media-service:
     build:
       context: ./services/media-service
       dockerfile: Dockerfile
-    container_name: radiox-media-service
-    ports:
-      - "8004:8000"
-    environment:
-      - REDIS_URL=redis://redis:6379
-      - SUPABASE_URL=${SUPABASE_URL}
-      - SUPABASE_KEY=${SUPABASE_KEY}
     depends_on:
-      - redis
+      database-service:
+        condition: service_healthy
+      key-service:
+        condition: service_healthy
+    ports:
+      - "8006:8006"
+    environment:
+      - ENVIRONMENT=development
+      - DATABASE_SERVICE_URL=http://database-service:8001
+      - KEY_SERVICE_URL=http://key-service:8002
+      - MEDIA_SERVICE_PORT=8006
     volumes:
       - ./logs:/app/logs
-      - ./web:/app/web
-      - ./outplay:/app/outplay
+    networks:
+      - radiox-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8006/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
-  # Speaker Service
+  # 🎤 SPEAKER SERVICE - VOICE MANAGEMENT
   speaker-service:
     build:
       context: ./services/speaker-service
       dockerfile: Dockerfile
-    container_name: radiox-speaker-service
-    ports:
-      - "8005:8000"
-    environment:
-      - REDIS_URL=redis://redis:6379
-      - SUPABASE_URL=${SUPABASE_URL}
-      - SUPABASE_KEY=${SUPABASE_KEY}
     depends_on:
-      - redis
+      database-service:
+        condition: service_healthy
+      key-service:
+        condition: service_healthy
+    ports:
+      - "8007:8007"
+    environment:
+      - ENVIRONMENT=development
+      - DATABASE_SERVICE_URL=http://database-service:8001
+      - KEY_SERVICE_URL=http://key-service:8002
+      - SPEAKER_SERVICE_PORT=8007
     volumes:
       - ./logs:/app/logs
+    networks:
+      - radiox-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8007/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
-  # Data Service
-  data-service:
+  # 🎙️ SHOW SERVICE - AI SHOW GENERATION
+  show-service:
     build:
-      context: ./services/data-service
+      context: ./services/show-service
       dockerfile: Dockerfile
-    container_name: radiox-data-service
-    ports:
-      - "8006:8000"
-    environment:
-      - REDIS_URL=redis://redis:6379
-      - SUPABASE_URL=${SUPABASE_URL}
-      - SUPABASE_KEY=${SUPABASE_KEY}
     depends_on:
-      - redis
+      database-service:
+        condition: service_healthy
+      key-service:
+        condition: service_healthy
+      data-collector-service:
+        condition: service_healthy
+      audio-service:
+        condition: service_healthy
+    ports:
+      - "8008:8008"
+    environment:
+      - ENVIRONMENT=development
+      - DATABASE_SERVICE_URL=http://database-service:8001
+      - KEY_SERVICE_URL=http://key-service:8002
+      - DATA_COLLECTOR_SERVICE_URL=http://data-collector-service:8004
+      - AUDIO_SERVICE_URL=http://audio-service:8005
+      - SHOW_SERVICE_PORT=8008
     volumes:
       - ./logs:/app/logs
+      - ./outplay:/app/outplay
+    networks:
+      - radiox-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8008/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
 
-  # Analytics Service
+  # 📊 ANALYTICS SERVICE - MONITORING & STATS (CONSUMER)
   analytics-service:
     build:
       context: ./services/analytics-service
       dockerfile: Dockerfile
-    container_name: radiox-analytics-service
-    ports:
-      - "8007:8000"
-    environment:
-      - REDIS_URL=redis://redis:6379
-      - SUPABASE_URL=${SUPABASE_URL}
-      - SUPABASE_KEY=${SUPABASE_KEY}
     depends_on:
-      - redis
+      database-service:
+        condition: service_healthy
+      key-service:
+        condition: service_healthy
+      data-collector-service:
+        condition: service_healthy
+      audio-service:
+        condition: service_healthy
+      media-service:
+        condition: service_healthy
+      speaker-service:
+        condition: service_healthy
+      show-service:
+        condition: service_healthy
+    ports:
+      - "8009:8009"
+    environment:
+      - ENVIRONMENT=development
+      - DATABASE_SERVICE_URL=http://database-service:8001
+      - KEY_SERVICE_URL=http://key-service:8002
+      - DATA_COLLECTOR_SERVICE_URL=http://data-collector-service:8004
+      - ANALYTICS_SERVICE_PORT=8009
     volumes:
       - ./logs:/app/logs
+    networks:
+      - radiox-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8009/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # 🔴 REDIS - ULTIMATE CACHING
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - radiox-network
+    command: redis-server --appendonly yes
 
 volumes:
   redis_data:
 
 networks:
-  default:
-    name: radiox-network 
+  radiox-network:
+    driver: bridge 

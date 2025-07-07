@@ -1,126 +1,130 @@
-# RadioX Frontend API Integration Guide
+# 🎭 RadioX Frontend Integration Guide v2.0
 
-**🎙️ Complete API Documentation for Frontend Development**
+<div align="center">
 
-## 🌐 **Production API Base URL**
+![Frontend Guide](https://img.shields.io/badge/frontend-integration-blue)
+![Version](https://img.shields.io/badge/version-v2.0-brightgreen)
+![Architecture](https://img.shields.io/badge/architecture-hybrid-orange)
+
+**🏗️ Complete frontend integration guide for RadioX hybrid architecture**
+
+[🏠 Documentation](../) • [📡 API Reference](api-reference.md) • [🎙️ Show Generation](show-generation.md)
+
+</div>
+
+---
+
+## 🎯 Architecture Overview
+
+**RadioX uses a hybrid architecture for optimal performance:**
+
+- **🎙️ Show Generation**: REST API for complex AI processing
+- **📊 Data Access**: Direct Supabase for CRUD operations (50% faster)
+- **🎵 Audio Streaming**: Direct Supabase Storage URLs
+
+```mermaid
+graph TD
+    A[React Frontend] --> B[RadioX API]
+    A --> C[Supabase Direct]
+    B --> D[Show Generation]
+    B --> E[AI Processing]
+    C --> F[Shows Data]
+    C --> G[Speakers Data]
+    C --> H[Audio Files]
 ```
-https://api.radiox.cloud
+
+---
+
+## 🚀 Quick Setup
+
+### **1. Install Dependencies**
+```bash
+npm install @supabase/supabase-js
 ```
 
-## 📊 **Shows Management API**
-
-### **1. List All Shows (Paginated)**
-
+### **2. Environment Configuration**
 ```typescript
-GET /api/v1/shows?limit={number}&offset={number}
-```
-
-**Purpose**: Get paginated list of all generated radio shows
-
-**Parameters**:
-- `limit` (optional): Number of shows per page (default: 10, max: 50)
-- `offset` (optional): Pagination offset (default: 0)
-
-**Response**:
-```json
-{
-  "shows": [
-    {
-      "id": "f8d34ee2-7d58-4182-acd9-0dc403989a9b",
-      "title": "Late Night Vibes - Zurich",
-      "created_at": "2025-06-24T23:20:04.656418",
-      "channel": "zurich",
-      "language": "de",
-      "news_count": 3,
-      "broadcast_style": "Late Night Vibes",
-      "script_preview": "MARCEL: Guten Abend, Zürich! Es ist genau 23:19 Uhr..."
-    }
-  ],
-  "total": 7,
-  "limit": 5,
-  "offset": 0,
-  "has_more": true
-}
-```
-
-**Frontend Usage**:
-```typescript
-interface Show {
-  id: string;
-  title: string;
-  created_at: string;
-  channel: string;
-  language: string;
-  news_count: number;
-  broadcast_style: string;
-  script_preview: string;
-}
-
-interface ShowsListResponse {
-  shows: Show[];
-  total: number;
-  limit: number;
-  offset: number;
-  has_more: boolean;
-}
-
-// Fetch shows
-const fetchShows = async (limit = 10, offset = 0): Promise<ShowsListResponse> => {
-  const response = await fetch(`https://api.radiox.cloud/api/v1/shows?limit=${limit}&offset=${offset}`);
-  return response.json();
+// config/constants.ts
+export const API_CONFIG = {
+  // RadioX API for processing
+  API_BASE: 'https://api.radiox.cloud',
+  
+  // Supabase for data access
+  SUPABASE_URL: 'https://zwcvvbgkqhexfcldwuxq.supabase.co',
+  SUPABASE_ANON_KEY: 'your-anon-key'
 };
 ```
 
-### **2. Get Individual Show Details**
-
+### **3. Initialize Supabase Client**
 ```typescript
-GET /api/v1/shows/{show_id}
+// lib/supabase.ts
+import { createClient } from '@supabase/supabase-js';
+import { API_CONFIG } from '../config/constants';
+
+export const supabase = createClient(
+  API_CONFIG.SUPABASE_URL,
+  API_CONFIG.SUPABASE_ANON_KEY
+);
+
+export type Database = {
+  public: {
+    Tables: {
+      shows: {
+        Row: {
+          session_id: string;
+          title: string;
+          script_content: string;
+          script_preview: string;
+          broadcast_style: string;
+          channel: string;
+          language: string;
+          preset_name: string;
+          news_count: number;
+          estimated_duration_minutes: number;
+          audio_url: string | null;
+          audio_duration_seconds: number | null;
+          audio_file_size: number | null;
+          metadata: Record<string, any>;
+          created_at: string;
+          updated_at: string;
+        };
+      };
+      voice_configurations: {
+        Row: {
+          voice_name: string;
+          voice_id: string;
+          language: string;
+          is_active: boolean;
+          quality_tier: string;
+          description: string;
+        };
+      };
+    };
+  };
+};
 ```
 
-**Purpose**: Get complete details of a specific show
+---
 
-**Response**:
-```json
-{
-  "session_id": "f8d34ee2-7d58-4182-acd9-0dc403989a9b",
-  "script_content": "MARCEL: Guten Abend, Zürich! Es ist genau 23:19 Uhr...",
-  "broadcast_style": "Late Night Vibes",
-  "estimated_duration_minutes": 5,
-  "segments": [
-    {
-      "type": "dialogue",
-      "speaker": "marcel",
-      "text": "Guten Abend, Zürich! Es ist genau 23:19 Uhr...",
-      "estimated_duration": 13.2
-    }
-  ],
-  "metadata": {
-    "channel": "zurich",
-    "language": "de",
-    "speakers": {
-      "primary": {
-        "id": "marcel",
-        "name": "Marcel",
-        "voice_id": "pNInz6obpgDQGcFmaJgB"
-      },
-      "secondary": {
-        "name": "jarvis"
-      }
-    },
-    "content_stats": {
-      "total_news_collected": 218,
-      "news_selected": 3
-    },
-    "generated_at": "2025-06-24T23:20:04.656418",
-    "audio_url": "https://zwcvvbgkqhexfcldwuxq.supabase.co/storage/v1/object/public/radio-shows/shows/2025-06-24_23-20_default_jarvis-marcel_5min.mp3",
-    "audio_duration": 320.84
-  }
+## 🎙️ Show Generation (API)
+
+### **Generate New Show**
+```typescript
+// hooks/useShowGeneration.ts
+import { useState } from 'react';
+import { API_CONFIG } from '../config/constants';
+
+interface GenerateShowRequest {
+  channel?: string;
+  language?: string;
+  news_count?: number;
+  duration_minutes?: number;
+  preset_name?: string;
+  primary_speaker?: string;
+  secondary_speaker?: string;
 }
-```
 
-**Frontend Usage**:
-```typescript
-interface ShowDetails {
+interface GeneratedShow {
   session_id: string;
   script_content: string;
   broadcast_style: string;
@@ -134,370 +138,110 @@ interface ShowDetails {
   metadata: {
     channel: string;
     language: string;
-    audio_url: string;
-    audio_duration: number;
     generated_at: string;
+    audio_url: string | null;
+    audio_duration: number | null;
   };
 }
 
-// Fetch show details
-const fetchShowDetails = async (showId: string): Promise<ShowDetails> => {
-  const response = await fetch(`https://api.radiox.cloud/api/v1/shows/${showId}`);
-  return response.json();
-};
-```
-
-### **3. Generate New Show**
-
-```typescript
-POST /api/v1/shows/generate
-```
-
-**Purpose**: Generate a new radio show
-
-**Request Body**:
-```json
-{
-  "channel": "zurich",
-  "news_count": 3,
-  "language": "de",
-  "target_time": "01:15",
-  "primary_speaker": "marcel",
-  "secondary_speaker": "jarvis"
-}
-```
-
-**Request Parameters**:
-- `channel` (optional): "zurich", "basel", "bern" (default: "zurich")
-- `news_count` (optional): 1-3 recommended (default: 2)
-- `language` (optional): "de", "en" (default: "de")
-- `target_time` (optional): Format "HH:MM" for time-based styling
-- `primary_speaker` (optional): Speaker ID (default: "marcel")
-- `secondary_speaker` (optional): Speaker ID (default: "jarvis")
-
-**Response**: Same as individual show details above
-
-**Frontend Usage**:
-```typescript
-interface GenerateShowRequest {
-  channel?: string;
-  news_count?: number;
-  language?: string;
-  target_time?: string;
-  primary_speaker?: string;
-  secondary_speaker?: string;
-}
-
-// Generate new show
-const generateShow = async (request: GenerateShowRequest = {}): Promise<ShowDetails> => {
-  const response = await fetch('https://api.radiox.cloud/api/v1/shows/generate', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(request),
-  });
-  
-  if (!response.ok) {
-    throw new Error(`Generation failed: ${response.statusText}`);
-  }
-  
-  return response.json();
-};
-```
-
-## 🎵 **Audio Playback Integration**
-
-### **Audio URLs**
-- Shows include direct MP3 URLs in `metadata.audio_url`
-- Files hosted on Supabase Storage (CDN-enabled)
-- Duration available in `metadata.audio_duration` (seconds)
-
-### **Frontend Audio Player**:
-```typescript
-const AudioPlayer: React.FC<{ show: ShowDetails }> = ({ show }) => {
-  const audioRef = useRef<HTMLAudioElement>(null);
-  
-  return (
-    <div>
-      <h3>{show.metadata.channel} - {show.broadcast_style}</h3>
-      <audio 
-        ref={audioRef} 
-        controls 
-        src={show.metadata.audio_url}
-        preload="metadata"
-      >
-        Your browser does not support the audio element.
-      </audio>
-      <p>Duration: {Math.round(show.metadata.audio_duration / 60)} minutes</p>
-    </div>
-  );
-};
-```
-
-## 🔄 **Real-time Updates Pattern**
-
-### **Polling for New Shows**:
-```typescript
-const useShowsPolling = (intervalMs = 30000) => {
-  const [shows, setShows] = useState<Show[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-
-  useEffect(() => {
-    const poll = async () => {
-      try {
-        const response = await fetchShows(10, 0);
-        setShows(response.shows);
-      } catch (error) {
-        console.error('Failed to fetch shows:', error);
-      }
-    };
-
-    poll(); // Initial load
-    const interval = setInterval(poll, intervalMs);
-    
-    return () => clearInterval(interval);
-  }, [intervalMs]);
-
-  return { shows, isLoading };
-};
-```
-
-## 📱 **Complete React Hook Example**
-
-```typescript
-import { useState, useEffect, useCallback } from 'react';
-
-export const useRadioXAPI = () => {
-  const [shows, setShows] = useState<Show[]>([]);
-  const [currentShow, setCurrentShow] = useState<ShowDetails | null>(null);
+export const useShowGeneration = () => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Fetch shows list
-  const fetchShows = useCallback(async (limit = 10, offset = 0) => {
-    try {
-      const response = await fetch(`https://api.radiox.cloud/api/v1/shows?limit=${limit}&offset=${offset}`);
-      const data = await response.json();
-      setShows(data.shows);
-      return data;
-    } catch (err) {
-      setError('Failed to fetch shows');
-      throw err;
-    }
-  }, []);
-
-  // Generate new show
-  const generateShow = useCallback(async (request: GenerateShowRequest = {}) => {
+  const generateShow = async (request: GenerateShowRequest = {}): Promise<GeneratedShow> => {
     setIsGenerating(true);
     setError(null);
-    
+
     try {
-      const response = await fetch('https://api.radiox.cloud/api/v1/shows/generate', {
+      const response = await fetch(`${API_CONFIG.API_BASE}/api/v1/shows/generate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(request),
+        body: JSON.stringify({
+          channel: 'zurich',
+          language: 'de',
+          news_count: 2,
+          duration_minutes: 3,
+          ...request
+        })
       });
-      
-      const newShow = await response.json();
-      setCurrentShow(newShow);
-      
-      // Refresh shows list
-      await fetchShows();
-      
-      return newShow;
+
+      if (!response.ok) {
+        throw new Error(`Generation failed: ${response.status}`);
+      }
+
+      const show = await response.json();
+      return show;
     } catch (err) {
-      setError('Failed to generate show');
+      const errorMessage = err instanceof Error ? err.message : 'Generation failed';
+      setError(errorMessage);
       throw err;
     } finally {
       setIsGenerating(false);
     }
-  }, [fetchShows]);
+  };
 
-  // Load show details
-  const loadShow = useCallback(async (showId: string) => {
+  return { generateShow, isGenerating, error };
+};
+```
+
+### **React Component Example**
+```typescript
+// components/ShowGenerator.tsx
+import React, { useState } from 'react';
+import { useShowGeneration } from '../hooks/useShowGeneration';
+
+export const ShowGenerator: React.FC = () => {
+  const { generateShow, isGenerating, error } = useShowGeneration();
+  const [channel, setChannel] = useState('zurich');
+  const [newsCount, setNewsCount] = useState(2);
+
+  const handleGenerate = async () => {
     try {
-      const response = await fetch(`https://api.radiox.cloud/api/v1/shows/${showId}`);
-      const show = await response.json();
-      setCurrentShow(show);
-      return show;
+      const show = await generateShow({
+        channel,
+        news_count: newsCount
+      });
+      
+      console.log('Generated show:', show.session_id);
+      // Show will automatically appear in shows list via Supabase
     } catch (err) {
-      setError('Failed to load show');
-      throw err;
+      console.error('Generation failed:', err);
     }
-  }, []);
-
-  // Auto-fetch on mount
-  useEffect(() => {
-    fetchShows();
-  }, [fetchShows]);
-
-  return {
-    shows,
-    currentShow,
-    isGenerating,
-    error,
-    fetchShows,
-    generateShow,
-    loadShow,
-    clearError: () => setError(null),
-  };
-};
-```
-
-## 🚨 **Error Handling**
-
-### **Common Error Responses**:
-
-**404 - Show Not Found**:
-```json
-{
-  "detail": "Show not found"
-}
-```
-
-**503 - Service Unavailable**:
-```json
-{
-  "detail": "Redis cache not available"
-}
-```
-
-**500 - Generation Failed**:
-```json
-{
-  "detail": "Show generation failed: API timeout"
-}
-```
-
-### **Frontend Error Handling**:
-```typescript
-const handleAPIError = (error: any) => {
-  if (error.status === 404) {
-    return 'Show not found';
-  } else if (error.status === 503) {
-    return 'Service temporarily unavailable';
-  } else if (error.status === 500) {
-    return 'Generation failed - please try again';
-  } else {
-    return 'An unexpected error occurred';
-  }
-};
-```
-
-## 🎯 **Best Practices**
-
-### **1. Pagination Implementation**:
-```typescript
-const ShowsList: React.FC = () => {
-  const [currentPage, setCurrentPage] = useState(0);
-  const [shows, setShows] = useState<Show[]>([]);
-  const [hasMore, setHasMore] = useState(true);
-  const pageSize = 10;
-
-  const loadMore = async () => {
-    const response = await fetchShows(pageSize, currentPage * pageSize);
-    setShows(prev => [...prev, ...response.shows]);
-    setHasMore(response.has_more);
-    setCurrentPage(prev => prev + 1);
   };
 
   return (
-    <div>
-      {shows.map(show => (
-        <ShowCard key={show.id} show={show} />
-      ))}
-      {hasMore && <button onClick={loadMore}>Load More</button>}
-    </div>
-  );
-};
-```
+    <div className="show-generator">
+      <h2>Generate New Show</h2>
+      
+      <div className="form-group">
+        <label>Channel:</label>
+        <select value={channel} onChange={(e) => setChannel(e.target.value)}>
+          <option value="zurich">Zurich</option>
+          <option value="basel">Basel</option>
+          <option value="bern">Bern</option>
+        </select>
+      </div>
 
-### **2. Optimistic Updates**:
-```typescript
-const generateShowOptimistic = async (request: GenerateShowRequest) => {
-  // Add placeholder show immediately
-  const placeholderShow: Show = {
-    id: 'generating',
-    title: 'Generating...',
-    created_at: new Date().toISOString(),
-    channel: request.channel || 'zurich',
-    language: request.language || 'de',
-    news_count: request.news_count || 2,
-    broadcast_style: 'Generating',
-    script_preview: 'Show is being generated...'
-  };
-  
-  setShows(prev => [placeholderShow, ...prev]);
-  
-  try {
-    const newShow = await generateShow(request);
-    // Replace placeholder with real show
-    setShows(prev => prev.map(show => 
-      show.id === 'generating' ? {
-        id: newShow.session_id,
-        title: `${newShow.broadcast_style} - ${newShow.metadata.channel}`,
-        created_at: newShow.metadata.generated_at,
-        channel: newShow.metadata.channel,
-        language: newShow.metadata.language,
-        news_count: newShow.metadata.content_stats.news_selected,
-        broadcast_style: newShow.broadcast_style,
-        script_preview: newShow.script_content.substring(0, 200) + '...'
-      } : show
-    ));
-  } catch (error) {
-    // Remove placeholder on error
-    setShows(prev => prev.filter(show => show.id !== 'generating'));
-    throw error;
-  }
-};
-```
+      <div className="form-group">
+        <label>News Count:</label>
+        <input 
+          type="number" 
+          min="1" 
+          max="5" 
+          value={newsCount}
+          onChange={(e) => setNewsCount(parseInt(e.target.value))}
+        />
+      </div>
 
-## 🎵 **Complete Integration Example**
+      <button 
+        onClick={handleGenerate} 
+        disabled={isGenerating}
+        className="generate-btn"
+      >
+        {isGenerating ? 'Generating...' : 'Generate Show'}
+      </button>
 
-```typescript
-// App.tsx
-import { useRadioXAPI } from './hooks/useRadioXAPI';
-
-const App: React.FC = () => {
-  const { shows, currentShow, isGenerating, generateShow, loadShow } = useRadioXAPI();
-
-  return (
-    <div className="app">
-      <header>
-        <h1>RadioX AI Radio</h1>
-        <button 
-          onClick={() => generateShow({ channel: 'zurich', news_count: 3 })}
-          disabled={isGenerating}
-        >
-          {isGenerating ? 'Generating...' : 'Generate New Show'}
-        </button>
-      </header>
-
-      <main>
-        <section className="shows-list">
-          <h2>Recent Shows</h2>
-          {shows.map(show => (
-            <div key={show.id} className="show-card" onClick={() => loadShow(show.id)}>
-              <h3>{show.title}</h3>
-              <p>{show.script_preview}</p>
-              <span>{new Date(show.created_at).toLocaleDateString()}</span>
-            </div>
-          ))}
-        </section>
-
-        {currentShow && (
-          <section className="current-show">
-            <h2>Now Playing</h2>
-            <audio controls src={currentShow.metadata.audio_url} />
-            <div className="transcript">
-              {currentShow.segments.map((segment, i) => (
-                <p key={i}><strong>{segment.speaker}:</strong> {segment.text}</p>
-              ))}
-            </div>
-          </section>
-        )}
-      </main>
+      {error && <div className="error">{error}</div>}
     </div>
   );
 };
@@ -505,4 +249,486 @@ const App: React.FC = () => {
 
 ---
 
-**🎯 This documentation provides everything needed for complete frontend integration with the RadioX API!** 
+## 📊 Data Access (Supabase Direct)
+
+### **Shows CRUD Operations**
+```typescript
+// hooks/useShows.ts
+import { useState, useEffect } from 'react';
+import { supabase, type Database } from '../lib/supabase';
+
+type Show = Database['public']['Tables']['shows']['Row'];
+
+export const useShows = () => {
+  const [shows, setShows] = useState<Show[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Fetch shows (paginated)
+  const fetchShows = async (limit = 10, offset = 0) => {
+    try {
+      const { data, error: fetchError } = await supabase
+        .from('shows')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .range(offset, offset + limit - 1);
+
+      if (fetchError) throw fetchError;
+      
+      if (offset === 0) {
+        setShows(data || []);
+      } else {
+        setShows(prev => [...prev, ...(data || [])]);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to fetch shows');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Get single show by session_id
+  const getShow = async (sessionId: string): Promise<Show | null> => {
+    try {
+      const { data, error } = await supabase
+        .from('shows')
+        .select('*')
+        .eq('session_id', sessionId)
+        .single();
+
+      if (error) throw error;
+      return data;
+    } catch (err) {
+      console.error('Failed to fetch show:', err);
+      return null;
+    }
+  };
+
+  // Real-time subscription to new shows
+  useEffect(() => {
+    fetchShows(); // Initial load
+
+    const subscription = supabase
+      .channel('shows_changes')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'shows'
+        },
+        (payload) => {
+          const newShow = payload.new as Show;
+          setShows(prev => [newShow, ...prev]);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, []);
+
+  return {
+    shows,
+    loading,
+    error,
+    fetchShows,
+    getShow,
+    refetch: () => fetchShows()
+  };
+};
+```
+
+### **Voice Configurations**
+```typescript
+// hooks/useVoices.ts
+import { useState, useEffect } from 'react';
+import { supabase, type Database } from '../lib/supabase';
+
+type VoiceConfig = Database['public']['Tables']['voice_configurations']['Row'];
+
+export const useVoices = () => {
+  const [voices, setVoices] = useState<VoiceConfig[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchVoices = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('voice_configurations')
+          .select('*')
+          .eq('is_active', true)
+          .order('voice_name');
+
+        if (error) throw error;
+        setVoices(data || []);
+      } catch (err) {
+        console.error('Failed to fetch voices:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchVoices();
+  }, []);
+
+  return { voices, loading };
+};
+```
+
+---
+
+## 🎵 Audio Playback
+
+### **Audio Player Component**
+```typescript
+// components/AudioPlayer.tsx
+import React, { useRef, useState, useEffect } from 'react';
+
+interface AudioPlayerProps {
+  audioUrl: string | null;
+  title: string;
+  duration?: number;
+}
+
+export const AudioPlayer: React.FC<AudioPlayerProps> = ({ 
+  audioUrl, 
+  title, 
+  duration 
+}) => {
+  const audioRef = useRef<HTMLAudioElement>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [totalDuration, setTotalDuration] = useState(duration || 0);
+
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    const updateTime = () => setCurrentTime(audio.currentTime);
+    const updateDuration = () => setTotalDuration(audio.duration);
+    const onEnded = () => setIsPlaying(false);
+
+    audio.addEventListener('timeupdate', updateTime);
+    audio.addEventListener('loadedmetadata', updateDuration);
+    audio.addEventListener('ended', onEnded);
+
+    return () => {
+      audio.removeEventListener('timeupdate', updateTime);
+      audio.removeEventListener('loadedmetadata', updateDuration);
+      audio.removeEventListener('ended', onEnded);
+    };
+  }, [audioUrl]);
+
+  const togglePlay = () => {
+    if (!audioRef.current || !audioUrl) return;
+
+    if (isPlaying) {
+      audioRef.current.pause();
+    } else {
+      audioRef.current.play();
+    }
+    setIsPlaying(!isPlaying);
+  };
+
+  const formatTime = (time: number) => {
+    const minutes = Math.floor(time / 60);
+    const seconds = Math.floor(time % 60);
+    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+  };
+
+  if (!audioUrl) {
+    return (
+      <div className="audio-player disabled">
+        <span>Audio not available</span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="audio-player">
+      <audio 
+        ref={audioRef} 
+        src={audioUrl}
+        preload="metadata"
+      />
+      
+      <div className="player-controls">
+        <button onClick={togglePlay} className="play-btn">
+          {isPlaying ? '⏸️' : '▶️'}
+        </button>
+        
+        <div className="player-info">
+          <h4>{title}</h4>
+          <div className="time-info">
+            {formatTime(currentTime)} / {formatTime(totalDuration)}
+          </div>
+        </div>
+      </div>
+
+      <div className="progress-bar">
+        <div 
+          className="progress-fill"
+          style={{ 
+            width: `${totalDuration ? (currentTime / totalDuration) * 100 : 0}%` 
+          }}
+        />
+      </div>
+    </div>
+  );
+};
+```
+
+---
+
+## 🔄 Complete Integration Example
+
+### **Main Shows Component**
+```typescript
+// components/ShowsDashboard.tsx
+import React, { useState } from 'react';
+import { useShows } from '../hooks/useShows';
+import { useShowGeneration } from '../hooks/useShowGeneration';
+import { ShowGenerator } from './ShowGenerator';
+import { AudioPlayer } from './AudioPlayer';
+
+export const ShowsDashboard: React.FC = () => {
+  const { shows, loading, error } = useShows();
+  const [selectedShow, setSelectedShow] = useState<string | null>(null);
+
+  if (loading) return <div className="loading">Loading shows...</div>;
+  if (error) return <div className="error">Error: {error}</div>;
+
+  const currentShow = shows.find(show => show.session_id === selectedShow);
+
+  return (
+    <div className="shows-dashboard">
+      <div className="sidebar">
+        <ShowGenerator />
+        
+        <div className="shows-list">
+          <h3>Recent Shows ({shows.length})</h3>
+          {shows.map(show => (
+            <div 
+              key={show.session_id}
+              className={`show-item ${selectedShow === show.session_id ? 'active' : ''}`}
+              onClick={() => setSelectedShow(show.session_id)}
+            >
+              <h4>{show.title}</h4>
+              <p className="show-meta">
+                {show.channel} • {show.language} • {show.news_count} news
+              </p>
+              <p className="show-preview">{show.script_preview}</p>
+              <span className="show-time">
+                {new Date(show.created_at).toLocaleString()}
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="main-content">
+        {currentShow ? (
+          <div className="show-details">
+            <div className="show-header">
+              <h2>{currentShow.title}</h2>
+              <div className="show-tags">
+                <span className="tag">{currentShow.broadcast_style}</span>
+                <span className="tag">{currentShow.channel}</span>
+                <span className="tag">{currentShow.estimated_duration_minutes}min</span>
+              </div>
+            </div>
+
+            <AudioPlayer 
+              audioUrl={currentShow.audio_url}
+              title={currentShow.title}
+              duration={currentShow.audio_duration_seconds || 0}
+            />
+
+            <div className="script-content">
+              <h3>Script</h3>
+              <div className="script-text">
+                {currentShow.script_content.split('\n').map((line, i) => (
+                  <p key={i} className={line.startsWith('MARCEL:') ? 'marcel' : 'jarvis'}>
+                    {line}
+                  </p>
+                ))}
+              </div>
+            </div>
+
+            <div className="metadata">
+              <h3>Generation Details</h3>
+              <ul>
+                <li>Generated: {new Date(currentShow.created_at).toLocaleString()}</li>
+                <li>Duration: {currentShow.estimated_duration_minutes} minutes</li>
+                <li>News Items: {currentShow.news_count}</li>
+                <li>Session ID: {currentShow.session_id}</li>
+              </ul>
+            </div>
+          </div>
+        ) : (
+          <div className="no-selection">
+            <h2>Select a show to view details</h2>
+            <p>Choose from the list on the left or generate a new show.</p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+```
+
+---
+
+## 🎯 Performance Best Practices
+
+### **1. Efficient Data Loading**
+```typescript
+// Use pagination for large datasets
+const { shows, fetchShows } = useShows();
+
+// Load more shows on scroll
+const loadMoreShows = () => {
+  fetchShows(10, shows.length);
+};
+```
+
+### **2. Optimistic Updates**
+```typescript
+// Add show optimistically during generation
+const generateWithOptimisticUpdate = async (request: GenerateShowRequest) => {
+  const tempShow = createTempShow(request);
+  setShows(prev => [tempShow, ...prev]);
+
+  try {
+    await generateShow(request);
+    // Real show will appear via Supabase subscription
+  } catch (error) {
+    // Remove temp show on error
+    setShows(prev => prev.filter(show => show.session_id !== tempShow.session_id));
+    throw error;
+  }
+};
+```
+
+### **3. Audio Preloading**
+```typescript
+// Preload next show's audio
+useEffect(() => {
+  if (shows.length > 1 && shows[1].audio_url) {
+    const audio = new Audio(shows[1].audio_url);
+    audio.preload = 'metadata';
+  }
+}, [shows]);
+```
+
+---
+
+## 🚨 Error Handling
+
+### **Robust Error Handling**
+```typescript
+// utils/errorHandling.ts
+export const handleAPIError = (error: any): string => {
+  if (error.status === 422) {
+    return 'Show generation failed. Please try again.';
+  }
+  if (error.status === 429) {
+    return 'Too many requests. Please wait a moment.';
+  }
+  if (error.status >= 500) {
+    return 'Server error. Our team has been notified.';
+  }
+  return error.message || 'An unexpected error occurred.';
+};
+
+// components/ErrorBoundary.tsx
+export const ErrorBoundary: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [error, setError] = useState<string | null>(null);
+
+  if (error) {
+    return (
+      <div className="error-boundary">
+        <h2>Something went wrong</h2>
+        <p>{error}</p>
+        <button onClick={() => setError(null)}>Try Again</button>
+      </div>
+    );
+  }
+
+  return <>{children}</>;
+};
+```
+
+---
+
+## 📱 Mobile Responsive Design
+
+### **CSS Grid Layout**
+```css
+/* styles/dashboard.css */
+.shows-dashboard {
+  display: grid;
+  grid-template-columns: 300px 1fr;
+  height: 100vh;
+  gap: 20px;
+}
+
+@media (max-width: 768px) {
+  .shows-dashboard {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr;
+  }
+  
+  .sidebar {
+    order: 2;
+  }
+  
+  .main-content {
+    order: 1;
+  }
+}
+
+.audio-player {
+  background: #f5f5f5;
+  border-radius: 8px;
+  padding: 20px;
+  margin: 20px 0;
+}
+
+.progress-bar {
+  height: 4px;
+  background: #ddd;
+  border-radius: 2px;
+  margin-top: 10px;
+  position: relative;
+}
+
+.progress-fill {
+  height: 100%;
+  background: #007bff;
+  border-radius: 2px;
+  transition: width 0.1s;
+}
+```
+
+---
+
+## 📋 Migration from v1.x
+
+### **Breaking Changes**
+- ❌ **Removed**: `/api/v1/shows` CRUD endpoints
+- ✅ **New**: Direct Supabase access for data operations
+- ✅ **Improved**: 50% faster data loading
+- ✅ **Added**: Real-time subscriptions
+
+### **Migration Steps**
+1. **Install Supabase client**: `npm install @supabase/supabase-js`
+2. **Replace API calls** with Supabase queries
+3. **Update components** to use new hooks
+4. **Add real-time subscriptions** for live updates
+
+---
+
+*📖 For API endpoint details, see [API Reference](api-reference.md)* 

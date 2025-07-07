@@ -309,3 +309,99 @@ curl https://api.radiox.cloud/services/status
 **Last Updated**: 2025-06-25  
 **Next Review**: When adding new services  
 **Owner**: RadioX Engineering Team 
+
+# 🔧 PORT ARCHITECTURE - RADIOX BACKEND
+
+## 🎯 Logische Port-Verteilung
+
+Die Port-Orchestrierung folgt einer logischen Abhängigkeits-Hierarchie:
+
+### 📊 Port-Mapping
+
+| Port | Service | Rolle | Abhängigkeiten |
+|------|---------|-------|----------------|
+| **8000** | API Gateway | Entry Point | key-service, data-service |
+| **8001** | Key Service | Infrastructure | - (none) |
+| **8002** | Data Service | Database | key-service |
+| **8003** | Content Service | Content Gen | key-service, data-service |
+| **8004** | Audio Service | Audio Proc | key-service, data-service |
+| **8005** | Media Service | Media Mgmt | key-service, data-service |
+| **8006** | Speaker Service | Voice Mgmt | key-service, data-service |
+| **8007** | Show Service | Show Gen | all processing services |
+| **8008** | Analytics Service | Monitoring | key-service, data-service |
+
+### 🚀 Startup-Reihenfolge
+
+1. **8001 Key Service** → startet zuerst (Infrastructure)
+2. **8002 Data Service** → braucht Keys, stellt DB bereit
+3. **8003-8006 Processing Services** → parallel start möglich
+4. **8007 Show Service** → wartet auf alle Processing Services
+5. **8008 Analytics** → sammelt Daten von allen anderen
+6. **8000 API Gateway** → startet als letztes (Entry Point)
+
+### 🔗 Service URLs
+
+```bash
+# Infrastructure
+KEY_SERVICE_URL=http://key-service:8001
+DATA_SERVICE_URL=http://data-service:8002
+
+# Processing Services  
+CONTENT_SERVICE_URL=http://content-service:8003
+AUDIO_SERVICE_URL=http://audio-service:8004
+MEDIA_SERVICE_URL=http://media-service:8005
+SPEAKER_SERVICE_URL=http://speaker-service:8006
+
+# High-Level Services
+SHOW_SERVICE_URL=http://show-service:8007
+ANALYTICS_SERVICE_URL=http://analytics-service:8008
+```
+
+### 🔑 API Key Management
+
+Alle Services beziehen API Keys vom **Key Service (8001)**:
+
+```python
+# Verwendung in Services
+from config.key_client import get_api_key
+
+# OpenAI API Key holen
+openai_key = await get_api_key("openai_api_key")
+
+# ElevenLabs API Key holen  
+elevenlabs_key = await get_api_key("elevenlabs_api_key")
+```
+
+### 🌐 External Access
+
+- **Production**: `https://api.radiox.cloud`
+- **Local Development**: `http://localhost:8000`
+
+Alle internen Services sind nur über das API Gateway erreichbar.
+
+### 🔧 Environment Variables
+
+```bash
+# Service-spezifische Ports
+KEY_SERVICE_PORT=8001
+DATA_SERVICE_PORT=8002
+CONTENT_SERVICE_PORT=8003
+AUDIO_SERVICE_PORT=8004
+MEDIA_SERVICE_PORT=8005
+SPEAKER_SERVICE_PORT=8006
+SHOW_SERVICE_PORT=8007
+ANALYTICS_SERVICE_PORT=8008
+GATEWAY_PORT=8000
+```
+
+### 🏥 Health Checks
+
+Jeder Service hat einen Health Check auf `/health`:
+
+```bash
+curl http://localhost:8001/health  # Key Service
+curl http://localhost:8002/health  # Data Service
+# etc.
+```
+
+Das API Gateway prüft alle Services parallel für maximale Performance. 

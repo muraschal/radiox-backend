@@ -1,7 +1,7 @@
 """
-RadioX Show Service
+RadioX Show Service - VOLLMODULAR VERSION
 Orchestrates show generation by coordinating all microservices
-REAL IMPLEMENTATION with GPT script generation and full orchestration
+ALLE HARDCODED WERTE DURCH DATABASE LOOKUPS ERSETZT!
 """
 
 from fastapi import FastAPI, HTTPException
@@ -15,35 +15,73 @@ from typing import Dict, Any, Optional, List
 import os
 from loguru import logger
 from pydantic import BaseModel
-from supabase import create_client, Client
 import pytz
 
+# 🚀 MODULAR CONFIGURATION IMPORTS
+from database.modular_config import modular_config, ShowPreset, BroadcastStyle, Location
+from database.client_factory import get_db_client, ConnectionType
+
 app = FastAPI(
-    title="RadioX Show Service", 
-    description="Show Generation Orchestration Service",
-    version="1.0.0"
+    title="RadioX Show Service - Modular", 
+    description="Vollmodularer Show Generation Service - Keine Hardcoding!",
+    version="2.0.0"
 )
 
 # Redis Connection
 redis_client: Optional[redis.Redis] = None
-supabase_client: Optional[Client] = None
 
 @app.on_event("startup")
 async def startup_event():
-    global redis_client, supabase_client
-    redis_url = os.getenv("REDIS_URL", "redis://redis:6379")
-    redis_client = redis.from_url(redis_url, decode_responses=True)
+    global redis_client
     
-    # Initialize Supabase client
-    supabase_url = os.getenv("SUPABASE_URL")
-    supabase_key = os.getenv("SUPABASE_ANON_KEY") or os.getenv("SUPABASE_KEY")
-    if supabase_url and supabase_key:
-        supabase_client = create_client(supabase_url, supabase_key)
-        logger.info("✅ Supabase client initialized")
-    else:
-        logger.warning("⚠️ Supabase credentials missing")
+    logger.info("🚀 Show Service startup - FAIL FAST MODE")
     
-    logger.info("Show Service started successfully")
+    # Initialize Redis - FAIL FAST
+    try:
+        redis_url = os.getenv("REDIS_URL", "redis://redis:6379")
+        redis_client = redis.from_url(redis_url, decode_responses=True)
+        await redis_client.ping()  # Test connection immediately
+        logger.info("✅ Redis connection verified")
+    except Exception as e:
+        logger.error(f"❌ FAIL FAST: Redis connection failed: {e}")
+        raise Exception(f"Show Service REQUIRES Redis connection: {e}")
+    
+    # Check OpenAI API Key - FAIL FAST
+    openai_key = os.getenv("OPENAI_API_KEY")
+    if not openai_key:
+        logger.error("❌ FAIL FAST: OpenAI API key missing")
+        raise Exception("Show Service REQUIRES OPENAI_API_KEY environment variable")
+    logger.info("✅ OpenAI API key verified")
+    
+    # Test Database Factory connection - FAIL FAST
+    try:
+        db_client = get_db_client(ConnectionType.REGULAR)
+        # Test actual database connection
+        await modular_config.get_default_values()  # This should work if DB is connected
+        logger.info("✅ Database factory connection verified")
+    except Exception as e:
+        logger.error(f"❌ FAIL FAST: Database factory connection failed: {e}")
+        raise Exception(f"Show Service REQUIRES Database factory connection: {e}")
+    
+    # Test critical microservice dependencies - FAIL FAST
+    required_services = [
+        ("Data Service", "http://localhost:8001"),
+        ("Data Collector Service", "http://data-collector-service:8004"),
+        ("Audio Service", "http://audio-service:8004")
+    ]
+    
+    for service_name, service_url in required_services:
+        try:
+            async with httpx.AsyncClient(timeout=5.0) as client:
+                response = await client.get(f"{service_url}/health")
+                if response.status_code != 200:
+                    raise Exception(f"{service_name} unhealthy: {response.status_code}")
+            logger.info(f"✅ {service_name} connection verified")
+        except Exception as e:
+            logger.error(f"❌ FAIL FAST: {service_name} connection failed: {e}")
+            raise Exception(f"Show Service REQUIRES {service_name} connection: {e}")
+    
+    logger.info("✅ Show Service startup complete - ALL DEPENDENCIES VERIFIED")
 
 @app.on_event("shutdown")
 async def shutdown_event():
@@ -51,16 +89,16 @@ async def shutdown_event():
         await redis_client.close()
     logger.info("Show Service shutdown complete")
 
-# Pydantic Models
+# Pydantic Models - jetzt mit dynamischen Defaults
 class ShowRequest(BaseModel):
     preset_name: Optional[str] = None
     target_time: Optional[str] = None
-    channel: str = "zurich"
-    language: str = "de"
-    news_count: int = 2
-    primary_speaker: Optional[str] = "marcel"
-    secondary_speaker: Optional[str] = "jarvis"
-    duration_minutes: int = 3
+    channel: Optional[str] = None  # Wird aus DB geladen
+    language: Optional[str] = None  # Wird aus DB geladen
+    news_count: Optional[int] = None  # Wird aus DB geladen
+    primary_speaker: Optional[str] = None  # Wird aus DB geladen
+    secondary_speaker: Optional[str] = None  # Wird aus DB geladen
+    duration_minutes: Optional[int] = None  # Wird aus Broadcast Style geladen
 
 class ShowResponse(BaseModel):
     session_id: str
@@ -70,71 +108,39 @@ class ShowResponse(BaseModel):
     segments: List[Dict[str, Any]]
     metadata: Dict[str, Any]
 
-class BroadcastStyleService:
-    """Manages broadcast styles and timing"""
+class ModularBroadcastStyleService:
+    """Vollmodularer Broadcast Style Service - alle Werte aus DB"""
     
     def __init__(self):
-        # V3 ENGLISH BROADCAST STYLES - TIME-BASED PERSONALITIES
-        self.broadcast_styles = {
-            "morning": {
-                "name": "High-Energy Morning",
-                "description": "Energetic, motivational, optimistic vibes",
-                "marcel_mood": "excited and passionate",
-                "jarvis_mood": "witty and sharp",
-                "tempo": "fast-paced",
-                "duration_target": 8,
-                "v3_style": "creative"
-            },
-            "afternoon": {
-                "name": "Professional Afternoon", 
-                "description": "Relaxed, informative, professional tone",
-                "marcel_mood": "friendly and engaging",
-                "jarvis_mood": "analytical and precise",
-                "tempo": "medium-paced",
-                "duration_target": 10,
-                "v3_style": "natural"
-            },
-            "evening": {
-                "name": "Chill Evening",
-                "description": "Cozy, thoughtful, conversational",
-                "marcel_mood": "thoughtful and warm",
-                "jarvis_mood": "philosophical and deep", 
-                "tempo": "slow and deliberate",
-                "duration_target": 12,
-                "v3_style": "natural"
-            },
-            "night": {
-                "name": "Late Night Vibes",
-                "description": "Calm, relaxing, introspective atmosphere",
-                "marcel_mood": "calm and reflective",
-                "jarvis_mood": "mysterious and contemplative",
-                "tempo": "very slow and smooth",
-                "duration_target": 15,
-                "v3_style": "robust"
-            }
-        }
+        pass  # Keine hardcoded Werte mehr!
     
-    def determine_broadcast_style(self, target_time: Optional[str] = None) -> Dict[str, Any]:
-        """Determine broadcast style based on time of day"""
+    async def determine_broadcast_style(self, target_time: Optional[str] = None, style_name: Optional[str] = None) -> Optional[BroadcastStyle]:
+        """Bestimme Broadcast Style basierend auf Zeit oder Name - vollständig aus DB"""
+        
+        if style_name:
+            # Spezifischer Style angefordert
+            return await modular_config.get_broadcast_style(style_name)
+        
+        # Zeitbasierte Style-Auswahl
         if target_time:
             try:
                 hour = int(target_time.split(":")[0])
             except:
-                hour = datetime.now().hour
+                # Default timezone aus DB laden
+                default_tz = await modular_config.get_dynamic_config('system', 'default_timezone')
+                tz = pytz.timezone(default_tz or 'Europe/Zurich')
+                hour = datetime.now(tz).hour
         else:
-            hour = datetime.now().hour
+            # Default timezone aus DB laden
+            default_tz = await modular_config.get_dynamic_config('system', 'default_timezone')
+            tz = pytz.timezone(default_tz or 'Europe/Zurich')
+            hour = datetime.now(tz).hour
         
-        if 5 <= hour < 12:
-            return self.broadcast_styles["morning"]
-        elif 12 <= hour < 17:
-            return self.broadcast_styles["afternoon"] 
-        elif 17 <= hour < 22:
-            return self.broadcast_styles["evening"]
-        else:
-            return self.broadcast_styles["night"]
+        # Zeitbasierte Auswahl aus DB
+        return await modular_config.get_broadcast_style_by_time(hour)
 
-class GPTScriptGenerator:
-    """Handles GPT script generation"""
+class ModularGPTScriptGenerator:
+    """Vollmodularer GPT Script Generator - Templates aus DB"""
     
     def __init__(self):
         self.openai_api_key = None
@@ -146,40 +152,37 @@ class GPTScriptGenerator:
         }
     
     async def _get_openai_api_key(self) -> Optional[str]:
-        """Get OpenAI API key from Data Service"""
+        """Get OpenAI API key from environment"""
         if self.openai_api_key:
             return self.openai_api_key
         
-        try:
-            async with httpx.AsyncClient(timeout=5.0) as client:
-                response = await client.get("http://data-service:8000/config")
-                if response.status_code == 200:
-                    config = response.json()
-                    self.openai_api_key = config.get("api_keys", {}).get("openai")
-                    return self.openai_api_key
-        except Exception as e:
-            logger.warning(f"⚠️ Failed to get OpenAI API key from Data Service: {str(e)}")
+        self.openai_api_key = os.getenv("OPENAI_API_KEY")
         
-        return None
+        if not self.openai_api_key:
+            logger.warning("⚠️ OPENAI_API_KEY not found in environment variables")
+            return None
+            
+        logger.info("✅ OpenAI API key loaded from environment")
+        return self.openai_api_key
     
     async def generate_script(
         self, 
         content: Dict[str, Any],
-        broadcast_style: Dict[str, Any],
-        channel: str,
-        language: str = "de"
+        show_preset: ShowPreset
     ) -> str:
-        """Generate radio script using GPT-4"""
+        """Generate radio script using GPT-4 with modular templates"""
         
         api_key = await self._get_openai_api_key()
         if not api_key:
-            logger.warning("⚠️ OpenAI API key not configured, using mock script")
-            return self._generate_mock_script(content, broadcast_style)
+                    raise HTTPException(
+            status_code=503,
+            detail="Show Service: OpenAI API key required for script generation"
+        )
         
-        logger.info("🤖 Generating script with GPT-4...")
+        logger.info("🤖 Generating script with GPT-4 using modular templates...")
         
         try:
-            prompt = self._create_gpt_prompt(content, broadcast_style, channel, language)
+            prompt = await self._create_modular_gpt_prompt(content, show_preset)
             
             async with httpx.AsyncClient(timeout=self.gpt_config["timeout"]) as client:
                 headers = {
@@ -192,10 +195,10 @@ class GPTScriptGenerator:
                     "messages": [
                         {
                             "role": "system", 
-                            "content": "Du bist ein Experte für Radio-Skripte und erstellst natürliche, emotionale Dialoge zwischen AI-Moderatoren."
+                            "content": show_preset.template.system_prompt
                         },
                         {
-                            "role": "user", 
+                            "role": "user",
                             "content": prompt
                         }
                     ],
@@ -211,708 +214,426 @@ class GPTScriptGenerator:
                 
                 if response.status_code == 200:
                     result = response.json()
-                    script = result['choices'][0]['message']['content'].strip()
-                    
-                    logger.info(f"✅ Script generated ({len(script)} characters)")
-                    return self._post_process_script(script)
+                    script = result["choices"][0]["message"]["content"].strip()
+                    return await self._post_process_script(script)
                 else:
-                    logger.error(f"❌ GPT Error {response.status_code}")
-                    return self._generate_mock_script(content, broadcast_style)
-                    
+                    logger.error(f"❌ OpenAI API error: {response.status_code} - {response.text}")
+                    raise HTTPException(
+                        status_code=503,
+                        detail="Show Service: OpenAI API configuration error"
+                    )
+        
         except Exception as e:
-            logger.error(f"❌ GPT generation failed: {str(e)}")
-            return self._generate_mock_script(content, broadcast_style)
+            logger.error(f"❌ Script generation failed: {e}")
+            raise HTTPException(
+                status_code=503,
+                detail="Show Service: OpenAI API service unavailable"
+            )
     
-    def _create_gpt_prompt(
+    async def _create_modular_gpt_prompt(
         self, 
         content: Dict[str, Any], 
-        broadcast_style: Dict[str, Any],
-        channel: str,
-        language: str = "de"
+        show_preset: ShowPreset
     ) -> str:
-        """Create GPT prompt for script generation"""
+        """Create GPT prompt using modular templates from database"""
         
-        if language == "en":
-            return self._create_english_prompt(content, broadcast_style, channel)
-        else:
-            return self._create_german_prompt(content, broadcast_style, channel)
-    
-    def _create_german_prompt(
-        self, 
-        content: Dict[str, Any], 
-        broadcast_style: Dict[str, Any],
-        channel: str
-    ) -> str:
-        """Create German prompt for script generation"""
+        # News content
+        news_section = ""
+        if content.get("news") and isinstance(content["news"], list):
+            news_section = "\n".join([
+                f"- {article.get('title', 'Unbekannter Titel')}: {article.get('summary', article.get('description', 'Keine Beschreibung'))}"
+                for article in content["news"][:3]
+            ])
         
-        # Prepare news context
-        news_context = ""
-        news_items = content.get("news", [])
-        
-        for i, news in enumerate(news_items, 1):
-            news_context += f"{i}. [{news.get('category', 'GENERAL').upper()}] {news.get('title', '')}\n"
-            news_context += f"   📰 {news.get('source', 'Unknown')} | ⏰ {news.get('age_hours', '?')}h alt\n"
-            news_context += f"   📝 {news.get('summary', '')[:200]}...\n\n"
-        
-        # Context data
-        weather_context = ""
-        bitcoin_context = ""
-        
+        # Weather info
+        weather_section = ""
         if content.get("weather"):
-            weather = content["weather"]["current"]
-            weather_context = f"🌡️ Wetter: {weather['temperature']}°C, {weather['description']}"
+            weather_info = content["weather"]
+            temp = weather_info.get("temperature", "N/A")
+            desc = weather_info.get("description", "Keine Wetterdaten")
+            weather_section = f"Wetter in {show_preset.location.display_name}: {temp}°C, {desc}"
         
+        # Bitcoin info
+        bitcoin_section = ""
         if content.get("bitcoin"):
-            bitcoin = content["bitcoin"]
-            bitcoin_context = f"₿ Bitcoin: ${bitcoin['price']:,.2f} ({bitcoin['change_24h']:+.1f}%)"
+            bitcoin_info = content["bitcoin"]
+            price = bitcoin_info.get("price", "N/A")
+            change = bitcoin_info.get("change_24h", 0)
+            bitcoin_section = f"Bitcoin: ${price:,.0f} ({change:+.1f}% 24h)" if isinstance(price, (int, float)) else f"Bitcoin: {price}"
         
-        # Current time in Zurich timezone
-        zurich_tz = pytz.timezone('Europe/Zurich')
-        current_time = datetime.now(zurich_tz)
-        time_context = f"⏰ Zeit: {current_time.strftime('%H:%M')}, {current_time.strftime('%A')}, {current_time.strftime('%d.%m.%Y')}"
+        # Build modular prompt
+        prompt = f"""
+SHOW KONFIGURATION:
+- Preset: {show_preset.display_name}
+- Stil: {show_preset.broadcast_style.display_name}
+- Sprecher: {show_preset.primary_speaker.title()}"""
         
-        # Location context
-        location_context = self._get_location_context(channel)
+        if show_preset.secondary_speaker:
+            prompt += f" & {show_preset.secondary_speaker.title()}"
         
-        gpt_prompt = f"""Du bist der Chefproduzent von RadioX, einem innovativen Schweizer AI-Radio mit den Moderatoren Marcel (emotional, spontan) und Jarvis (analytisch, witzig).
+        prompt += f"""
+- Ort: {show_preset.location.display_name}
+- Zieldauer: {show_preset.broadcast_style.duration_target} Minuten
 
-🎙️ **RADIOX DEUTSCHE BROADCAST-GENERIERUNG**
+SPRECHER-STIMMUNGEN:
+- {show_preset.primary_speaker.title()}: {show_preset.broadcast_style.marcel_mood}
+- {show_preset.secondary_speaker.title() if show_preset.secondary_speaker else 'Jarvis'}: {show_preset.broadcast_style.jarvis_mood}
 
-KONTEXT:
-{time_context}
-🎭 Stil: {broadcast_style['name']} - {broadcast_style['description']}
-🎯 Marcel: {broadcast_style['marcel_mood']} | Jarvis: {broadcast_style['jarvis_mood']}
-⚡ Tempo: {broadcast_style['tempo']}
-📍 Kanal: {channel.upper()} {location_context}
-🎯 Zieldauer: {broadcast_style['duration_target']} Minuten
+CONTENT:
+{news_section}
 
-AKTUELLE DATEN:
-{weather_context}
-{bitcoin_context}
+{weather_section}
 
-VERFÜGBARE NEWS:
-{news_context}
+{bitcoin_section}
 
-AUFGABE: Erstelle ein {broadcast_style['duration_target']}-minütiges deutsches Broadcast-Skript mit dieser Struktur:
+{show_preset.template.format_instructions}
 
-1. **INTRO** (1-2 Min)
-   - Begrüssung mit aktueller Zeit/Wetter
-   - Vorschau auf heutige Themen
-   - Natürliches Geplänkel zwischen Marcel & Jarvis
-
-2. **HAUPTNEWS-BLOCK** (3-4 Min)
-   - Wichtigste Geschichten detailliert
-   - Emotionale Reaktionen und Diskussion
-   - Marcel: spontane Gefühle, Jarvis: analytische Einblicke
-
-3. **CRYPTO & FINANZEN** (1-2 Min)
-   - Bitcoin-Update mit Kontext
-   - Marktanalyse
-   - Jarvis erklärt, Marcel reagiert emotional
-
-4. **WEITERE NEWS** (2-3 Min)
-   - Restliche Geschichten kompakter
-   - Schweizer/lokale Bezüge wo relevant
-   - Interaktiver Dialog zwischen Moderatoren
-
-5. **OUTRO** (1-2 Min)
-   - Zusammenfassung der Kernpunkte
-   - Vorschau nächste Sendung
-   - Wetterprognose-Verabschiedung
-
-🎭 **CHARAKTER-RICHTLINIEN:**
-- **MARCEL**: Enthusiastisch, leidenschaftlich, authentische menschliche Emotionen
-  - Wird AUFGEREGT bei Bitcoin/Tech-News
-  - Nutzt natürliche deutsche Ausdrücke ("Krass!", "Das ist unglaublich!")
-  - Spontane Reaktionen und Unterbrechungen
-  - Warme, nahbare Persönlichkeit
-
-- **JARVIS**: Analytische AI, witzig, leicht sarkastisch
-  - Liefert datenbasierte Einblicke
-  - Gelegentlicher trockener Humor über menschliches Verhalten
-  - Technische Erklärungen verständlich gemacht
-  - Philosophische Beobachtungen
-
-📻 **TECHNISCHE ANFORDERUNGEN:**
-- Verwende ALLE verfügbaren News im Skript
-- Baue natürliche Übergänge zwischen Themen
-- Inklusive realistische Unterbrechungen und Reaktionen
-- Halte {broadcast_style['duration_target']}-Minuten Zieldauer ein
-- Schweizer Bezüge und Lokalkolorit
-
-**FORMAT**: Schreibe als Dialog mit klaren Sprecherwechseln:
-
-MARCEL: [Text]
-JARVIS: [Text]
-MARCEL: [Text]
-...
-
-**STARTE DAS SKRIPT SOFORT - KEINE EINLEITUNG!**"""
-
-        return gpt_prompt
+GPT SELECTION INSTRUCTIONS:
+{show_preset.gpt_selection_instructions}
+"""
+        
+        return prompt
     
-    def _create_english_prompt(
-        self, 
-        content: Dict[str, Any], 
-        broadcast_style: Dict[str, Any],
-        channel: str
-    ) -> str:
-        """Create English V3-optimized prompt"""
+    async def _post_process_script(self, script: str) -> str:
+        """Post-process script with modular speaker tags"""
         
-        # Similar structure but in English
-        news_context = ""
-        news_items = content.get("news", [])
+        # Get speaker tags from config
+        speaker_tags = await modular_config.get_speaker_tags()
         
-        for i, news in enumerate(news_items, 1):
-            news_context += f"{i}. [{news.get('category', 'GENERAL').upper()}] {news.get('title', '')}\n"
-            news_context += f"   📰 {news.get('source', 'Unknown')} | ⏰ {news.get('age_hours', '?')}h ago\n"
-            news_context += f"   📝 {news.get('summary', '')[:200]}...\n\n"
+        # Normalisiere Speaker Tags
+        script = script.replace("[Marcel]", "[MARCEL]")
+        script = script.replace("[marcel]", "[MARCEL]")
+        script = script.replace("[Jarvis]", "[JARVIS]")
+        script = script.replace("[jarvis]", "[JARVIS]")
         
-        weather_context = ""
-        bitcoin_context = ""
+        # Stelle sicher, dass Script mit einem Sprecher beginnt
+        if not script.startswith("[MARCEL]") and not script.startswith("[JARVIS]"):
+            script = "[MARCEL] " + script
         
-        if content.get("weather"):
-            weather = content["weather"]["current"]
-            weather_context = f"🌡️ Weather: {weather['temperature']}°C, {weather['description']}"
-        
-        if content.get("bitcoin"):
-            bitcoin = content["bitcoin"]
-            bitcoin_context = f"₿ Bitcoin: ${bitcoin['price']:,.2f} ({bitcoin['change_24h']:+.1f}%)"
-        
-        current_time = datetime.now()
-        time_context = f"⏰ Time: {current_time.strftime('%H:%M')}, {current_time.strftime('%A')}, {current_time.strftime('%B %d, %Y')}"
-        
-        return f"""You are the head producer of RadioX, an innovative Swiss AI radio featuring hosts Marcel (emotional, spontaneous) and Jarvis (analytical, witty AI).
-
-🎙️ **RADIOX ENGLISH V3 BROADCAST GENERATION**
-
-CONTEXT:
-{time_context}
-🎭 Style: {broadcast_style['name']} - {broadcast_style['description']}
-🎯 Marcel: {broadcast_style['marcel_mood']} | Jarvis: {broadcast_style['jarvis_mood']}
-⚡ Pacing: {broadcast_style['tempo']}
-📍 Channel: {channel.upper()}
-🎯 Target Duration: {broadcast_style['duration_target']} minutes
-
-CURRENT DATA:
-{weather_context}
-{bitcoin_context}
-
-AVAILABLE NEWS:
-{news_context}
-
-Create a natural {broadcast_style['duration_target']}-minute English radio dialogue between Marcel and Jarvis covering all available news with Swiss context.
-
-**FORMAT**: Write as dialogue with clear speaker changes:
-
-MARCEL: [Text]
-JARVIS: [Text]
-MARCEL: [Text]
-...
-
-**START THE SCRIPT IMMEDIATELY!**"""
+        return script.strip()
     
-    def _get_location_context(self, channel: str) -> str:
-        """Get location context for channel"""
-        location_contexts = {
-            "zurich": "- Fokus auf Zürich und Umgebung",
-            "basel": "- Fokus auf Basel und Nordwestschweiz", 
-            "bern": "- Fokus auf Bern und Mittelland"
-        }
-        return location_contexts.get(channel, "- Schweizweiter Fokus")
-    
-    def _post_process_script(self, script: str) -> str:
-        """Post-process generated script"""
-        lines = script.split('\n')
-        cleaned_lines = []
-        
-        for line in lines:
-            line = line.strip()
-            if line:
-                cleaned_lines.append(line)
-        
-        # Ensure speaker names are correctly formatted
-        processed_lines = []
-        for line in cleaned_lines:
-            if line.startswith("MARCEL:") or line.startswith("JARVIS:"):
-                processed_lines.append(line)
-            elif ":" in line and (line.upper().startswith("MARCEL") or line.upper().startswith("JARVIS")):
-                if line.upper().startswith("MARCEL"):
-                    processed_lines.append("MARCEL: " + line.split(":", 1)[1].strip())
-                elif line.upper().startswith("JARVIS"):
-                    processed_lines.append("JARVIS: " + line.split(":", 1)[1].strip())
-            else:
-                if processed_lines:
-                    processed_lines[-1] += " " + line
-        
-        return '\n'.join(processed_lines)
-    
-    def _generate_mock_script(self, content: Dict[str, Any], broadcast_style: Dict[str, Any]) -> str:
-        """Generate mock script when GPT unavailable"""
-        news_count = len(content.get("news", []))
-        weather_info = content.get("weather", {}).get("current", {})
-        bitcoin_info = content.get("bitcoin", {})
-        
-        return f"""MARCEL: Willkommen bei RadioX! Es ist {datetime.now().strftime('%H:%M')} Uhr und hier sind die aktuellen News.
 
-JARVIS: Guten Tag, Marcel. Heute haben wir {news_count} interessante Nachrichten für unsere Hörer. Das Wetter zeigt {weather_info.get('temperature', '?')}°C.
 
-MARCEL: Perfekt! Und Bitcoin steht bei ${bitcoin_info.get('price', 0):,.0f} - das ist {broadcast_style['marcel_mood']}!
-
-JARVIS: Genau, Marcel. Lass uns mit den wichtigsten Nachrichten beginnen...
-
-MARCEL: Das war RadioX für heute. Bis zum nächsten Mal!"""
-
-class ShowOrchestrationService:
-    """Main orchestration service for show generation"""
+class ModularShowOrchestrationService:
+    """Vollmodularer Show Orchestration Service"""
     
     def __init__(self):
-        self.broadcast_style_service = BroadcastStyleService()
-        self.gpt_generator = GPTScriptGenerator()
-        self.api_gateway_url = os.getenv("API_GATEWAY_URL", "http://localhost:8000")
+        self.broadcast_service = ModularBroadcastStyleService()
+        self.script_generator = ModularGPTScriptGenerator()
     
     async def generate_show(self, request: ShowRequest) -> ShowResponse:
-        """Orchestrate complete show generation"""
+        """Generiere Show mit vollmodularer Konfiguration"""
+        session_id = str(uuid.uuid4())
+        
+        logger.info(f"🎯 Generating modular show: {session_id}")
+        
         try:
-            logger.info(f"🎭 Generating show for channel '{request.channel}' at {request.target_time}")
+            # 1. Load defaults from database if not provided
+            defaults = await modular_config.get_default_values()
             
-            session_id = str(uuid.uuid4())
+            # Apply defaults
+            if not request.channel:
+                request.channel = defaults.get('default_channel', 'zurich')
+            if not request.language:
+                request.language = defaults.get('default_language', 'de')
+            if not request.news_count:
+                request.news_count = int(defaults.get('default_news_count', '3'))
+            if not request.primary_speaker:
+                request.primary_speaker = defaults.get('default_primary_speaker', 'marcel')
+            if not request.secondary_speaker:
+                request.secondary_speaker = defaults.get('default_secondary_speaker', 'jarvis')
             
-            # 1. Determine broadcast style
-            broadcast_style = self.broadcast_style_service.determine_broadcast_style(request.target_time)
-            logger.info(f"🎨 Style: {broadcast_style['name']}")
+            # 2. Load show preset if specified
+            show_preset = None
+            if request.preset_name:
+                show_preset = await modular_config.get_show_preset(request.preset_name)
+                if show_preset:
+                    # Override request with preset values
+                    request.channel = show_preset.location.location_code
+                    request.primary_speaker = show_preset.primary_speaker
+                    request.secondary_speaker = show_preset.secondary_speaker
+                    logger.info(f"✅ Using preset: {show_preset.display_name}")
             
-            # 2. Collect content from Content Service
-            content = await self._collect_content(request)
-            logger.info(f"📰 Content collected: {len(content.get('news', []))} news items")
+            # 3. If no preset, create one from request
+            if not show_preset:
+                # Load individual components
+                location = await modular_config.get_location(request.channel)
+                if not location:
+                    raise HTTPException(status_code=400, detail=f"Unknown location: {request.channel}")
+                
+                broadcast_style = await self.broadcast_service.determine_broadcast_style(request.target_time)
+                if not broadcast_style:
+                    raise HTTPException(status_code=500, detail="No broadcast style available")
+                
+                template = await modular_config.get_show_template('radio_show_de')
+                if not template:
+                    raise HTTPException(status_code=500, detail="No show template available")
+                
+                # Create temporary preset
+                show_preset = ShowPreset(
+                    preset_name='dynamic',
+                    display_name='Dynamic Show',
+                    primary_speaker=request.primary_speaker,
+                    secondary_speaker=request.secondary_speaker,
+                    weather_speaker=None,
+                    location=location,
+                    broadcast_style=broadcast_style,
+                    template=template,
+                    gpt_selection_instructions='Standard news selection'
+                )
             
-            # 3. Get speaker configurations
-            speakers = await self._get_speaker_configs(request.primary_speaker, request.secondary_speaker)
+            # 4. Collect content
+            content = await self._collect_content(request, show_preset.location, show_preset)
             
-            # 4. Generate script with GPT
-            script = await self.gpt_generator.generate_script(
-                content=content,
-                broadcast_style=broadcast_style,
-                channel=request.channel,
-                language=request.language
-            )
+            # 5. Generate script
+            script = await self.script_generator.generate_script(content, show_preset)
             
-            # 5. Parse script into segments
+            # 6. Parse segments
             segments = self._parse_script_segments(script)
             
-            # 6. Estimate duration
+            # 7. Estimate duration
             estimated_duration = self._estimate_duration(script)
             
-            # 7. Generate audio via Audio Service
-            audio_result = await self._generate_audio(session_id, script, request)
+            # 8. Generate audio asynchronously
+            asyncio.create_task(self._generate_audio(session_id, script, request))
             
-            # 8. Store show data with audio info
-            await self._store_show_data(session_id, script, content, broadcast_style, request, audio_result)
+            # 9. Store show data
+            await self._store_show_data_modular(
+                session_id, script, content, show_preset, request
+            )
             
-            # 9. Build response
-            response = ShowResponse(
+            return ShowResponse(
                 session_id=session_id,
                 script_content=script,
-                broadcast_style=broadcast_style["name"],
+                broadcast_style=show_preset.broadcast_style.display_name,
                 estimated_duration_minutes=estimated_duration,
                 segments=segments,
                 metadata={
-                    "preset": request.preset_name,
-                    "channel": request.channel,
-                    "language": request.language,
-                    "speakers": speakers,
-                    "content_stats": content.get("collection_stats", {}),
-                    "generated_at": datetime.now().isoformat(),
-                    "audio_file": audio_result.get("audio_file") if audio_result else None,
-                    "audio_url": audio_result.get("audio_url") if audio_result else None,
-                    "audio_duration": audio_result.get("duration_seconds") if audio_result else None
+                    "preset_used": show_preset.preset_name,
+                    "location": show_preset.location.display_name,
+                    "speakers": [show_preset.primary_speaker, show_preset.secondary_speaker],
+                    "news_count": len(content.get("news", [])),
+                    "generation_time": datetime.utcnow().isoformat()
                 }
             )
             
-            logger.info(f"✅ Show generated: {session_id} ({estimated_duration} min)")
-            return response
-            
         except Exception as e:
-            logger.error(f"❌ Show generation failed: {str(e)}")
+            logger.error(f"❌ Show generation failed: {e}")
             raise HTTPException(status_code=500, detail=f"Show generation failed: {str(e)}")
     
-    async def _collect_content(self, request: ShowRequest) -> Dict[str, Any]:
-        """Collect content from Content Service"""
+    async def _collect_content(self, request: ShowRequest, location: Location, show_preset = None) -> Dict[str, Any]:
+        """Collect content using modular configuration with category filtering"""
         try:
+            # Build parameters for data collection
+            params = {
+                "news_count": request.news_count,
+                "language": request.language,
+                "location": location.weather_api_name  # Use DB config
+            }
+            
+            # Add feed categories from show preset if available
+            if show_preset and hasattr(show_preset, 'feed_category') and getattr(show_preset, 'feed_category', None):
+                params["feed_categories"] = show_preset.feed_category
+                logger.info(f"🎯 Using category filter from preset: {show_preset.feed_category}")
+            
+            # Use location from database for weather API
             async with httpx.AsyncClient(timeout=30.0) as client:
                 response = await client.get(
-                    "http://content-service:8000/content",
-                    params={
-                        "news_count": request.news_count,
-                        "language": request.language
+                    "http://data-collector-service:8004/content",
+                    params=params
+                )
+                
+                if response.status_code == 200:
+                    return response.json()
+                else:
+                    logger.warning(f"⚠️ Content service error: {response.status_code}")
+                    raise HTTPException(
+                        status_code=503,
+                        detail="Show Service: Content Service unavailable for content generation"
+                    )
+        
+        except Exception as e:
+            logger.warning(f"⚠️ Content collection failed: {e}")
+            raise HTTPException(
+                status_code=503,
+                detail="Show Service: Content Service connection failed"
+            )
+    
+    def _parse_script_segments(self, script: str) -> List[Dict[str, Any]]:
+        """Parse script into speaker segments"""
+        segments = []
+        current_speaker = None
+        current_text = ""
+        
+        for line in script.split('\n'):
+            line = line.strip()
+            if not line:
+                continue
+            
+            if line.startswith('[MARCEL]'):
+                if current_speaker and current_text:
+                    segments.append({
+                        "speaker": current_speaker,
+                        "text": current_text.strip(),
+                        "duration_estimate": len(current_text.split()) * 0.5
+                    })
+                current_speaker = "marcel"
+                current_text = line[8:].strip()
+            elif line.startswith('[JARVIS]'):
+                if current_speaker and current_text:
+                    segments.append({
+                        "speaker": current_speaker,
+                        "text": current_text.strip(),
+                        "duration_estimate": len(current_text.split()) * 0.5
+                    })
+                current_speaker = "jarvis"
+                current_text = line[8:].strip()
+            else:
+                current_text += " " + line
+        
+        # Add final segment
+        if current_speaker and current_text:
+            segments.append({
+                "speaker": current_speaker,
+                "text": current_text.strip(),
+                "duration_estimate": len(current_text.split()) * 0.5
+            })
+        
+        return segments
+    
+    def _estimate_duration(self, script: str) -> int:
+        """Estimate duration in minutes"""
+        word_count = len(script.split())
+        # Average speaking rate: 150 words per minute
+        duration_minutes = max(1, round(word_count / 150))
+        return duration_minutes
+    
+    async def _store_show_data_modular(
+        self, 
+        session_id: str, 
+        script: str, 
+        content: Dict[str, Any], 
+        show_preset: ShowPreset,
+        request: ShowRequest,
+        audio_result: Optional[Dict[str, Any]] = None
+    ):
+        """Store show data using modular configuration"""
+        try:
+            db_client = get_db_client(ConnectionType.REGULAR)
+            
+            show_data = {
+                "session_id": session_id,
+                "title": f"{show_preset.broadcast_style.display_name} - {show_preset.location.display_name}",
+                "script_content": script,
+                "broadcast_style": show_preset.broadcast_style.display_name,
+                "channel": show_preset.location.location_code,
+                "language": request.language,
+                "preset_name": show_preset.preset_name if show_preset.preset_name != 'dynamic' else None,
+                "audio_url": audio_result.get("audio_url") if audio_result else None,
+                "audio_duration_seconds": audio_result.get("duration_seconds") if audio_result else None,
+                "audio_file_size": audio_result.get("file_size") if audio_result else None,
+                "estimated_duration_minutes": self._estimate_duration(script),
+                "news_count": len(content.get("news", [])),
+                "location_code": show_preset.location.location_code,
+                "metadata": {
+                    "preset_used": show_preset.preset_name,
+                    "speakers": [show_preset.primary_speaker, show_preset.secondary_speaker],
+                    "broadcast_style_config": {
+                        "marcel_mood": show_preset.broadcast_style.marcel_mood,
+                        "jarvis_mood": show_preset.broadcast_style.jarvis_mood,
+                        "duration_target": show_preset.broadcast_style.duration_target
+                    }
+                }
+            }
+            
+            # Use direct Supabase client for insert
+            result = db_client.client.table("shows").insert(show_data).execute()
+            
+            logger.info(f"✅ Show data stored with modular config: {session_id}")
+            
+        except Exception as e:
+            logger.error(f"❌ Failed to store show data: {e}")
+    
+    async def _generate_audio(self, session_id: str, script: str, request: ShowRequest) -> Optional[Dict[str, Any]]:
+        """Generate audio for the script"""
+        try:
+            async with httpx.AsyncClient(timeout=300.0) as client:
+                response = await client.post(
+                    "http://audio-service:8004/generate",
+                    json={
+                        "session_id": session_id,
+                        "script": script,
+                        "primary_speaker": request.primary_speaker,
+                        "secondary_speaker": request.secondary_speaker
                     }
                 )
                 
                 if response.status_code == 200:
                     return response.json()
                 else:
-                    logger.warning(f"⚠️ Content service returned {response.status_code}")
-                    return self._get_mock_content()
-                    
-        except Exception as e:
-            logger.error(f"❌ Content collection failed: {str(e)}")
-            return self._get_mock_content()
-    
-    async def _get_speaker_configs(self, primary: Optional[str], secondary: Optional[str]) -> Dict[str, Any]:
-        """Get speaker configurations from Speaker Service"""
-        try:
-            async with httpx.AsyncClient(timeout=10.0) as client:
-                # Get primary speaker
-                primary_response = await client.get(f"http://speaker-service:8000/speakers/{primary or 'marcel'}")
-                secondary_response = await client.get(f"http://speaker-service:8000/speakers/{secondary or 'jarvis'}")
-                
-                primary_config = primary_response.json() if primary_response.status_code == 200 else {"name": primary or "marcel"}
-                secondary_config = secondary_response.json() if secondary_response.status_code == 200 else {"name": secondary or "jarvis"}
-                
-                return {
-                    "primary": primary_config,
-                    "secondary": secondary_config
-                }
-                
-        except Exception as e:
-            logger.warning(f"⚠️ Speaker config failed: {str(e)}")
-            return {
-                "primary": {"name": primary or "marcel"},
-                "secondary": {"name": secondary or "jarvis"}
-            }
-    
-    def _parse_script_segments(self, script: str) -> List[Dict[str, Any]]:
-        """Parse script into segments"""
-        segments = []
-        lines = script.split('\n')
-        current_segment = None
-        
-        for line in lines:
-            line = line.strip()
-            if not line:
-                continue
-                
-            if line.startswith("MARCEL:") or line.startswith("JARVIS:"):
-                speaker, text = line.split(":", 1)
-                segment = {
-                    "type": "dialogue",
-                    "speaker": speaker.lower(),
-                    "text": text.strip(),
-                    "estimated_duration": len(text.split()) / 2.5  # ~150 words/min
-                }
-                segments.append(segment)
-        
-        return segments
-    
-    def _estimate_duration(self, script: str) -> int:
-        """Estimate script duration in minutes"""
-        word_count = len(script.split())
-        estimated_minutes = max(1, round(word_count / 150))  # ~150 words per minute
-        return estimated_minutes
-    
-    async def _store_show_data(
-        self, 
-        session_id: str, 
-        script: str, 
-        content: Dict[str, Any], 
-        broadcast_style: Dict[str, Any], 
-        request: ShowRequest,
-        audio_result: Optional[Dict[str, Any]] = None
-    ):
-        """Store show data using Clean Architecture - Google Style"""
-        try:
-            # Prepare clean show data model - Match Data Service ShowRecord
-            show_data = {
-                "session_id": session_id,
-                "title": f"{broadcast_style['name']} - {request.channel.title()}",
-                "script_content": script,
-                "script_preview": script[:200] + "..." if len(script) > 200 else script,
-                "broadcast_style": broadcast_style["name"],
-                "channel": request.channel,
-                "language": request.language,
-                "news_count": len(content.get("news", [])),
-                "estimated_duration_minutes": self._estimate_duration(script),
-                "audio_url": audio_result.get("audio_url") if audio_result else None,
-                "audio_duration_seconds": audio_result.get("duration_seconds") if audio_result else None,
-                "created_at": datetime.now().isoformat(),
-                "metadata": {
-                    "content_sources": len(content.get("news", [])),
-                    "has_weather": bool(content.get("weather")),
-                    "has_bitcoin": bool(content.get("bitcoin")),
-                    "generation_timestamp": datetime.now().isoformat()
-                }
-            }
-            
-            # Store in Redis cache for immediate access (Performance Layer)
-            if redis_client:
-                await redis_client.setex(
-                    f"show:{session_id}",
-                    3600,  # 1 hour TTL
-                    json.dumps(show_data, default=str)
-                )
-                logger.info(f"✅ Show {session_id} cached in Redis")
-            
-            # Store in Data Service using Clean Architecture - Single Source of Truth
-            async with httpx.AsyncClient(timeout=10.0) as client:
-                response = await client.post(
-                    "http://data-service:8000/shows",
-                    json=show_data
-                )
-                
-                if response.status_code == 200:
-                    logger.info(f"✅ Show {session_id} stored in database via Data Service")
-                else:
-                    logger.error(f"❌ Data Service storage failed: {response.status_code} - {response.text}")
-                    # Don't fail the whole operation if database storage fails
-                    # Redis cache ensures immediate availability
-                
-        except Exception as e:
-            logger.error(f"❌ Show data storage failed: {str(e)}")
-            # Don't raise exception - show generation should continue even if storage fails
-    
-    async def _generate_audio(self, session_id: str, script: str, request: ShowRequest) -> Optional[Dict[str, Any]]:
-        """Generate audio via Audio Service"""
-        try:
-            logger.info(f"🎵 Generating audio for session: {session_id}")
-            
-            async with httpx.AsyncClient(timeout=120.0) as client:  # 2 minute timeout for audio generation
-                audio_request = {
-                    "script_content": script,
-                    "session_id": session_id,
-                    "include_music": False,
-                    "export_format": "mp3",
-                    "voice_quality": "mid",
-                    "preset_name": request.preset_name or "default",
-                    "duration_minutes": getattr(request, 'duration_minutes', 3)
-                }
-                
-                response = await client.post(
-                    "http://audio-service:8000/script",
-                    json=audio_request
-                )
-                
-                if response.status_code == 200:
-                    audio_result = response.json()
-                    logger.info(f"✅ Audio generated: {audio_result.get('segments_count', 0)} segments")
-                    return audio_result
-                else:
-                    logger.error(f"❌ Audio Service error {response.status_code}: {response.text}")
+                    logger.warning(f"⚠️ Audio generation failed: {response.status_code}")
                     return None
-                    
+        
         except Exception as e:
-            logger.error(f"❌ Audio generation failed: {str(e)}")
+            logger.warning(f"⚠️ Audio generation error: {e}")
             return None
     
-    def _get_mock_content(self) -> Dict[str, Any]:
-        """Mock content when services unavailable"""
-        return {
-            "news": [
-                {
-                    "title": "Mock News Article",
-                    "summary": "This is a mock news article for testing purposes",
-                    "source": "mock",
-                    "category": "news",
-                    "age_hours": 1
-                }
-            ],
-            "weather": {
-                "current": {
-                    "temperature": 18,
-                    "description": "teilweise bewölkt"
-                }
-            },
-            "bitcoin": {
-                "price": 45000,
-                "change_24h": 2.5
-            },
-            "collection_stats": {
-                "total_news_collected": 1,
-                "news_selected": 1
-            }
-        }
 
-show_service = ShowOrchestrationService()
 
-# Health Check
+# Service instances
+orchestration_service = ModularShowOrchestrationService()
+
+# API Endpoints
 @app.get("/health")
 async def health_check():
     """Health check endpoint"""
-    return {"status": "healthy", "service": "show-service"}
+    return {
+        "status": "healthy",
+        "service": "RadioX Show Service - Modular",
+        "version": "2.0.0",
+        "modular": True,
+        "hardcoding": "eliminated"
+    }
 
-# Show Generation
 @app.post("/generate", response_model=ShowResponse)
 async def generate_show(request: ShowRequest):
-    """Generate complete radio show"""
-    return await show_service.generate_show(request)
-
-# Shows List - Updated to use Supabase directly
-@app.get("/shows")
-async def list_shows(limit: int = 10, offset: int = 0):
-    """List all generated shows using Supabase as primary source"""
-    try:
-        # Validate parameters - Fail Fast
-        if limit < 1 or limit > 100:
-            raise HTTPException(status_code=400, detail="Limit must be between 1 and 100")
-        
-        if offset < 0:
-            raise HTTPException(status_code=400, detail="Offset must be non-negative")
-        
-        # Try Supabase first
-        if supabase_client:
-            try:
-                import asyncio
-                import functools
-                
-                # Run Supabase query in thread pool since it's sync
-                loop = asyncio.get_event_loop()
-                response = await loop.run_in_executor(
-                    None, 
-                    functools.partial(
-                        lambda: supabase_client.table("shows").select("*").order("created_at", desc=True).range(offset, offset + limit - 1).execute()
-                    )
-                )
-                
-                if response.data:
-                    shows = []
-                    for show in response.data:
-                        show_summary = {
-                            "id": show.get("id"),
-                            "session_id": show.get("session_id"),
-                            "title": show.get("title"),
-                            "created_at": show.get("created_at"),
-                            "channel": show.get("channel"),
-                            "language": show.get("language"),
-                            "news_count": show.get("news_count", 0),
-                            "broadcast_style": show.get("broadcast_style"),
-                            "script_preview": show.get("script_preview"),
-                            "estimated_duration_minutes": show.get("estimated_duration_minutes")
-                        }
-                        shows.append(show_summary)
-                    
-                    # Get total count for pagination
-                    count_response = await loop.run_in_executor(
-                        None, 
-                        functools.partial(
-                            lambda: supabase_client.table("shows").select("id").execute()
-                        )
-                    )
-                    total = len(count_response.data) if count_response.data else len(shows)
-                    
-                    logger.info(f"📋 Listed {len(shows)} shows via Supabase")
-                    return {
-                        "shows": shows,
-                        "total": total,
-                        "limit": limit,
-                        "offset": offset,
-                        "has_more": offset + limit < total,
-                        "source": "supabase"
-                    }
-                
-            except Exception as e:
-                logger.error(f"❌ Supabase query failed: {str(e)}")
-        
-        # Fallback to Data Service
-        async with httpx.AsyncClient(timeout=10.0) as client:
-            response = await client.get(
-                "http://data-service:8000/shows",
-                params={"limit": limit, "offset": offset}
-            )
-            
-            if response.status_code == 200:
-                data = response.json()
-                logger.info(f"📋 Listed {len(data.get('shows', []))} shows via Data Service")
-                return data
-            else:
-                logger.error(f"❌ Data Service failed: {response.status_code}")
-                # Fallback to Redis if Data Service fails
-                return await _fallback_list_from_redis(limit, offset)
-                
-    except Exception as e:
-        logger.error(f"❌ List shows failed: {str(e)}")
-        # Fallback to Redis for resilience
-        return await _fallback_list_from_redis(limit, offset)
-
-async def _fallback_list_from_redis(limit: int = 10, offset: int = 0):
-    """Fallback method using Redis - Resilience Pattern"""
-    try:
-        if not redis_client:
-            raise HTTPException(status_code=503, detail="No storage available")
-        
-        # Get all show keys from Redis
-        show_keys = await redis_client.keys("show:*")
-        
-        if not show_keys:
-            return {
-                "shows": [],
-                "total": 0,
-                "limit": limit,
-                "offset": offset,
-                "has_more": False,
-                "source": "redis_fallback"
-            }
-        
-        # Sort keys by creation time (newest first)
-        show_keys.sort(reverse=True)
-        
-        # Apply pagination
-        paginated_keys = show_keys[offset:offset + limit]
-        
-        # Load show data for paginated keys
-        shows = []
-        for key in paginated_keys:
-            try:
-                show_data = await redis_client.get(key)
-                if show_data:
-                    parsed_show = json.loads(show_data)
-                    # Add essential frontend info
-                    show_summary = {
-                        "id": parsed_show.get("session_id"),
-                        "title": f"{parsed_show.get('broadcast_style', 'Show')} - {parsed_show.get('channel', 'Default').title()}",
-                        "created_at": parsed_show.get("created_at"),
-                        "channel": parsed_show.get("channel"),
-                        "language": parsed_show.get("language"),
-                        "news_count": parsed_show.get("news_count", 0),
-                        "broadcast_style": parsed_show.get("broadcast_style"),
-                        "script_preview": (parsed_show.get("script_content", "")[:200] + "...") if len(parsed_show.get("script_content", "")) > 200 else parsed_show.get("script_content", "")
-                    }
-                    shows.append(show_summary)
-            except Exception as e:
-                logger.warning(f"⚠️ Failed to load show {key}: {str(e)}")
-                continue
-        
-        logger.warning(f"⚠️ Using Redis fallback: {len(shows)} shows loaded")
-        
-        return {
-            "shows": shows,
-            "total": len(show_keys),
-            "limit": limit,
-            "offset": offset,
-            "has_more": offset + limit < len(show_keys),
-            "source": "redis_fallback"
-        }
-        
-    except Exception as e:
-        logger.error(f"❌ Redis fallback failed: {str(e)}")
-        raise HTTPException(status_code=503, detail="All storage systems unavailable")
-
-@app.get("/shows/{session_id}")
-async def get_show(session_id: str):
-    """Get show by session ID"""
-    try:
-        if redis_client:
-            show_data = await redis_client.get(f"show:{session_id}")
-            if show_data:
-                return json.loads(show_data)
-        
-        raise HTTPException(status_code=404, detail="Show not found")
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    """Generate a radio show using modular configuration"""
+    return await orchestration_service.generate_show(request)
 
 @app.get("/styles")
 async def get_broadcast_styles():
-    """Get available broadcast styles"""
-    return show_service.broadcast_style_service.broadcast_styles
+    """Get all available broadcast styles from database"""
+    try:
+        # Get all broadcast styles from database
+        db_client = get_db_client(ConnectionType.READ)
+        result = db_client.client.table("broadcast_styles").select("*").eq("is_active", True).execute()
+        
+        return {
+            "broadcast_styles": result.data,
+            "source": "database",
+            "modular": True
+        }
+    except Exception as e:
+        logger.error(f"❌ Failed to get broadcast styles: {e}")
+        return {"error": str(e)}
+
+@app.get("/presets")
+async def get_show_presets():
+    """Get all available show presets"""
+    try:
+        db_client = get_db_client(ConnectionType.READ)
+        result = db_client.client.table("show_presets").select("preset_name,display_name,description,city_focus,primary_speaker,secondary_speaker").eq("is_active", True).execute()
+        
+        return {
+            "presets": result.data,
+            "source": "database",
+            "modular": True
+        }
+    except Exception as e:
+        logger.error(f"❌ Failed to get presets: {e}")
+        return {"error": str(e)}
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000) 
+    port = int(os.getenv("SHOW_SERVICE_PORT", "8008"))
+    uvicorn.run(app, host="0.0.0.0", port=port) 

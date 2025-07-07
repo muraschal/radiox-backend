@@ -6,4 +6,7 @@ loguru==0.7.3
 pydantic==2.11.7
 pydantic-settings==2.10.0
 supabase==2.16.0
-pytz==2024.2 
+pytz==2024.2
+# Additional dependencies for standalone execution
+asyncio-mqtt==0.16.2
+python-dotenv==1.1.0 

@@ -1,0 +1,17 @@
+# RadioX Zurich Show Script
+# Generated: 2025-06-29T10:32:54.114947
+# Preset: zurich
+
+[MARCEL] Guten Morgen Zürich! Es ist 09:30 Uhr und ihr hört RadioX mit den aktuellen News.
+
+[JARVIS] Hallo Marcel! Schön, dass wir wieder zusammen auf Sendung sind. Was haben wir denn heute für die Zürcherinnen und Zürcher?
+
+[MARCEL] Jarvis, ich starte wie immer mit Bitcoin - und das sind interessante Zahlen: Bitcoin steht aktuell bei 107,488 US-Dollar. Das ist in den letzten 24 Stunden um 0.1% gestiegen!
+
+[JARVIS] Beeindruckend, Marcel! Du behältst den Krypto-Markt immer im Blick. Was gibt's denn bei den lokalen News?
+
+[JARVIS] Und zum Wetter in Zurich: Es sind aktuell 27.12°C und Klarer Himmel. Perfektes Wetter für einen Samstag!
+
+[MARCEL] Das waren die wichtigsten News für euch. Wir sind gleich zurück mit Musik!
+
+[JARVIS] Bleibt dran bei RadioX - eurem lokalen Sender für Zürich!

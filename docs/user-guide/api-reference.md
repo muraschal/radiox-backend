@@ -1,152 +1,132 @@
-# 📡 RadioX REST API Reference v4.1
+# 📡 RadioX REST API Reference v5.0
 
 <div align="center">
 
 ![API Reference](https://img.shields.io/badge/api-reference-blue)
-![Version](https://img.shields.io/badge/version-v4.1-brightgreen)
+![Version](https://img.shields.io/badge/version-v5.0-brightgreen)
 ![OpenAPI](https://img.shields.io/badge/openapi-3.0-green)
 ![Production](https://img.shields.io/badge/production-ready-success)
 
-**🏗️ Complete REST API reference for RadioX microservices architecture**
+**🏗️ Complete REST API reference for RadioX AI radio generation**
 
-[🏠 Documentation](../) • [🎙️ Show Generation](show-generation.md) • [🎭 Frontend Integration](frontend-api-integration.md) • [🎤 Voice Config](voice-configuration.md)
+[🏠 Documentation](../) • [🎙️ Show Generation](show-generation.md) • [🎭 Frontend Integration](frontend-api-integration.md)
 
 </div>
 
 ---
 
-## 🌐 Base URL & Standards
+## 🌐 Base URLs
 
-### **🔗 Production Endpoint**
+### **🚀 Production**
 ```
 https://api.radiox.cloud
 ```
 
-### **🔧 Development Endpoint**
+### **🔧 Development** 
 ```
-http://100.109.155.102:8000
+http://localhost:8000        # API Gateway (Entry Point)
+http://localhost:8001        # Key Service (Infrastructure)
+http://localhost:8002        # Data Service (Database)
+http://localhost:8003        # Content Service (Processing)
+http://localhost:8004        # Audio Service (Processing)
+http://localhost:8005        # Media Service (Processing)
+http://localhost:8006        # Speaker Service (Processing)
+http://localhost:8007        # Show Service (Business Logic)
+http://localhost:8008        # Analytics Service (Monitoring)
 ```
 
-### **📋 API Standards**
-- **Protocol**: HTTP/2, HTTPS required in production
-- **Content-Type**: `application/json` for all requests/responses
+### **📋 Standards**
+- **Protocol**: HTTPS (production), HTTP (development)
+- **Content-Type**: `application/json`
 - **Charset**: UTF-8
-- **Rate Limiting**: 100 requests/minute per IP
+- **Authentication**: None required
 - **CORS**: Enabled for all origins
-- **Authentication**: None required (public API)
-
-### **🔄 HTTP Status Codes**
-- `200 OK` - Successful request
-- `201 Created` - Resource created successfully  
-- `400 Bad Request` - Invalid request parameters
-- `404 Not Found` - Resource not found
-- `422 Unprocessable Entity` - Invalid request body
-- `429 Too Many Requests` - Rate limit exceeded
-- `500 Internal Server Error` - Server error
-- `503 Service Unavailable` - Service temporarily unavailable
 
 ---
 
-## 📊 API Architecture Overview
+## 🎯 Core Concept
 
-RadioX uses a **microservices architecture** with 8 specialized services behind an API Gateway:
+**RadioX follows a hybrid architecture:**
+
+- **🎙️ Show Generation**: Use REST API for complex processing
+- **📊 Data Access**: Frontend reads directly from Supabase for performance
+- **⚡ Single Responsibility**: APIs only for processing, Supabase for CRUD
 
 ```mermaid
 graph TD
-    A[API Gateway :8000] --> B[Show Service :8001]
-    A --> C[Content Service :8002] 
-    A --> D[Audio Service :8003]
-    A --> E[Media Service :8004]
-    A --> F[Speaker Service :8005]
-    A --> G[Data Service :8006]
-    A --> H[Analytics Service :8007]
-    I[Redis Cache] --> A
-    J[Supabase DB] --> A
+    A[Frontend] --> B[Supabase Direct]
+    A --> C[RadioX API]
+    C --> D[Show Generation]
+    C --> E[Audio Processing]
+    B --> F[Shows Data]
+    B --> G[Speakers Data]
 ```
 
 ---
 
-## 🎙️ Show Management API
+## 🎙️ Show Generation API
 
-### **Generate Radio Show**
+### **Generate AI Radio Show**
 ```http
 POST /api/v1/shows/generate
 ```
 
-Create a professional AI radio show with real-time news, weather, and Bitcoin updates.
+Generate a complete AI radio show with real-time news, weather, and analysis.
 
-**Request Body (all fields optional):**
+**Request Body:**
 ```json
 {
   "channel": "zurich",
-  "language": "de", 
+  "language": "de",
   "news_count": 2,
-  "duration_minutes": 5,
-  "target_time": "15:30",
+  "duration_minutes": 3,
+  "preset_name": "zurich",
   "primary_speaker": "marcel",
   "secondary_speaker": "jarvis"
 }
 ```
 
-**Request Parameters:**
+**Parameters:**
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| `channel` | string | `"zurich"` | Target channel: `zurich`, `basel`, `bern` |
+| `channel` | string | `"zurich"` | Target region: `zurich`, `basel`, `bern` |
 | `language` | string | `"de"` | Content language: `de`, `en` |
-| `news_count` | integer | `2` | Number of news items (1-5) |
-| `duration_minutes` | integer | `5` | Target duration in minutes |
-| `target_time` | string | current | Time for context (HH:MM format) |
-| `primary_speaker` | string | `"marcel"` | Primary speaker voice ID |
-| `secondary_speaker` | string | `"jarvis"` | Secondary speaker voice ID |
+| `news_count` | integer | `2` | News items to include (1-5) |
+| `duration_minutes` | integer | `3` | Target duration in minutes |
+| `preset_name` | string | `"zurich"` | Show style preset |
+| `primary_speaker` | string | `"marcel"` | Primary speaker voice |
+| `secondary_speaker` | string | `"jarvis"` | Secondary speaker voice |
 
-**Response (HTTP 201):**
+**Response (HTTP 200):**
 ```json
 {
-  "session_id": "b18a0726-bbf0-40b5-beef-e38365354e64",
-  "script_content": "MARCEL: Willkommen bei RadioX! Es ist 15:06 Uhr...",
-  "broadcast_style": "Professional Afternoon",
+  "session_id": "b50ea025-5be2-4dde-98fb-0fb1394da07a",
+  "script_content": "MARCEL: Willkommen bei RadioX! Es ist 18:35 Uhr und hier sind die aktuellen News.\n\nJARVIS: Guten Tag, Marcel. Heute haben wir 1 interessante Nachrichten für unsere Hörer...",
+  "broadcast_style": "Chill Evening",
   "estimated_duration_minutes": 1,
   "segments": [
     {
       "type": "dialogue",
-      "speaker": "marcel", 
-      "text": "Willkommen bei RadioX! Es ist 15:06 Uhr und hier sind die aktuellen News.",
+      "speaker": "marcel",
+      "text": "Willkommen bei RadioX! Es ist 18:35 Uhr...",
       "estimated_duration": 5.2
-    },
-    {
-      "type": "dialogue",
-      "speaker": "jarvis",
-      "text": "Guten Tag, Marcel. Heute haben wir 2 interessante Nachrichten für unsere Hörer.",
-      "estimated_duration": 6.4
     }
   ],
   "metadata": {
-    "preset": null,
+    "preset": "zurich",
     "channel": "zurich",
     "language": "de",
     "speakers": {
-      "primary": {
-        "id": "marcel",
-        "name": "Marcel", 
-        "voice_id": "pNInz6obpgDQGcFmaJgB",
-        "language": "de",
-        "role": "primary",
-        "description": "Primary German speaker"
-      },
-      "secondary": {
-        "name": "jarvis"
-      }
+      "primary": {"name": "marcel"},
+      "secondary": {"name": "jarvis"}
     },
     "content_stats": {
-      "total_news_collected": 220,
-      "news_selected": 2,
-      "sources": ["nzz", "techcrunch", "heise", "rt", "srf"],
-      "categories": ["zurich", "bitcoin", "politik", "wirtschaft"]
+      "total_news_collected": 243,
+      "news_selected": 1
     },
-    "generated_at": "2025-06-25T15:06:52.123796",
-    "audio_file": null,
-    "audio_url": null,
-    "audio_duration": null
+    "generated_at": "2025-06-26T16:35:12.345Z",
+    "audio_url": "https://zwcvvbgkqhexfcldwuxq.supabase.co/storage/v1/object/public/radio-shows/shows/2025-06-26_16-35_zurich_jarvis-marcel_1min.mp3",
+    "audio_duration": 28
   }
 }
 ```
@@ -159,304 +139,251 @@ curl -X POST "https://api.radiox.cloud/api/v1/shows/generate" \
     "channel": "zurich",
     "language": "de",
     "news_count": 2,
-    "duration_minutes": 5
+    "duration_minutes": 3
   }'
 ```
 
-**Error Responses:**
-```json
-// HTTP 400 - Invalid Parameters
-{
-  "error": "Invalid request parameters",
-  "details": {
-    "news_count": "Must be between 1 and 5",
-    "language": "Must be 'de' or 'en'"
-  },
-  "timestamp": "2025-06-25T15:06:52Z"
+**TypeScript Example:**
+```typescript
+interface ShowGenerationRequest {
+  channel: string;
+  language: string;
+  news_count: number;
+  duration_minutes: number;
+  preset_name?: string;
+  primary_speaker?: string;
+  secondary_speaker?: string;
 }
 
-// HTTP 422 - Generation Failed
-{
-  "error": "Show generation failed",
-  "message": "Insufficient news content available",
-  "retry_after": 300,
-  "timestamp": "2025-06-25T15:06:52Z"
-}
+const generateShow = async (request: ShowGenerationRequest) => {
+  const response = await fetch('/api/v1/shows/generate', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(request)
+  });
+  
+  if (!response.ok) {
+    throw new Error(`Generation failed: ${response.status}`);
+  }
+  
+  return response.json();
+};
 ```
 
-### **List Shows (Paginated)**
+### **Get Broadcast Styles**
 ```http
-GET /api/v1/shows?limit={limit}&offset={offset}
+GET /api/v1/shows/styles
 ```
 
-Retrieve paginated list of generated radio shows.
-
-**Query Parameters:**
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `limit` | integer | `10` | Number of shows (1-100) |
-| `offset` | integer | `0` | Pagination offset |
-| `channel` | string | all | Filter by channel |
-| `language` | string | all | Filter by language |
+Get available broadcast styles for show generation.
 
 **Response (HTTP 200):**
 ```json
 {
-  "shows": [
-    {
-      "id": "717a7e2e-db62-4d87-8de1-1a308bf36516",
-      "session_id": "midday-1750849556.959021", 
-      "title": "Midday Energy - Zurich",
-      "created_at": "2025-06-25T13:00:00+00:00",
-      "channel": "radiox",
-      "language": "en",
-      "news_count": 2,
-      "broadcast_style": "energetic",
-      "script_preview": "Midday show featuring Swiss economic growth news...",
-      "estimated_duration_minutes": 30
-    }
-  ],
-  "total": 3,
-  "limit": 10,
-  "offset": 0,
-  "has_more": false,
-  "source": "supabase",
-  "timestamp": "2025-06-25T15:06:52Z"
-}
-```
-
-**cURL Example:**
-```bash
-curl "https://api.radiox.cloud/api/v1/shows?limit=5&offset=0"
-```
-
-### **Get Show Details**
-```http
-GET /api/v1/shows/{session_id}
-```
-
-Retrieve complete details for a specific show by session ID.
-
-**Path Parameters:**
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `session_id` | string | Unique show session identifier |
-
-**Response (HTTP 200):** Same structure as generate endpoint
-
-**Error Response (HTTP 404):**
-```json
-{
-  "error": "Show not found",
-  "session_id": "invalid-id",
-  "timestamp": "2025-06-25T15:06:52Z"
+  "morning": {
+    "name": "Fresh Morning",
+    "description": "Energetic start to the day",
+    "marcel_mood": "enthusiastic",
+    "jarvis_mood": "analytical",
+    "tempo": "upbeat",
+    "duration_target": 5
+  },
+  "afternoon": {
+    "name": "Professional Afternoon", 
+    "description": "Business-focused content",
+    "marcel_mood": "focused",
+    "jarvis_mood": "informative",
+    "tempo": "steady",
+    "duration_target": 7
+  },
+  "evening": {
+    "name": "Chill Evening",
+    "description": "Relaxed discussion format",
+    "marcel_mood": "relaxed",
+    "jarvis_mood": "conversational", 
+    "tempo": "calm",
+    "duration_target": 3
+  }
 }
 ```
 
 ---
 
-## 🏥 System Health API
+## 📊 Data Access (Frontend → Supabase Direct)
 
-### **Health Check**
+**❌ DO NOT use API for data operations. Use Supabase direct access for optimal performance.**
+
+### **TypeScript/Supabase Integration:**
+```typescript
+import { createClient } from '@supabase/supabase-js';
+
+const supabase = createClient(
+  'https://zwcvvbgkqhexfcldwuxq.supabase.co',
+  'your-anon-key'
+);
+
+// ✅ Get shows (direct Supabase)
+const { data: shows } = await supabase
+  .from('shows')
+  .select('*')
+  .order('created_at', { ascending: false })
+  .limit(10);
+
+// ✅ Get show details (direct Supabase)
+const { data: show } = await supabase
+  .from('shows')
+  .select('*')
+  .eq('session_id', sessionId)
+  .single();
+
+// ✅ Get speakers (direct Supabase)
+const { data: speakers } = await supabase
+  .from('voice_configurations')
+  .select('*')
+  .eq('is_active', true);
+```
+
+### **Database Schema Reference:**
+| Table | Purpose | Frontend Access |
+|-------|---------|-----------------|
+| `shows` | Generated shows data | ✅ Read-only |
+| `voice_configurations` | Speaker settings | ✅ Read-only |
+| `show_presets` | Show templates | ✅ Read-only |
+| `configuration` | System config | ❌ Admin only |
+
+---
+
+## 🏥 System Health
+
+### **API Gateway Health**
 ```http
 GET /health
 ```
-
-Check overall system health and service availability.
 
 **Response (HTTP 200):**
 ```json
 {
   "status": "healthy",
-  "timestamp": 1750864024.987488,
-  "version": "4.1.0",
-  "services": {
-    "api_gateway": "healthy",
-    "show_service": "healthy", 
-    "content_service": "healthy",
-    "audio_service": "healthy",
-    "media_service": "healthy",
-    "speaker_service": "healthy",
-    "data_service": "healthy",
-    "analytics_service": "healthy"
-  },
-  "database": {
-    "supabase": "connected",
-    "redis": "connected"
-  },
-  "uptime_seconds": 18000
+  "timestamp": 1750956270.6612651
 }
 ```
 
-**Response (HTTP 503 - Service Unavailable):**
-```json
-{
-  "status": "degraded",
-  "timestamp": 1750864024.987488,
-  "issues": [
-    "content_service: timeout",
-    "supabase: connection_error"
-  ]
-}
-```
-
----
-
-## 📊 Analytics & Monitoring
-
-### **Service Status**
+### **Service Status Overview**
 ```http
-GET /api/v1/status
+GET /services/status
 ```
 
-Detailed status of all microservices.
-
-**Response:**
+**Response (HTTP 200):**
 ```json
 {
-  "api_gateway": {
-    "status": "healthy",
-    "port": 8000,
-    "uptime": 18000,
-    "requests_per_minute": 45
-  },
-  "show_service": {
-    "status": "healthy", 
-    "port": 8001,
-    "shows_generated_today": 12,
-    "average_generation_time": 2.3
-  }
+  "api_gateway": "healthy",
+  "show_service": "healthy", 
+  "content_service": "healthy",
+  "audio_service": "healthy",
+  "data_service": "healthy"
 }
 ```
 
 ---
 
-## 🔧 Error Handling Standards
-
-### **Error Response Format**
-All errors follow a consistent structure:
-
-```json
-{
-  "error": "Brief error description",
-  "message": "Detailed error message", 
-  "code": "ERROR_CODE",
-  "timestamp": "2025-06-25T15:06:52Z",
-  "request_id": "req_abc123",
-  "details": {
-    "field": "validation_error_details"
-  }
-}
-```
-
-### **Common Error Codes**
-| Code | HTTP Status | Description |
-|------|-------------|-------------|
-| `INVALID_PARAMETERS` | 400 | Request parameters are invalid |
-| `RESOURCE_NOT_FOUND` | 404 | Requested resource doesn't exist |
-| `GENERATION_FAILED` | 422 | Show generation process failed |
-| `RATE_LIMITED` | 429 | Too many requests |
-| `SERVICE_UNAVAILABLE` | 503 | Backend service is down |
-
----
-
-## 🚀 Performance & Limits
-
-### **Rate Limits**
-- **Show Generation**: 10 requests/minute per IP
-- **List/Get Operations**: 100 requests/minute per IP
-- **Health Checks**: Unlimited
+## ⚡ Performance & Limits
 
 ### **Response Times (95th percentile)**
-- **GET /health**: < 100ms
-- **GET /api/v1/shows**: < 500ms  
-- **POST /api/v1/shows/generate**: < 3000ms
+- **Show Generation**: < 8 seconds (includes AI + audio)
+- **Health Checks**: < 100ms
+- **Broadcast Styles**: < 200ms
+
+### **Request Limits**
+- **Show Generation**: 10 requests/minute per IP
+- **Other Endpoints**: 100 requests/minute per IP
 
 ### **Data Limits**
-- **Maximum news_count**: 5 items
-- **Maximum duration_minutes**: 60 minutes
-- **Script content**: Up to 50KB
-- **Response size**: Up to 1MB
+- **Maximum duration**: 60 minutes
+- **Maximum news items**: 5
+- **Script content**: Up to 100KB
+- **Audio file size**: Up to 50MB
 
 ---
 
-## 🔗 Integration Examples
+## 🔧 Error Handling
 
-### **JavaScript/TypeScript**
-```typescript
-interface RadioXShow {
-  session_id: string;
-  script_content: string;
-  broadcast_style: string;
-  estimated_duration_minutes: number;
-  segments: Array<{
-    type: string;
-    speaker: string;
-    text: string;
-    estimated_duration: number;
-  }>;
-  metadata: {
-    channel: string;
-    language: string;
-    generated_at: string;
-    content_stats: {
-      total_news_collected: number;
-      news_selected: number;
-      sources: string[];
-      categories: string[];
-    };
-  };
+### **Error Response Format**
+```json
+{
+  "detail": "Show generation failed: Insufficient content",
+  "timestamp": "2025-06-26T16:35:12Z"
 }
-
-// Generate show
-const response = await fetch('https://api.radiox.cloud/api/v1/shows/generate', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({
-    channel: 'zurich',
-    language: 'de',
-    news_count: 2
-  })
-});
-
-const show: RadioXShow = await response.json();
 ```
 
-### **Python**
-```python
-import requests
+### **HTTP Status Codes**
+| Code | Description |
+|------|-------------|
+| `200` | Success |
+| `400` | Invalid request parameters |
+| `422` | Processing failed |
+| `429` | Rate limit exceeded |
+| `500` | Server error |
 
-# Generate show
-response = requests.post(
-    'https://api.radiox.cloud/api/v1/shows/generate',
-    json={
-        'channel': 'zurich',
-        'language': 'de', 
-        'news_count': 2
-    }
-)
+---
 
-if response.status_code == 201:
-    show = response.json()
-    print(f"Generated show: {show['session_id']}")
-else:
-    error = response.json()
-    print(f"Error: {error['message']}")
+## 🚀 Quick Start Guide
+
+### **1. Generate Your First Show**
+```bash
+curl -X POST "https://api.radiox.cloud/api/v1/shows/generate" \
+  -H "Content-Type: application/json" \
+  -d '{"channel": "zurich", "news_count": 2}'
+```
+
+### **2. Set Up Frontend (React/TypeScript)**
+```typescript
+// Install Supabase client
+npm install @supabase/supabase-js
+
+// Configure API + Supabase hybrid approach
+const API_BASE = 'https://api.radiox.cloud';
+const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// Generate shows via API
+const show = await fetch(`${API_BASE}/api/v1/shows/generate`, {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ channel: 'zurich', news_count: 2 })
+}).then(r => r.json());
+
+// Read show data via Supabase (faster)
+const shows = await supabase.from('shows').select('*');
+```
+
+### **3. Real-time Updates (Optional)**
+```typescript
+// Subscribe to new shows
+supabase
+  .channel('shows')
+  .on('postgres_changes', {
+    event: 'INSERT',
+    schema: 'public',
+    table: 'shows'
+  }, (payload) => {
+    console.log('New show generated!', payload.new);
+  })
+  .subscribe();
 ```
 
 ---
 
 ## 📋 Changelog
 
-### **v4.1.0 (2025-06-25)**
-- ✅ **Fixed**: Response schemas match actual API responses
-- ✅ **Added**: Comprehensive HTTP status codes
-- ✅ **Added**: Error handling documentation  
-- ✅ **Added**: Performance metrics and limits
-- ✅ **Added**: Real cURL examples that work
-- ✅ **Updated**: All endpoints tested and verified
+### **v5.0.0 (2025-06-26)**
+- 🎉 **BREAKING**: Removed deprecated `/api/v1/shows` CRUD endpoints
+- 🎉 **NEW**: Frontend → Supabase direct access pattern
+- ✅ **FIXED**: All endpoints tested and verified
+- ✅ **FIXED**: Correct response schemas
+- ✅ **UPDATED**: Google Design Principles compliance
+- 🗑️ **REMOVED**: Outdated/redundant information
+- 📊 **ADDED**: Real-world performance metrics
+- 🔧 **IMPROVED**: Clear separation of concerns (API vs. Database)
 
-### **v4.0.0 (2025-06-24)**
-- 🎉 Initial microservices architecture
-- 🎉 Supabase integration
-- 🎉 Production deployment ready 
+---
+
+*📖 For more detailed integration examples, see [Frontend API Integration Guide](frontend-api-integration.md)* 

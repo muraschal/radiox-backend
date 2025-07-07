@@ -171,8 +171,6 @@ class SupabaseClient:
         except Exception as e:
             logger.error(f"❌ Speaker preload failed: {e}")
 
-    # ==================== STREAMS ====================
-
     # ==================== OPTIMIZED SPEAKER QUERIES ====================
     
     async def get_speaker_config_optimized(self, speaker_name: str) -> Optional[Dict[str, Any]]:
@@ -204,112 +202,9 @@ class SupabaseClient:
             logger.error(f"❌ Optimized speaker query failed for '{speaker_name}': {e}")
             return None
     
-    # ==================== OPTIMIZED CRUD OPERATIONS ====================
-    
-    async def create_stream(self, title: str, description: Optional[str] = None, duration_minutes: int = 60, persona: str = "cyberpunk") -> Dict[str, Any]:
-        """🚀 Optimized stream creation"""
-        stream_data = {"title": title, "description": description, "duration_minutes": duration_minutes, "persona": persona, "status": "planned"}
-        
-        try:
-            async def _create():
-                return self.client.table("streams").insert(stream_data).execute()
-            
-            result = await self._track_performance(_create)
-            await self.clear_cache("streams")  # Invalidate stream cache
-            logger.info(f"Stream erstellt: {title}")
-            return result.data[0]
-        except Exception as e:
-            logger.error(f"Fehler beim Erstellen des Streams: {e}")
-            raise
-
-    async def get_stream(self, stream_id: str) -> Optional[Dict[str, Any]]:
-        """🚀 Optimized stream retrieval with caching"""
-        cache_key = self._generate_cache_key("streams", "get_by_id", stream_id=stream_id)
-        
-        cached_result = await self._get_from_cache(cache_key)
-        if cached_result:
-            return cached_result
-        
-        try:
-            async def _query():
-                return self.client.table("streams").select("*").eq("id", stream_id).execute()
-            
-            result = await self._track_performance(_query)
-            
-            if result.data:
-                stream_data = result.data[0]
-                await self._set_cache(cache_key, stream_data, ttl=300.0)  # 5 min cache
-                return stream_data
-            
-            return None
-        except Exception as e:
-            logger.error(f"Fehler beim Abrufen des Streams {stream_id}: {e}")
-            return None
-
-    async def get_recent_streams(self, limit: int = 10) -> List[Dict[str, Any]]:
-        """🚀 Optimized recent streams with caching"""
-        cache_key = self._generate_cache_key("streams", "get_recent", limit=limit)
-        
-        cached_result = await self._get_from_cache(cache_key)
-        if cached_result:
-            return cached_result
-        
-        try:
-            async def _query():
-                return self.client.table("streams").select("*").order("created_at", desc=True).limit(limit).execute()
-            
-            result = await self._track_performance(_query)
-            
-            await self._set_cache(cache_key, result.data, ttl=60.0)  # 1 min cache for recent data
-            return result.data
-        except Exception as e:
-            logger.error(f"Fehler beim Abrufen der neuesten Streams: {e}")
-            return []
-
-    async def get_active_categories(self) -> List[Dict[str, Any]]:
-        """🚀 Optimized categories with long-term caching"""
-        cache_key = self._generate_cache_key("content_categories", "get_active")
-        
-        cached_result = await self._get_from_cache(cache_key)
-        if cached_result:
-            return cached_result
-        
-        try:
-            async def _query():
-                return self.client.table("content_categories").select("*").eq("is_active", True).order("priority_level").execute()
-            
-            result = await self._track_performance(_query)
-            
-            await self._set_cache(cache_key, result.data, ttl=3600.0)  # 1 hour cache
-            return result.data
-        except Exception as e:
-            logger.error(f"Fehler beim Abrufen der aktiven Kategorien: {e}")
-            return []
-
-    async def get_content_sources_by_category(self, category_slug: str, source_type: Optional[str] = None, active_only: bool = True) -> List[Dict[str, Any]]:
-        """🚀 Optimized content sources with caching"""
-        cache_key = self._generate_cache_key("content_sources", "get_by_category", category=category_slug, type=source_type, active=active_only)
-        
-        cached_result = await self._get_from_cache(cache_key)
-        if cached_result:
-            return cached_result
-        
-        try:
-            async def _query():
-                query = self.client.table("content_sources").select("*, content_categories!inner(slug)").eq("content_categories.slug", category_slug)
-                if source_type:
-                    query = query.eq("source_type", source_type)
-                if active_only:
-                    query = query.eq("is_active", True)
-                return query.order("priority_level").execute()
-            
-            result = await self._track_performance(_query)
-            
-            await self._set_cache(cache_key, result.data, ttl=1800.0)  # 30 min cache
-            return result.data
-        except Exception as e:
-            logger.error(f"Fehler beim Abrufen der Content Sources: {e}")
-            return []
+    # ==================== CORE DATABASE OPERATIONS ====================
+    # Only methods that work with existing tables: voice_configurations, 
+    # shows, configuration, show_presets, elevenlabs_models, rss_feed_preferences
 
 # Singleton Instance - Lazy Loading
 _db_instance = None

@@ -1,30 +1,40 @@
-FROM python:3.9-slim
+# 🚀 RadioX Audio Service - STANDALONE VERSION
+# Fully independent audio service without problematic base image imports
+# Author: Marcel & Claude - Building the Next Unicorn 🦄
 
-WORKDIR /app
+FROM python:3.9-slim as audio-service
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
-    gcc \
-    ffmpeg \
     curl \
+    ffmpeg \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy requirements
-COPY requirements.txt .
+# Set working directory
+WORKDIR /app
+
+# Create app user
+RUN useradd -m -u 1000 app
+RUN chown -R app:app /app
+
+# Copy and install requirements
+COPY services/audio-service/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy application code
-COPY . .
+COPY services/audio-service/main.py .
 
-# Create logs directory
-RUN mkdir -p /app/logs
+# Switch to app user
+USER app
 
-# Expose port
-EXPOSE 8000
+# Service-specific environment
+ENV SERVICE_NAME=audio-service
+ENV SERVICE_PORT=8002
+ENV AUDIO_CACHE_DIR=/app/audio_cache
 
 # Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:8000/health || exit 1
+HEALTHCHECK --interval=60s --timeout=30s --start-period=20s --retries=3 \
+    CMD curl -f http://localhost:8002/health || exit 1
 
-# Run application
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"] 
+# Start the audio service - Use Python main for dynamic port
+CMD ["python", "main.py"] 

@@ -139,13 +139,10 @@ def get_default_gpt_model() -> str:
 def get_default_elevenlabs_model() -> str:
     """Get default ElevenLabs model dynamically from database - replaces hardcoded 'eleven_turbo_v2'"""
     try:
-        # Try to load from database first
-        from pathlib import Path
-        import sys
-        sys.path.append(str(Path(__file__).parent.parent / "src"))
-        from services.infrastructure.supabase_service import SupabaseService
+        # Try to load from database first using existing database client
+        from database.supabase_client import get_db
         
-        db = SupabaseService()
+        db = get_db()
         
         # Get best mid-quality model (most balanced for default use)
         result = db.client.table('elevenlabs_models').select('model_id').eq('quality_tier', 'mid').eq('is_active', True).order('latency_ms', desc=False).limit(1).execute()
@@ -160,14 +157,13 @@ def get_default_elevenlabs_model() -> str:
     # Ultimate fallback for bootstrap scenarios
     return get_api_configuration().models.default_elevenlabs_model
 
-def get_content_categories() -> list[str]:
-    """Get essential categories - database can extend these"""
-    return get_api_configuration().categories.ESSENTIAL_CATEGORIES.copy()
-
 def get_speaker_roles() -> list[str]:
     """Get essential speaker roles - database can extend these"""
     return get_api_configuration().categories.ESSENTIAL_SPEAKER_ROLES.copy()
 
 def get_supported_languages() -> list[str]:
     """Get essential languages - database can extend these"""
-    return get_api_configuration().categories.ESSENTIAL_LANGUAGES.copy() 
+    return get_api_configuration().categories.ESSENTIAL_LANGUAGES.copy()
+
+# Note: Removed get_content_categories() as content_categories table doesn't exist
+# Content categories should be managed directly in frontend or hardcoded where needed 

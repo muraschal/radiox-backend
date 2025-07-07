@@ -48,14 +48,21 @@ graph TB
         Gateway[API Gateway :8000]
     end
     
+    subgraph "Infrastructure Services"
+        Key[Key Service :8001]
+        Data[Data Service :8002]
+    end
+    
+    subgraph "Processing Services"
+        Content[Content Service :8003]
+        Audio[Audio Service :8004]
+        Media[Media Service :8005]
+        Speaker[Speaker Service :8006]
+    end
+    
     subgraph "Business Services"
-        Show[Show Service :8001]
-        Content[Content Service :8002]
-        Audio[Audio Service :8003]
-        Media[Media Service :8004]
-        Speaker[Speaker Service :8005]
-        Data[Data Service :8006]
-        Analytics[Analytics Service :8007]
+        Show[Show Service :8007]
+        Analytics[Analytics Service :8008]
     end
     
     subgraph "Infrastructure"
@@ -66,25 +73,32 @@ graph TB
     
     Client --> Gateway
     Gateway --> Show
-    Gateway --> Content
-    Gateway --> Audio
-    Gateway --> Media
-    Gateway --> Speaker
-    Gateway --> Data
     Gateway --> Analytics
     
     Show --> Content
     Show --> Audio
     Show --> Media
+    Show --> Speaker
+    
+    Content --> Key
+    Audio --> Key
+    Media --> Key
+    Speaker --> Key
+    Show --> Key
+    Analytics --> Key
+    
     Content --> Data
-    Audio --> Speaker
+    Audio --> Data
     Media --> Data
+    Speaker --> Data
+    Show --> Data
     Analytics --> Data
     
+    Key --> Supabase
     Data --> Supabase
     Content --> Redis
     Audio --> External
-    Data --> External
+    Media --> External
 ```
 
 ---
@@ -112,7 +126,7 @@ Endpoints:
   - POST /api/v1/* - Route to appropriate service
 ```
 
-### 🎭 Show Service (Port 8001)
+### 🎭 Show Service (Port 8007)
 **Show generation orchestration and workflow management**
 
 ```yaml
@@ -134,7 +148,7 @@ Endpoints:
   - GET /dashboard/{id} - Show dashboard
 ```
 
-### 📰 Content Service (Port 8002)
+### 📰 Content Service (Port 8003)
 **News collection and content processing**
 
 ```yaml
@@ -157,7 +171,7 @@ Endpoints:
   - POST /content/process - Process content
 ```
 
-### 🎤 Audio Service (Port 8003)
+### 🎤 Audio Service (Port 8004)
 **Audio generation and processing**
 
 ```yaml
@@ -180,7 +194,7 @@ Endpoints:
   - GET /status - Generation queue status
 ```
 
-### 📁 Media Service (Port 8004)
+### 📁 Media Service (Port 8005)
 **File management and media processing**
 
 ```yaml
@@ -203,7 +217,7 @@ Endpoints:
   - GET /archive - Archive management
 ```
 
-### 🗣️ Speaker Service (Port 8005)
+### 🗣️ Speaker Service (Port 8006)
 **Voice configuration and management**
 
 ```yaml
@@ -226,7 +240,7 @@ Endpoints:
   - DELETE /speakers/{id} - Remove speaker
 ```
 
-### 💾 Data Service (Port 8006)
+### 💾 Data Service (Port 8002)
 **Database access and data management**
 
 ```yaml
@@ -249,7 +263,7 @@ Endpoints:
   - GET /health - Database health
 ```
 
-### 📊 Analytics Service (Port 8007)
+### 📊 Analytics Service (Port 8008)
 **Metrics collection and performance monitoring**
 
 ```yaml
@@ -294,7 +308,7 @@ services:
   # Business Services
   show-service:
     build: ./services/show-service
-    ports: ["8001:8001"]
+    ports: ["8007:8007"]
     environment:
       - GATEWAY_URL=http://api-gateway:8000
     

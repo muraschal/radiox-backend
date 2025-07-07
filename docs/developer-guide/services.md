@@ -23,13 +23,14 @@ RadioX operates **8 specialized microservices** orchestrated via Docker Compose,
 | Port | Service | Responsibility | Technology Stack |
 |------|---------|---------------|-----------------|
 | **8000** | **API Gateway** | Central routing, service discovery | FastAPI + Redis |
-| **8001** | **Show Service** | Show generation orchestration | FastAPI + Celery |
-| **8002** | **Content Service** | News collection, GPT processing | FastAPI + OpenAI |
-| **8003** | **Audio Service** | TTS, audio mixing, jingles | FastAPI + ElevenLabs |
-| **8004** | **Media Service** | File management, cover art | FastAPI + DALL-E |
-| **8005** | **Speaker Service** | Voice configuration | FastAPI + Supabase |
-| **8006** | **Data Service** | Database operations | FastAPI + PostgreSQL |
-| **8007** | **Analytics Service** | Metrics, monitoring | FastAPI + Prometheus |
+| **8001** | **Key Service** | Central API key management | FastAPI + Supabase |
+| **8002** | **Data Service** | Database operations | FastAPI + PostgreSQL |
+| **8003** | **Content Service** | News collection, GPT processing | FastAPI + OpenAI |
+| **8004** | **Audio Service** | TTS, audio mixing, jingles | FastAPI + ElevenLabs |
+| **8005** | **Media Service** | File management, cover art | FastAPI + DALL-E |
+| **8006** | **Speaker Service** | Voice configuration | FastAPI + Supabase |
+| **8007** | **Show Service** | Show generation orchestration | FastAPI + Celery |
+| **8008** | **Analytics Service** | Metrics, monitoring | FastAPI + Prometheus |
 
 ---
 
@@ -71,9 +72,9 @@ POST /api/v1/auth/login        # Authentication
 POST /api/v1/*                 # Route to services
 
 # Service Proxying
-POST /api/v1/shows/generate    # → Show Service (8001)
-GET  /api/v1/content/news      # → Content Service (8002)
-POST /api/v1/audio/generate    # → Audio Service (8003)
+POST /api/v1/shows/generate    # → Show Service (8007)
+GET  /api/v1/content/news      # → Content Service (8003)
+POST /api/v1/audio/generate    # → Audio Service (8004)
 ```
 
 ### Dependencies
@@ -88,7 +89,7 @@ Internal:
 
 ---
 
-## 🎭 Show Service (Port 8001)
+## 🎭 Show Service (Port 8007)
 
 ### Purpose
 **Orchestration hub** for complete radio show generation workflows.
@@ -103,9 +104,9 @@ COPY requirements.txt .
 RUN pip install -r requirements.txt
 
 COPY main.py .
-EXPOSE 8001
+EXPOSE 8007
 
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8001"]
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8007"]
 ```
 
 ### Key Responsibilities
@@ -167,15 +168,15 @@ async def generate_complete_show(preset_name: str, news_count: int) -> ShowRespo
 ### Dependencies
 ```yaml
 Internal Services:
-  - Content Service (8002) - News and script generation
-  - Audio Service (8003) - Audio production
-  - Media Service (8004) - Cover art generation
-  - Data Service (8006) - Configuration and persistence
+  - Content Service (8003) - News and script generation
+  - Audio Service (8004) - Audio production
+  - Media Service (8005) - Cover art generation
+  - Data Service (8002) - Configuration and persistence
 ```
 
 ---
 
-## 📰 Content Service (Port 8002)
+## 📰 Content Service (Port 8003)
 
 ### Purpose
 **Content aggregation and AI processing** for news collection and script generation.
@@ -275,13 +276,13 @@ External APIs:
   - 25+ RSS feed endpoints
 
 Internal Services:
-  - Data Service (8006) - RSS configuration
+  - Data Service (8002) - RSS configuration
   - Redis - Content caching
 ```
 
 ---
 
-## 🎤 Audio Service (Port 8003)
+## 🎤 Audio Service (Port 8004)
 
 ### Purpose
 **Professional audio production** with ElevenLabs TTS and advanced mixing.
@@ -381,8 +382,8 @@ External APIs:
   - ElevenLabs V3 TTS API
 
 Internal Services:
-  - Speaker Service (8005) - Voice configurations
-  - Media Service (8004) - File storage
+  - Speaker Service (8006) - Voice configurations
+  - Media Service (8005) - File storage
 
 System Dependencies:
   - FFmpeg for audio processing
@@ -391,7 +392,7 @@ System Dependencies:
 
 ---
 
-## 📁 Media Service (Port 8004)
+## 📁 Media Service (Port 8005)
 
 ### Purpose
 **File management and visual content generation** for cover art and media storage.
@@ -469,12 +470,12 @@ External APIs:
   - Supabase Storage
 
 Internal Services:
-  - Data Service (8006) - File metadata storage
+  - Data Service (8002) - File metadata storage
 ```
 
 ---
 
-## 🗣️ Speaker Service (Port 8005)
+## 🗣️ Speaker Service (Port 8006)
 
 ### Purpose
 **Voice configuration and speaker profile management** for consistent audio quality.
@@ -549,148 +550,155 @@ External APIs:
   - ElevenLabs API (voice validation)
 
 Internal Services:
-  - Data Service (8006) - Profile persistence
+  - Data Service (8002) - Profile persistence
 ```
 
 ---
 
-## 💾 Data Service (Port 8006)
+## 🔑 Key Service (Port 8001)
 
 ### Purpose
-**Database operations and configuration management** with **Clean Architecture patterns** as single source of truth.
+**Central API key management and distribution** for all microservices.
+
+### Container Configuration
+```dockerfile
+# services/key-service/Dockerfile
+FROM python:3.9-slim
+
+WORKDIR /app
+COPY requirements.txt .
+RUN pip install -r requirements.txt
+
+COPY main.py .
+EXPOSE 8001
+
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8001"]
+```
 
 ### Key Responsibilities
-- **Supabase Integration** - PostgreSQL database operations with clean interfaces
-- **Configuration Management** - Show presets and system settings
-- **Show Storage** - Clean Architecture implementation for show persistence
-- **Data Validation** - Pydantic schema validation with fail-fast patterns
-- **Caching Strategies** - Redis integration for performance layer
-- **Schema Management** - Database migrations and updates
+- **Centralized Key Storage** - All API keys stored in Supabase `keys` table
+- **Automatic Distribution** - Services fetch keys on startup and refresh
+- **Environment Integration** - Keys automatically set as environment variables
+- **Security Management** - Masked key responses, secure key retrieval
+- **Cache Management** - 5-minute refresh intervals for optimal performance
 
-### Clean Architecture Implementation
+### API Endpoints
 ```python
-# Clean Data Models - Google Style
-@dataclass
-class ShowRecord:
-    """Clean data model for Show storage - Single Responsibility"""
-    session_id: str
-    title: str
-    script_content: str
-    script_preview: str
-    broadcast_style: str
-    channel: str
-    language: str
-    news_count: int
-    estimated_duration_minutes: int
-    audio_url: Optional[str] = None
-    audio_duration_seconds: Optional[int] = None
-    metadata: Optional[Dict[str, Any]] = None
-    created_at: Optional[str] = None
+# Key Management
+GET  /keys                     # List available keys (masked)
+GET  /keys/{key_name}         # Get specific API key value
+POST /refresh                 # Manually refresh keys from database
+GET  /env/{env_var}           # Get environment variable value
 
-class ShowStorageInterface:
-    """Clean interface for show storage - Separation of Concerns"""
-    async def store_show(self, show: ShowRecord) -> bool: ...
-    async def get_show(self, session_id: str) -> Optional[ShowRecord]: ...
-    async def list_shows(self, limit: int = 10, offset: int = 0) -> List[ShowSummary]: ...
-    async def get_shows_count(self) -> int: ...
-
-class SupabaseShowStorage(ShowStorageInterface):
-    """Google-Style Implementation: Single Responsibility + Fail Fast"""
-    
-    async def store_show(self, show: ShowRecord) -> bool:
-        """Store show with proper error handling and transaction consistency"""
-        try:
-            result = await asyncio.to_thread(
-                lambda: self.client.table("shows").upsert(show_dict).execute()
-            )
-            return bool(result.data)
-        except Exception as e:
-            logger.error(f"❌ Show storage failed: {str(e)}")
-            return False
+# Health & Status
+GET  /health                  # Service health check
 ```
+
+### Service Integration
+```python
+# Usage in other services
+from config.key_client import get_api_key
+
+# Get OpenAI API Key
+openai_key = await get_api_key("openai_api_key")
+
+# Get ElevenLabs API Key  
+elevenlabs_key = await get_api_key("elevenlabs_api_key")
+
+# Automatic environment variable setting
+# Keys are automatically available as: OPENAI_API_KEY, ELEVENLABS_API_KEY, etc.
+```
+
+### Database Schema
+```sql
+-- Supabase keys table
+CREATE TABLE keys (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100) UNIQUE NOT NULL,  -- e.g., "openai_api_key"
+    value TEXT NOT NULL,                -- The actual API key
+    description TEXT,
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW()
+);
+```
+
+### Important Configuration
+**🔐 Supabase RLS Setup Required**
+- Supabase Row Level Security must be properly configured
+- Anonymous access policy needed for key retrieval
+- **⚠️ Common Issue**: Service returns "No API keys found" despite HTTP 200
+- **✅ Solution**: See [Supabase RLS Configuration](supabase-rls-configuration.md) for complete setup
+
+### Dependencies
+```yaml
+External:
+  - Supabase (key storage)
+
+Internal:
+  - None (infrastructure service)
+```
+
+---
+
+## 💾 Data Service (Port 8002)
+
+### Purpose
+**Database operations and configuration management** for all microservices.
+
+### Container Configuration
+```dockerfile
+# services/data-service/Dockerfile
+FROM python:3.9-slim
+
+WORKDIR /app
+COPY requirements.txt .
+RUN pip install -r requirements.txt
+
+COPY main.py .
+EXPOSE 8002
+
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8002"]
+```
+
+### Key Responsibilities
+- **Database Operations** - CRUD operations for all services
+- **Configuration Management** - System configuration and defaults
+- **Service Configuration** - Service URL registry and settings
+- **Validation Layer** - Data validation and schema enforcement
+- **Cache Coordination** - Redis cache strategies
 
 ### API Endpoints
 ```python
 # Configuration
-GET  /config                   # System configuration
-GET  /presets                  # Show presets
-POST /presets                  # Create show preset
+GET  /config                  # System configuration
+GET  /config/services         # Service URL registry
+GET  /config/defaults         # Default values
+GET  /config/{category}/{key} # Specific config value
 
-# Clean Show Storage API
-POST /shows                    # Store show data (Clean Architecture)
-GET  /shows                    # List shows with pagination
-GET  /shows/{session_id}       # Get single show
-GET  /shows/stats              # Show statistics
+# Database Operations
+GET  /shows                   # List shows
+GET  /shows/{id}             # Get specific show
+POST /shows                  # Create show
+PUT  /shows/{id}             # Update show
+DELETE /shows/{id}           # Delete show
 
-# Legacy Data Operations
-POST /data                     # Store data
-GET  /data/{type}             # Retrieve data by type
-PUT  /data/{id}               # Update data
-DELETE /data/{id}             # Delete data
-
-# Health & Monitoring
-GET  /health                   # Database health with detailed status
-GET  /metrics                 # Database metrics
-```
-
-### Database Schema
-```python
-# Supabase table definitions
-DATABASE_SCHEMA = {
-    "show_presets": {
-        "id": "uuid PRIMARY KEY",
-        "preset_name": "text UNIQUE",
-        "display_name": "text",
-        "city_focus": "text",
-        "news_categories": "jsonb",
-        "primary_speaker": "text",
-        "secondary_speaker": "text",
-        "weather_speaker": "text",
-        "is_duo_show": "boolean",
-        "duration_minutes": "integer",
-        "is_active": "boolean",
-        "created_at": "timestamptz",
-        "updated_at": "timestamptz"
-    },
-    "voice_configurations": {
-        "id": "uuid PRIMARY KEY",
-        "speaker_name": "text UNIQUE",
-        "voice_id": "text",
-        "language": "text",
-        "model": "text",
-        "stability": "decimal",
-        "similarity_boost": "decimal",
-        "style": "decimal",
-        "use_speaker_boost": "boolean",
-        "is_active": "boolean",
-        "created_at": "timestamptz"
-    },
-    "broadcast_scripts": {
-        "id": "uuid PRIMARY KEY",
-        "session_id": "text UNIQUE",
-        "preset_name": "text",
-        "radio_script": "text",
-        "selected_news": "jsonb",
-        "generation_metadata": "jsonb",
-        "created_at": "timestamptz",
-        "status": "text"
-    }
-}
+# Health & Status
+GET  /health                 # Database health check
 ```
 
 ### Dependencies
 ```yaml
-External Services:
+External:
   - Supabase PostgreSQL
   - Redis cache
 
-Internal Services:
-  - All services (configuration provider)
+Internal:
+  - Key Service (8001) - API keys
 ```
 
 ---
 
-## 📊 Analytics Service (Port 8007)
+## 📊 Analytics Service (Port 8008)
 
 ### Purpose
 **Metrics collection and system monitoring** for operational insights.
@@ -784,7 +792,7 @@ class ServiceClient:
         return response.json()
 
 # Usage example
-content_client = ServiceClient("http://content-service:8002")
+content_client = ServiceClient("http://content-service:8003")
 news_data = await content_client.get("/content/news", params={"limit": 10})
 ```
 
@@ -820,7 +828,7 @@ async def resilient_service_call(client: ServiceClient, endpoint: str, **kwargs)
 ```bash
 # Start specific service
 cd services/content-service
-python -m uvicorn main:app --reload --port 8002
+python -m uvicorn main:app --reload --port 8003
 
 # Start all services
 docker-compose up

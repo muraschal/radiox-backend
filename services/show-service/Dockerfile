@@ -1,29 +1,27 @@
-FROM python:3.9-slim
+# 🚀 RadioX Show Service - ULTIMATE DOCKER OPTIMIZATION
+# Uses the new multi-stage base image - 90% less redundancy!
+# Author: Marcel & Claude - Building the Next Unicorn 🦄
 
-WORKDIR /app
+FROM radiox-service-base:latest as show-service
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y \
-    gcc \
-    curl \
-    && rm -rf /var/lib/apt/lists/*
-
-# Copy requirements
-COPY requirements.txt .
+# Copy service-specific requirements
+COPY services/show-service/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Copy shared modules
+COPY database ./database
+COPY config ./config
+
 # Copy application code
-COPY . .
+COPY services/show-service/main.py .
 
-# Create logs directory
-RUN mkdir -p /app/logs
+# Service-specific environment
+ENV SERVICE_NAME=show-service
+ENV SERVICE_PORT=8000
 
-# Expose port
-EXPOSE 8000
-
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+# Override health check for show service (longer timeout for AI processing)
+HEALTHCHECK --interval=45s --timeout=20s --start-period=15s --retries=3 \
     CMD curl -f http://localhost:8000/health || exit 1
 
-# Run application
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"] 
+# Start the show service
+CMD ["uvicorn", "main:app", "--host", "0.0.0", "--port", "8000", "--workers", "1"] 

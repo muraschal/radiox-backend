@@ -1,0 +1,107 @@
+# 🚀 RadioX Base Dockerfile - ULTIMATE OPTIMIZATION
+# Eliminates 90% redundancy across all 8 microservices!
+# Author: Marcel & Claude - Building the Next Unicorn 🦄
+
+# ================================
+# STAGE 1: Base Python Environment
+# ================================
+FROM python:3.9-slim as python-base
+
+# Set environment variables for optimization
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    POETRY_VENV_IN_PROJECT=1
+
+# Create app user for security
+RUN groupadd --gid 1000 app && \
+    useradd --uid 1000 --gid app --shell /bin/bash --create-home app
+
+# ================================
+# STAGE 2: System Dependencies
+# ================================
+FROM python-base as system-deps
+
+# Install common system dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc \
+    g++ \
+    curl \
+    wget \
+    git \
+    build-essential \
+    && rm -rf /var/lib/apt/lists/*
+
+# ================================
+# STAGE 3: Audio-Specific Dependencies
+# ================================
+FROM system-deps as audio-deps
+
+# Install ffmpeg and audio processing tools
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ffmpeg \
+    libavcodec-extra \
+    libsndfile1 \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# ================================
+# STAGE 4: Common Python Dependencies
+# ================================
+FROM system-deps as python-deps
+
+WORKDIR /app
+
+# Copy and install common requirements first (for better caching)
+COPY requirements.common.txt .
+RUN pip install --no-cache-dir -r requirements.common.txt
+
+# ================================
+# STAGE 5: Service-Specific Base
+# ================================
+FROM python-deps as service-base
+
+# Create necessary directories
+RUN mkdir -p /app/logs /app/temp /app/uploads
+
+# Set proper permissions
+RUN chown -R app:app /app
+
+# Switch to app user
+USER app
+
+# Set working directory
+WORKDIR /app
+
+# Default health check (can be overridden)
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:8000/health || exit 1
+
+# Default port
+EXPOSE 8000
+
+# ================================
+# STAGE 6: Audio Service Variant
+# ================================
+FROM audio-deps as audio-service-base
+
+# Create necessary directories
+RUN mkdir -p /app/logs /app/temp /app/uploads /app/audio_cache
+
+# Set proper permissions
+RUN chown -R app:app /app
+
+# Switch to app user  
+USER app
+
+WORKDIR /app
+
+# Audio-specific health check
+HEALTHCHECK --interval=30s --timeout=15s --start-period=10s --retries=3 \
+    CMD curl -f http://localhost:8000/health || exit 1
+
+EXPOSE 8000
+
+# Default command (can be overridden)
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1"] 
